@@ -118,7 +118,7 @@ The rules live in `/src/domain` as pure functions, each with tests.
   |---|---|---|---|
   | Starter | 10 | circle | `rank/starter/*` (stone) |
   | Builder | 30 | rounded square | `rank/builder/*` (bronze) |
-  | Keeper | 90 | shield | `rank/keeper/*` (silver) |
+  | Keeper | 90 | pentagon (the shield of 049) | `rank/keeper/*` (silver) |
   | Artisan | 182 (6 months) | hexagon | `rank/artisan/*` (gold) |
   | Master | 365 (1 year) | framed hexagon with a crimson gem | `rank/master/*` (platinum) |
 

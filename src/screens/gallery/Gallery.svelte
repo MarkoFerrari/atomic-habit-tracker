@@ -9,6 +9,14 @@
   import TopBar from '../../ui/TopBar.svelte';
   import TabBar, { type Tab } from '../../ui/TabBar.svelte';
   import Banner from '../../ui/Banner.svelte';
+  import RankMedal from '../../ui/RankMedal.svelte';
+  import ListRow from '../../ui/ListRow.svelte';
+  import IconButton from '../../ui/IconButton.svelte';
+  import Sheet from '../../ui/Sheet.svelte';
+  import Toast from '../../ui/Toast.svelte';
+  import Chip from '../../ui/Chip.svelte';
+  import { RANKS } from '../../domain/ranks';
+  import { SKIP_REASONS } from '../../domain/states';
   import type { HabitState } from '../../domain/states';
 
   const states: HabitState[] = ['open', 'running', 'done', 'skipped', 'missed'];
@@ -16,6 +24,10 @@
   let tab = $state<Tab>('today');
   let demo = $state<HabitState>('running');
   let justDone = $state(false);
+  let sheetOpen = $state(false);
+  let toast = $state<string | null>(null);
+  let recapOn = $state(true);
+  const reasonLabel = { 'no-time': 'No time', forgot: 'Forgot', 'low-energy': 'Low energy', 'not-relevant-today': 'Not relevant today' } as const;
 </script>
 
 <main class="screen">
@@ -43,7 +55,28 @@
   <SectionLabel text="Try it: tap Mark as done, or swipe" />
   <HabitRow name="Sample habit" meta="08:00 · 30 min" status={demo} icon="coffee" level={3} justDone={justDone}
     showMarkDone={demo === 'running'} trailing={demo === 'done' ? '08:02' : demo === 'skipped' ? 'No reason given' : undefined}
-    ondone={() => { demo = 'done'; justDone = true; }} onskip={() => { demo = 'skipped'; justDone = false; }} onopen={() => { demo = 'running'; justDone = false; }} />
+    ondone={() => { demo = 'done'; justDone = true; toast = 'Sample habit marked done'; }}
+    onskip={() => { sheetOpen = true; }} onopen={() => { sheetOpen = true; }} />
+
+  <SectionLabel text="Rank medals" />
+  <div class="line medals">{#each RANKS as r (r.id)}<RankMedal rank={r.id} icon="dumbbell" label="{r.label}, earned" />{/each}</div>
+  <div class="line medals">{#each RANKS as r (r.id)}<RankMedal rank={r.id} icon="dumbbell" earned={false} label="{r.label}, locked" />{/each}</div>
+
+  <SectionLabel text="List rows" />
+  <ListRow label="Calendars" value="4" icon="calendar" />
+  <ListRow type="toggle" label="22:30 recap" bind:on={recapOn} />
+  <ListRow type="destructive" label="Delete habit series" />
+
+  <SectionLabel text="Chips" />
+  <div class="chips">
+    <Chip kind="filter" label="Sample calendar" selected calendar="marko" />
+    <Chip kind="filter" label="Sample calendar" calendar="marko" />
+    <Chip label="Reason" selected />
+    <Chip label="Reason" />
+  </div>
+
+  <SectionLabel text="Icon buttons" />
+  <div class="line"><IconButton icon="plus" label="New event" /><IconButton icon="plus" label="New event" variant="plain" /></div>
 
   <SectionLabel text="Top bars" />
   <TopBar type="navigation" title="Habit" rightLabel="Edit" />
@@ -56,12 +89,29 @@
   </div>
   <div class="spacer"></div>
 </main>
-<div class="tabbar"><TabBar active={tab} onselect={(t) => (tab = t)} /></div>
+<div class="tabbar">
+  {#if toast}<div class="toast-slot"><Toast message={toast} onaction={() => { demo = 'running'; justDone = false; }} ondismiss={() => (toast = null)} /></div>{/if}
+  <TabBar active={tab} onselect={(t) => (tab = t)} />
+</div>
+
+<Sheet open={sheetOpen} title="Why skip Sample habit?" showClose onclose={() => (sheetOpen = false)}>
+  <p class="t-body-small hint">Optional. The skip counts either way.</p>
+  <div class="chips">
+    {#each SKIP_REASONS as r (r)}
+      <Chip label={reasonLabel[r]} onclick={() => { demo = 'skipped'; justDone = false; sheetOpen = false; }} />
+    {/each}
+  </div>
+  <Button variant="tertiary" onclick={() => { demo = 'skipped'; justDone = false; sheetOpen = false; }}>Skip without a reason</Button>
+</Sheet>
 
 <style>
   .stack { display: grid; gap: var(--space-8); }
   .line { display: flex; gap: var(--space-16); flex-wrap: wrap; padding: var(--space-8) 0; }
   .ring { position: relative; display: block; width: var(--size-touch); height: var(--size-touch); }
   .spacer { height: var(--space-64); }
+  .medals { gap: var(--space-8); }
+  .chips { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }
   .tabbar { position: sticky; bottom: 0; }
+  .toast-slot { padding: 0 var(--layout-gutter) var(--space-8); }
+  .hint { color: var(--text-secondary); padding-bottom: var(--space-8); }
 </style>

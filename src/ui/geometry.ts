@@ -26,3 +26,19 @@ export function annulusPath(size: number, innerRatio: number, a0: number, a1: nu
   const large = a1 - a0 > Math.PI ? 1 : 0;
   return `M${pt(ro, a0)}A${ro} ${ro} 0 ${large} 1 ${pt(ro, a1)}L${pt(ri, a1)}A${ri} ${ri} 0 ${large} 0 ${pt(ri, a0)}Z`;
 }
+
+/** Rank medal (Figma 76:479): 64 × 64. Each rank's shape path is placed at (x, y); glyph 28 at (18, gy).
+ *  Master adds an outer frame and a gem. Stroke widths are tokens: stroke/medal (3), stroke/illustration (2). */
+export const MEDAL = {
+  size: 64,
+  glyph: 28,
+  starter: { x: 3.5, y: 3.5, gy: 18, d: 'M57 28.5C57 44.24 44.24 57 28.5 57C12.76 57 0 44.24 0 28.5C0 12.76 12.76 0 28.5 0C44.24 0 57 12.76 57 28.5Z' },
+  builder: { x: 5.5, y: 5.5, gy: 18, d: 'M14 0L39 0C46.73 0 53 6.27 53 14L53 39C53 46.73 46.73 53 39 53L14 53C6.27 53 0 46.73 0 39L0 14C0 6.27 6.27 0 14 0Z' },
+  keeper: { x: 5.5, y: 4.5, gy: 20, d: 'M26.5 0L53 19L43 54L10 54L0 19Z' },
+  artisan: { x: 7.8, y: 4, gy: 18, d: 'M24.2 0L48.4 14L48.4 42L24.2 56L0 42L0 14Z' },
+  master: {
+    x: 10.7, y: 7.5, gy: 19, d: 'M21.3 0L42.6 12.3L42.6 36.7L21.3 49L0 36.7L0 12.3Z',
+    frame: { x: 6, y: 2, d: 'M26 0L52 15L52 45L26 60L0 45L0 15Z' },
+    gem: { x: 28, y: 0.5, d: 'M4 0L8 4L4 8L0 4Z' },
+  },
+} as const;

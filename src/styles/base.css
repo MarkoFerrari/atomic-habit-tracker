@@ -19,7 +19,7 @@ body {
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; }
 h1, h2, h3, p, ul, ol { margin: 0; padding: 0; }
 ul, ol { list-style: none; }
-:focus-visible { outline: var(--stroke-ring) solid transparent; box-shadow: 0 0 0 var(--space-4) var(--border-strong); }
+:focus-visible { outline: var(--stroke-illustration) solid var(--border-strong); outline-offset: var(--space-4); border-radius: var(--radius-control); }
 
 /* The screen frame: 16 px gutter, 32 px top padding under the status bar (050), safe areas respected. */
 .screen {
