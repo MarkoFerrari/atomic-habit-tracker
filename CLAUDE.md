@@ -218,6 +218,8 @@ Generated into CSS by `scripts/export-tokens`. If a value here and Figma disagre
 | Number/Default | Geist Mono Medium | 16/24 | 0 |
 | Number/Small | Geist Mono Regular | 12/16 | 0 |
 
+Numbers are plain whole numbers, never zero-padded (061): 82%, 18, 10/30. Geist Mono keeps columns aligned.
+
 ### Motion (053, proposed; Figma page 11 has the specs per interaction)
 - **duration:** instant 100 · fast 150 · base 250 · slow 400 · celebrate 600 · toast-hold 5000 (ms)
 - **easing:**
@@ -474,6 +476,7 @@ The riskiest assumptions get tested before any screen is built.
 | 058 | Install from any iPhone browser; DuckDuckGo is not required | Decided |
 | 059 | For the owner; close friends may try it (push keyed per device, invite code) | Decided |
 | 060 | Days held = calendar days since the run's first done, not occurrences | Proposed |
+| 061 | Numbers without leading zeros (82%, not 082%) | Decided |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

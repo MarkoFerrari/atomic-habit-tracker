@@ -56,6 +56,8 @@
   .right { justify-content: flex-end; }
   .hit { display: flex; align-items: center; min-height: var(--size-touch); color: var(--text-primary); }
   .hit.modal { color: var(--text-secondary); }
+  /* D10: the chevron's stroke lines up with the 16 px gutter; Lucide draws it 8 px inside its 24 px box. */
+  .hit.navigation :global(.icon) { margin-left: calc(var(--space-8) * -1); }
   .save { color: var(--text-accent); }
   h1 { white-space: nowrap; }
 </style>
