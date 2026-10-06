@@ -5,7 +5,7 @@ This file is the build spec for ATOMIC. Read it before every build session; it o
 ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Screen from any browser that can add web apps (Safari, Chrome, DuckDuckGo). Every event in the HABITS calendar has to be answered by the end of the day: done or skipped. A recap push at 22:30 closes the day. Over months, the app shows which habits held and which didn't.
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
-- Owner: Marko Ferrari, sole user and designer.
+- Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
 - Status (6 Oct 2026): M0 build test shell built; waiting for the on-device test and the push host.
 
 ---
@@ -389,7 +389,8 @@ The riskiest assumptions get tested before any screen is built.
   - Daylight saving is handled by converting from UTC (E5).
 - **Recap payload:** `{ kind: 'recap' }`. It carries no data (025).
 - **Reminder payload:** `{ kind: 'reminder', ciphertext }`. The service worker decrypts it with a key held only in IndexedDB on the phone.
-- **Auth:** a random device token is created at subscribe time and sent as a header on every call. One user, one device.
+- **Devices (059):** one record per device, keyed by a random device token created at subscribe time and sent as a header on every call. No accounts, no user table: each phone is independent, and its data never leaves it.
+- **Invite code (059):** `/subscribe` also needs a short invite code, kept in the host's secret store, so strangers who find the URL in this public repo can't use the free tier. Rate-limit every endpoint per device token.
 - **The function stores nothing else.** No logs containing payloads.
 - **Secrets:** the VAPID private key lives in the host's secret store, never in this repo.
 
@@ -400,10 +401,10 @@ The riskiest assumptions get tested before any screen is built.
 | Item | Needed by |
 |---|---|
 | Push host: Scaleway (recommended) or Cloudflare; owner creates the account | M0 (push half) |
-| 059 who ATOMIC is for: owner only, or others too (decides the push function and onboarding) | M2 |
 | 034 calendar colours, 044 detail screens hide tab bar, 053 motion tokens: confirm | M1 |
 | 046 fifth calendar colour | M4 |
 | O7 backup nudge after 7 or 14 days | M4 |
+| A short privacy note (what stays on the phone, what the push function holds) | before the first friend installs |
 | Name: trademark check for "ATOMIC" before any public launch (018) | launch |
 
 ---
@@ -470,7 +471,7 @@ The riskiest assumptions get tested before any screen is built.
 | 056 | No prototype: build the real product, motion in code | Decided |
 | 057 | Build first; log usability changes; case study after | Decided |
 | 058 | Install from any iPhone browser; DuckDuckGo is not required | Decided |
-| 059 | Who is ATOMIC for: the owner only, or other people too? | Open |
+| 059 | For the owner; close friends may try it (push keyed per device, invite code) | Decided |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 
