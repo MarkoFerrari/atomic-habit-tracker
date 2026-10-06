@@ -1,23 +1,41 @@
 <script lang="ts">
+  // Button (Figma 32:144). Primary: the one action of a screen. Secondary: alternatives.
+  // Tertiary: low-emphasis text actions. Disabled is shown, never hidden, when the reason is visible nearby.
   import type { Snippet } from 'svelte';
-  interface Props { variant?: 'primary' | 'secondary'; disabled?: boolean; onclick?: () => void; children: Snippet }
-  let { variant = 'primary', disabled = false, onclick, children }: Props = $props();
+  import Icon from './Icon.svelte';
+  import type { IconName } from './icons';
+
+  interface Props {
+    variant?: 'primary' | 'secondary' | 'tertiary';
+    icon?: IconName;
+    disabled?: boolean;
+    type?: 'button' | 'submit';
+    onclick?: (e: MouseEvent) => void;
+    children: Snippet;
+  }
+  let { variant = 'primary', icon, disabled = false, type = 'button', onclick, children }: Props = $props();
 </script>
 
-<button class="btn {variant}" {disabled} {onclick}>{@render children()}</button>
+<button class="btn {variant}" {type} {disabled} {onclick}>
+  {#if icon}<Icon name={icon} />{/if}
+  <span class="t-body-strong">{@render children()}</span>
+</button>
 
 <style>
   .btn {
-    display: flex; align-items: center; justify-content: center;
-    width: 100%; min-height: var(--size-control);
-    padding: 0 var(--space-16);
+    display: flex; align-items: center; justify-content: center; gap: var(--space-8);
+    width: 100%; min-height: var(--size-control); padding: 0 var(--space-16);
     border-radius: var(--radius-control);
-    font: var(--type-body-strong);
-    transition: transform var(--motion-press), background-color var(--motion-press);
+    transition: background-color var(--motion-press), transform var(--motion-press);
   }
   .btn:active:not(:disabled) { transform: scale(0.98); }
   .primary { background: var(--action-primary); color: var(--action-on-primary); }
   .primary:active:not(:disabled) { background: var(--action-primary-pressed); }
   .secondary { background: var(--bg-default); color: var(--text-primary); box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-strong); }
-  .btn:disabled { background: var(--bg-subtle); color: var(--text-disabled); box-shadow: none; cursor: default; }
+  .secondary:active:not(:disabled) { background: var(--bg-subtle); }
+  .tertiary { color: var(--text-accent); }
+  .tertiary:active:not(:disabled) { background: var(--bg-subtle); }
+  .btn:disabled { color: var(--text-disabled); cursor: default; }
+  .primary:disabled { background: var(--bg-subtle); }
+  .secondary:disabled { box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-divider); }
 </style>

@@ -6,7 +6,7 @@ ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Scr
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (6 Oct 2026): M0 build test shell built; waiting for the on-device test and the push host.
+- Status (6 Oct 2026): M0 live and under test on device; M1 in progress (domain rules, data layer, core components). Component gallery at `#gallery`.
 
 ---
 
