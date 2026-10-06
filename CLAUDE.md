@@ -332,13 +332,13 @@ Each milestone ends on a real iPhone, with the app installed from the Home Scree
 ### M0 · Build test 0: the go/no-go gate
 The riskiest assumptions get tested before any screen is built.
 1. Publish a minimal installable shell (manifest, icons, service worker, one page) to GitHub Pages.
-2. Install it onto the Home Screen twice: once from Safari, once from DuckDuckGo (058).
+2. Install it onto the Home Screen from DuckDuckGo. The owner's iPhone has no Safari installed, so the Safari install path is checked later, on a friend's phone (058, 059).
 3. Write test records to IndexedDB.
-4. Clear the browsers: DuckDuckGo's automatic data clearing and the Fire button, and Safari's Clear History and Website Data. Then reopen each installed app. **The data must still be there.**
+4. Clear DuckDuckGo: the Fire button and automatic data clearing. Then reopen the installed app, the same day and again a day later. **The data must still be there.**
 5. Subscribe to Web Push and send a test push from the function at a set time. **It must arrive while the app is closed.**
 6. Record: is `navigator.vibrate` available for haptics (expected no on iOS)? Does a scheduled time hold across a time-zone change?
 - **Go:** data survives and the push arrives → M1.
-- **If only DuckDuckGo loses data:** document Safari as the install path and carry on (058).
+- **If DuckDuckGo loses data:** check the same flow from Safari on another iPhone; if Safari keeps it, document Safari as the install path (058).
 - **No-go (data lost in both, or no push):** stop and revisit 020 (storage) or 016 (push) before building anything else.
 
 ### M1 · Foundations
