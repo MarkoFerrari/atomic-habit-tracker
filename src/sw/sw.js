@@ -33,18 +33,23 @@ self.addEventListener('fetch', (event) => {
 });
 
 // --- Push (016, 021, 025, 027) ---------------------------------------------------------------
-// Same database as src/data/db.ts. Keep the upgrade steps identical.
+// Same database as src/data/db.ts. The worker opens whatever version exists (no number), so it never
+// blocks the app's upgrades; it only creates the diagnostics store on a brand-new install.
 function openDb() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('atomic', 1);
+    const req = indexedDB.open('atomic');
     req.onupgradeneeded = (e) => {
       const database = req.result;
-      if (e.oldVersion < 1) {
+      if (e.oldVersion < 1 && !database.objectStoreNames.contains('diagnostics')) {
         const store = database.createObjectStore('diagnostics', { keyPath: 'id', autoIncrement: true });
         store.createIndex('at', 'at');
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const database = req.result;
+      database.onversionchange = () => database.close(); // let the app upgrade
+      resolve(database);
+    };
     req.onerror = () => reject(req.error);
   });
 }

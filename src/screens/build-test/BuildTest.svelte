@@ -194,12 +194,12 @@
 
   <SectionLabel text="Steps" />
   <ol class="steps t-body-small">
-    <li>Install from Safari and open ATOMIC from the Home Screen. Save 2 records, ask iPhone to keep data.</li>
-    <li>Do the same from DuckDuckGo (it installs a second copy).</li>
-    <li>Clear the browsers: DuckDuckGo’s Fire button and automatic clearing; Safari’s Clear History and Website Data.</li>
-    <li>Reopen each installed copy. The oldest record must still be there.</li>
+    <li>Install from your browser and open ATOMIC from the Home Screen. “Running as” must say Installed app.</li>
+    <li>Save 2 records, then tap Ask iPhone to keep data.</li>
+    <li>Clear the browser: DuckDuckGo’s Fire button and automatic clearing.</li>
+    <li>Reopen ATOMIC from the Home Screen. The oldest record must still be there.</li>
     <li>Allow notifications and show a test notification.</li>
-    <li>Wait a day, reopen, then tap Share results and send them to Claude.</li>
+    <li>Tomorrow, reopen, tap Share results and send them to Claude.</li>
   </ol>
 </main>
 

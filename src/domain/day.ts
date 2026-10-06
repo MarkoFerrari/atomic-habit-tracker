@@ -24,3 +24,26 @@ export function habitDayOf(instant: Date, timeZone: string, closeHour = DAY_CLOS
   if (p.hour < closeHour) date.setUTCDate(date.getUTCDate() - 1);
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}` as IsoDay;
 }
+
+const toUtc = (d: IsoDay) => {
+  const [y, m, dd] = d.split('-').map(Number) as [number, number, number];
+  return Date.UTC(y, m - 1, dd);
+};
+
+/** Whole calendar days from a to b (b − a). Safe across daylight saving: dates only, no clock. */
+export function daysBetween(a: IsoDay, b: IsoDay): number {
+  return Math.round((toUtc(b) - toUtc(a)) / 86_400_000);
+}
+
+export function addDays(d: IsoDay, n: number): IsoDay {
+  const date = new Date(toUtc(d));
+  date.setUTCDate(date.getUTCDate() + n);
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}` as IsoDay;
+}
+
+/** R2 / E4: answers stay editable for 7 days (today and the 6 days before), then become read-only. */
+export const EDIT_WINDOW_DAYS = 7;
+export function isEditable(occurrence: IsoDay, today: IsoDay): boolean {
+  const age = daysBetween(occurrence, today);
+  return age >= 0 && age < EDIT_WINDOW_DAYS;
+}

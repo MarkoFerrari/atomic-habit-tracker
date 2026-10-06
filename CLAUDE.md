@@ -111,6 +111,7 @@ The rules live in `/src/domain` as pure functions, each with tests.
 
 ### Runs and ranks (047, 051, 055)
 - A run lasts as long as the habit is **never missed twice in a row**. A skip counts as a miss (051). One miss is forgiven; a second miss in a row sends the run back to day 1.
+- **Days held (060, proposed)** = calendar days from the run's first done to today, inclusive. Calendar days, not occurrences, so a three-times-a-week habit reaches Starter on the same calendar as a daily one; a weekly habit would otherwise need 7 years for Master.
 - Ranks are reached by days held in a run, per habit:
 
   | Rank | Days held | Medal shape | Fill / rim tokens |
@@ -401,7 +402,7 @@ The riskiest assumptions get tested before any screen is built.
 | Item | Needed by |
 |---|---|
 | Push host: Scaleway (recommended) or Cloudflare; owner creates the account | M0 (push half) |
-| 034 calendar colours, 044 detail screens hide tab bar, 053 motion tokens: confirm | M1 |
+| 034 calendar colours, 044 detail screens hide tab bar, 053 motion tokens, 060 days held: confirm | M1 |
 | 046 fifth calendar colour | M4 |
 | O7 backup nudge after 7 or 14 days | M4 |
 | A short privacy note (what stays on the phone, what the push function holds) | before the first friend installs |
@@ -472,6 +473,7 @@ The riskiest assumptions get tested before any screen is built.
 | 057 | Build first; log usability changes; case study after | Decided |
 | 058 | Install from any iPhone browser; DuckDuckGo is not required | Decided |
 | 059 | For the owner; close friends may try it (push keyed per device, invite code) | Decided |
+| 060 | Days held = calendar days since the run's first done, not occurrences | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 
