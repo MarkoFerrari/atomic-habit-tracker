@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.DS_Store
+.env*
+*.local
+# Rule 5 (CLAUDE.md): real data never gets committed
+*.ics
+atomic-backup-*.json

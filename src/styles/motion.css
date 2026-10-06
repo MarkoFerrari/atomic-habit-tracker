@@ -1,0 +1,12 @@
+/* Motion utilities (053). Durations and curves come from the Motion variables. */
+:root {
+  --motion-press: var(--motion-duration-instant) var(--motion-easing-standard);
+}
+/* Reduced motion: every movement becomes a short fade. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: var(--motion-duration-fast) !important;
+    transition-duration: var(--motion-duration-fast) !important;
+    transition-property: opacity !important;
+  }
+}

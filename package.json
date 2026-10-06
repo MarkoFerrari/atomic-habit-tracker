@@ -1,0 +1,32 @@
+{
+  "name": "atomic-habit-tracker",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "ATOMIC – a private, offline-first calendar and habit tracker PWA",
+  "scripts": {
+    "tokens": "node scripts/export-tokens.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "dev": "vite",
+    "build": "npm run tokens && vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "lint:tokens": "node scripts/lint-tokens.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tsconfig/svelte": "^5.0.8",
+    "@types/node": "^26.6.4",
+    "fake-indexeddb": "^6.2.5",
+    "svelte": "^5.57.1",
+    "svelte-check": "^4.7.6",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "idb": "^8.0.3"
+  }
+}
