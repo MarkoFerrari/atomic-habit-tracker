@@ -73,6 +73,43 @@ describe('Today (F4)', () => {
     expect(a).toMatchObject({ eventId: 'read', occurrence: '2026-10-06', status: 'skipped', reason: 'low-energy' });
   });
 
+  it('shows the cue and the identity, and counts the 2-min version as done, apart in the data (085, 086)', async () => {
+    const database = await db();
+    const read = (await database.get('events', 'read'))!;
+    await database.put('events', { ...read, after: 'Sample breakfast 30 min', smallest: 'Read one page', identity: 'A reader' });
+    render(Today, {});
+    expect(await screen.findByText(/08:30 · 30 min · after Sample breakfast 30 min/)).toBeTruthy();
+    expect(screen.getByText('Voting for: A reader')).toBeTruthy();
+    await fireEvent.click(within(await screen.findByRole('group', { name: 'Sample read 30 min' })).getByRole('button', { name: /Sample read 30 min, 08:30/ }));
+    await fireEvent.click(await screen.findByRole('button', { name: 'Did the 2-min version' }));
+    expect(await screen.findByText('1 of 3')).toBeTruthy();
+    expect(within(row('Sample read 30 min')).getByText('2-min')).toBeTruthy();
+    expect((await database.getAll('answers'))[0]).toMatchObject({ eventId: 'read', status: 'done', small: true });
+  });
+
+  it('plan B: moves a habit to a later time today without answering it, with Undo (P5, 087)', async () => {
+    render(Today, {});
+    await fireEvent.click(within(await screen.findByRole('group', { name: 'Sample read 30 min' })).getByRole('button', { name: /Sample read 30 min, 08:30/ }));
+    await fireEvent.click(await screen.findByRole('button', { name: 'Skip' }));
+    expect(await screen.findByText(/Plan B first/)).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: '18 hours' }));
+    await fireEvent.click(screen.getByRole('button', { name: '30 minutes' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Move to 18:30 today' }));
+    expect(await screen.findByText('Sample read moved to 18:30')).toBeTruthy();
+    const database = await db();
+    expect((await database.get('events', 'read'))!.overrides).toEqual({ '2026-10-06': { start: '2026-10-06T18:30', end: '2026-10-06T19:00' } });
+    expect(await database.getAll('answers')).toEqual([]); // moved, not answered: nothing counts as a miss
+    expect(await screen.findByText(/18:30 · 30 min/)).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await vi.waitFor(async () => expect((await database.get('events', 'read'))!.overrides).toBeUndefined());
+  });
+
+  it('shows the Kaizen adjustment being tried until its review (080)', async () => {
+    await updateSettings({ adjustments: [{ id: 'a', habitId: 'read', habitTitle: 'Sample read 30 min', text: 'Read the first 10 minutes only.', startedOn: '2026-10-05', reviewOn: '2026-10-19', baseline: { done: 3, due: 7 }, status: 'active' }] });
+    render(Today, {});
+    expect(await screen.findByText(/Trying until .*19 October · Sample read: Read the first 10 minutes only\./)).toBeTruthy();
+  });
+
   it('with no habit calendar, shows the empty state (H14, E17)', async () => {
     const database = await db();
     await database.clear('events');

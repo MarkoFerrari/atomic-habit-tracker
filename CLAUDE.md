@@ -6,7 +6,7 @@ ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Scr
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. **M5 built (0.5.0)**: Stats (week, month, year), habit detail, Badges with ranks, the weekly recap with Kaizen (080). On the phone for UX testing; M6 (polish, edge cases) next. Component gallery at `#gallery`, build test at `#build-test`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. **M5 built (0.5.0, Playground P2–P5 in 0.5.1)**: Stats (week, month, year), habit detail, Badges with ranks, the weekly recap with Kaizen (080). On the phone for UX testing; M6 (polish, edge cases) next. Component gallery at `#gallery`, build test at `#build-test`.
 
 ---
 
@@ -377,7 +377,7 @@ The riskiest assumptions get tested before any screen is built.
 ### M5 · Progress
 - Stats: week, month, year, habit detail and weekly recap.
 - Runs, ranks and medals per habit (055).
-- Built 7 Oct 2026 (0.5.0): `src/domain/stats.ts` (week, month, year, habit detail, medals, weekly recap), `src/domain/adjust.ts` (Kaizen trial and review), `src/data/stats.ts`, screens in `src/screens/stats`. Real data only (045 sample data is not used; E19 first days are dimmed, never zero, 033). Not built: the Today marker for an active adjustment, the browser-tab preview, and the Playground ideas other than Kaizen (identity, cue, smallest version, plan B).
+- Built 7 Oct 2026 (0.5.0): `src/domain/stats.ts` (week, month, year, habit detail, medals, weekly recap), `src/domain/adjust.ts` (Kaizen trial and review), `src/data/stats.ts`, screens in `src/screens/stats`. Real data only (045 sample data is not used; E19 first days are dimmed, never zero, 033). Playground P2–P5 built in 0.5.1 (085–087), with the Kaizen line on Today. Not built: the browser-tab preview.
 
 ### M6 · Polish
 - Edge cases E1–E23.
@@ -512,6 +512,10 @@ The riskiest assumptions get tested before any screen is built.
 | 082 | Weekly recap (H39, 080): shown from Monday for the week before, only if 3 or more habit days were due; the Stats banner stays until it is opened. It names one pattern (the most common skip reason, else the weakest habit) and proposes one adjustment by reason (smaller version, earlier slot, and so on) | Proposed |
 | 083 | Kaizen trial (080): one adjustment at a time, 14 days, then a review against the 14 days before (done ÷ due, with the due count). The owner keeps it for 2 more weeks or drops it; nothing is ever deleted. Stored in the Settings record (`adjustments`, `recapSeen`), so a backup carries it | Proposed |
 | 084 | Ranks are computed from answers and written to `ranks` the first time they are seen, so they are never taken back (047, E4). Days held counts calendar days (060) | Proposed |
+| 085 | Habit design (Playground P2, P3, owner approved 7 Oct 2026): a habit can have a cue ("After Breakfast", stored as that habit's title), a smallest version and an identity ("I'm becoming: A reader"), all optional, in "Make it stick" in the habit editor. Today shows the cue in the row and "Voting for: …" under the ring | Proposed |
+| 086 | The 2-min version (P4): the habit sheet offers "Did the 2-min version" when a smallest version is set. It counts as done for rates, runs and ranks (a plain `done` with `small: true`); habit detail shows full and small apart | Proposed |
+| 087 | Plan B (P5): Skip first offers "Move to HH:MM today", with scrollable hour and minute wheels (5-minute steps, later than now, same habit day), stored as a one-day override. Moving answers nothing; skipping stays below and still counts as a miss (051) | Proposed |
+| 088 | The name on the Home Screen, in the browser tab and in push titles is "Atomic" in Title Case, like the other icons (U06). The wordmark and 018 are unchanged; iOS keeps the old label until the app is added again | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

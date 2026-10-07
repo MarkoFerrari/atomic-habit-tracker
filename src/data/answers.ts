@@ -19,6 +19,7 @@ export async function habitEvents(): Promise<CalendarEvent[]> {
 export const toSource = (e: CalendarEvent): HabitSource => ({
   id: e.id, title: e.title, icon: e.icon, start: e.start, end: e.end, allDay: e.allDay,
   rrule: e.rrule, exdates: e.exdates, overrides: e.overrides, archivedOn: e.archivedOn,
+  after: e.after, smallest: e.smallest, identity: e.identity,
 });
 
 export async function answersOn(day: IsoDay): Promise<Answer[]> {
@@ -37,7 +38,7 @@ export class ReadOnlyAnswerError extends Error {
  * Saves an answer and returns what was there before, so the caller can undo.
  * R2 / E4: only occurrences from the last 7 days can be answered or changed.
  */
-export async function answer(eventId: string, occurrence: IsoDay, status: AnswerStatus, today: IsoDay, reason?: SkipReason): Promise<Answer | null> {
+export async function answer(eventId: string, occurrence: IsoDay, status: AnswerStatus, today: IsoDay, reason?: SkipReason, small = false): Promise<Answer | null> {
   if (!isEditable(occurrence, today)) throw new ReadOnlyAnswerError();
   const database = await db();
   const key = keyOf(eventId, occurrence);
@@ -46,6 +47,7 @@ export async function answer(eventId: string, occurrence: IsoDay, status: Answer
   const next: Answer = {
     key, eventId, occurrence, status, answeredAt: ts,
     ...(status === 'skipped' && reason ? { reason } : {}),
+    ...(status === 'done' && small ? { small: true } : {}), // 086
     history: [...(before?.history ?? []), { ts, from: before?.status ?? null, to: status }],
   };
   await database.put('answers', next);
@@ -57,4 +59,27 @@ export async function undoAnswer(eventId: string, occurrence: IsoDay, before: An
   const database = await db();
   if (before) await database.put('answers', before);
   else await database.delete('answers', keyOf(eventId, occurrence));
+}
+
+/**
+ * 087 (P5): plan B. Moves one occurrence to a later time the same day, without answering it.
+ * Stored as a single-occurrence override, so the series, past answers and the push queue follow the usual rules.
+ * Returns what was there before, for Undo.
+ */
+export async function moveOccurrence(eventId: string, occurrence: IsoDay, start: string, end: string): Promise<CalendarEvent['overrides']> {
+  const database = await db();
+  const event = await database.get('events', eventId);
+  if (!event) return undefined;
+  const before = event.overrides;
+  await database.put('events', { ...event, overrides: { ...(before ?? {}), [occurrence]: { start, end } } });
+  return before;
+}
+
+export async function restoreOverrides(eventId: string, overrides: CalendarEvent['overrides']): Promise<void> {
+  const database = await db();
+  const event = await database.get('events', eventId);
+  if (!event) return;
+  const next = { ...event };
+  if (overrides && Object.keys(overrides).length) next.overrides = overrides; else delete next.overrides;
+  await database.put('events', next);
 }

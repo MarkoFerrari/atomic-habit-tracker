@@ -42,6 +42,10 @@ export interface CalendarEvent {
   /** Single occurrences moved or cancelled in the source calendar, keyed by the day they replace. */
   overrides?: Record<string, { start: string; end: string; title?: string; cancelled?: boolean }>;
   archivedOn?: IsoDay; // E9
+  /** 085 (P2): habit design, all optional. The habit this one follows, what the smallest version is, who the owner is becoming. */
+  after?: string;
+  smallest?: string;
+  identity?: string;
 }
 
 export interface Answer {
@@ -50,6 +54,8 @@ export interface Answer {
   occurrence: IsoDay;
   status: AnswerStatus;
   reason?: SkipReason;
+  /** 086 (P4): done with the smallest version. Counts as done everywhere; Stats shows full and small apart. */
+  small?: boolean;
   answeredAt: string;
   history: { ts: string; from: AnswerStatus | null; to: AnswerStatus }[]; // append-only
 }

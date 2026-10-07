@@ -237,7 +237,7 @@
     <SectionLabel text="To turn them on" />
     <ol>
       <StepRow n={1} text="Open iPhone Settings" />
-      <StepRow n={2} text="Notifications, then ATOMIC" />
+      <StepRow n={2} text="Notifications, then Atomic" />
       <StepRow n={3} text="Turn on Allow Notifications" />
     </ol>
     <div class="spacer"></div>

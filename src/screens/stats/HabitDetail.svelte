@@ -28,6 +28,9 @@
   const trial = $derived(data ? activeAdjustment(data.adjustments) : null);
   const mine = $derived(trial && trial.habitId === eventId ? trial : null);
 
+  // 086: done with the 2-min version counts as done; here it is shown apart from full answers
+  const smallCount = $derived(data ? data.ctx.answers.filter((a) => a.eventId === eventId && a.status === 'done' && a.small).length : 0);
+  const doneCount = $derived(data ? data.ctx.answers.filter((a) => a.eventId === eventId && a.status === 'done').length : 0);
   const rankLabel = $derived(detail?.medal.rank ? RANKS.find((r) => r.id === detail.medal.rank)!.label : 'No rank yet');
   const runLine = $derived(detail ? (detail.medal.held > 0 ? `${rankLabel} · run of ${plural(detail.medal.held, 'day')}` : `${rankLabel} · no run now`) : '');
   const nextLine = $derived(detail?.medal.next ? `${RANKS.find((r) => r.id === detail.medal.next!.rank)!.label} at ${detail.medal.next.days} days` : 'Master');
@@ -48,6 +51,10 @@
       </div>
     </div>
     <Stat value={percent(detail.rate.rate)} caption="{detail.rate.done} of {detail.rate.due} due · last {detail.windowDays} days" />
+
+    {#if smallCount > 0}
+      <p class="t-body-small secondary">Done {doneCount}: {doneCount - smallCount} in full, {smallCount} as the 2-min version.</p>
+    {/if}
 
     {#if mine}
       <section class="trial">

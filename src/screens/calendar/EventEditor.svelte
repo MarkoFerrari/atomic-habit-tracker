@@ -22,6 +22,8 @@
   import { beforeLabel, reminderLabel } from '../../domain/reminders';
   import { MAX_EVERY, ruleFromRepeat, type RepeatKind, type Scope } from '../../domain/series';
   import { syncReminders } from '../../push/reminders';
+  import { habitEvents } from '../../data/answers';
+  import SectionLabel from '../../ui/SectionLabel.svelte';
 
   type Mode = { kind: 'new'; day: IsoDay; habit?: boolean } | { kind: 'edit'; event: CalendarEvent; item: AgendaItem } | { kind: 'duplicate'; event: CalendarEvent; item: AgendaItem };
   interface Props { mode: Mode; oncancel: () => void; onsaved: (day: IsoDay) => void }
@@ -29,12 +31,15 @@
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let cals = $state<Calendar[]>([]);
+  let otherHabits = $state<string[]>([]); // 085: the habits this one can follow
   let draft = $state<EventDraft | null>(null);
   let original = null as EventDraft | null;
   let endTouched = false;
 
   onMount(async () => {
     cals = await loadCalendars();
+    const own = mode.kind === 'edit' ? mode.event.id : '';
+    otherHabits = [...new Set((await habitEvents()).filter((e) => e.id !== own && !e.archivedOn).map((e) => e.title))].sort();
     draft = mode.kind === 'new' ? newDraft(mode.day, cals, new Date(), zone) : draftOf(mode.event, mode.item);
     if (mode.kind === 'new' && mode.habit) draft.repeat = { ...draft.repeat, kind: 'daily', until: null }; // 079: a habit repeats every day
     original = $state.snapshot(draft) as EventDraft;
@@ -143,7 +148,7 @@
   const REMINDERS: number[][] = [[], [0], [5], [10], [15], [30], [60], [1440]];
 
   // --- sheets and saving ----------------------------------------------------------------------------
-  let sheet = $state<'calendar' | 'repeat' | 'reminder' | 'place' | 'notes' | 'scope' | null>(null);
+  let sheet = $state<'calendar' | 'repeat' | 'reminder' | 'place' | 'notes' | 'scope' | 'after' | 'smallest' | 'identity' | null>(null);
   let titleError = $state('');
   let timeError = $state('');
   let problem = $state('');
@@ -200,6 +205,15 @@
       <ListRow label="Repeat" value={repeatText} onclick={() => (sheet = 'repeat')} />
       <ListRow label="Reminder" value={reminderText} onclick={() => (sheet = 'reminder')} />
     </div>
+    {#if cal?.trackAsHabits}
+      <!-- 085 (P2): cue, smallest version and identity, all optional -->
+      <div class="group">
+        <SectionLabel text="Make it stick · optional" />
+        <ListRow label="After" value={draft.after || 'Add'} onclick={() => (sheet = 'after')} />
+        <ListRow label="Smallest version" value={draft.smallest ? (draft.smallest.length > 18 ? `${draft.smallest.slice(0, 18)}…` : draft.smallest) : 'Add'} onclick={() => (sheet = 'smallest')} />
+        <ListRow label="I’m becoming" value={draft.identity || 'Add'} onclick={() => (sheet = 'identity')} />
+      </div>
+    {/if}
     <div class="group last">
       <ListRow label="Place or link" value={draft.place ? (draft.place.length > 24 ? `${draft.place.slice(0, 24)}…` : draft.place) : 'Add'} onclick={() => (sheet = 'place')} />
       <ListRow label="Notes" value={draft.notes ? 'Added' : 'Add'} onclick={() => (sheet = 'notes')} />
@@ -275,6 +289,39 @@
         </li>
       {/each}
     </ul>
+  </Sheet>
+
+  <Sheet open={sheet === 'after'} title="After" onclose={() => (sheet = null)}>
+    <div class="sheet">
+      <p class="t-body-small secondary">Stack it on a habit you already do: “After Breakfast, I read.” Today shows the cue next to the habit.</p>
+      <ul class="list">
+        {#each otherHabits as title (title)}
+          <li>
+            <button class="choice" aria-pressed={draft.after === title} onclick={() => { draft!.after = title; sheet = null; }}>
+              <span class="t-body-default grow">{title}</span>
+              {#if draft.after === title}<Icon name="check" />{/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+      {#if draft.after}<Button variant="tertiary" onclick={() => { draft!.after = ''; sheet = null; }}>No cue</Button>{/if}
+    </div>
+  </Sheet>
+
+  <Sheet open={sheet === 'smallest'} title="Smallest version" onclose={() => (sheet = null)}>
+    <div class="sheet">
+      <p class="t-body-small secondary">The two-minute version, for the days that go badly: “Read one page.” It counts as done; Stats keeps it apart.</p>
+      <TextField bind:value={draft.smallest} placeholder="Read one page" />
+      <Button onclick={() => (sheet = null)}>Done</Button>
+    </div>
+  </Sheet>
+
+  <Sheet open={sheet === 'identity'} title="I’m becoming" onclose={() => (sheet = null)}>
+    <div class="sheet">
+      <p class="t-body-small secondary">Who each answer votes for, in your own words: “A reader.” Today shows it under the ring.</p>
+      <TextField bind:value={draft.identity} placeholder="A reader" />
+      <Button onclick={() => (sheet = null)}>Done</Button>
+    </div>
   </Sheet>
 
   <Sheet open={sheet === 'place'} title="Place or link" onclose={() => (sheet = null)}>

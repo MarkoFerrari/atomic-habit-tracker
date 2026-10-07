@@ -42,6 +42,15 @@ describe('new event (H30)', () => {
     expect(habit).toMatchObject({ timeMode: 'clock', start: '2026-10-08T21:00', rrule: 'FREQ=DAILY', icon: 'book-open' });
     expect(habit).not.toHaveProperty('tz');
   });
+
+  it('keeps a habit’s cue, smallest version and identity, and drops them from a meeting (085)', async () => {
+    const draft = { ...newDraft('2026-10-08', [habits, work], new Date(), ZONE), title: 'Sample read - 20 min', after: 'Sample breakfast', smallest: ' Read one page ', identity: 'A reader' };
+    const habit = await createEvent(draft, ZONE);
+    expect(habit).toMatchObject({ after: 'Sample breakfast', smallest: 'Read one page', identity: 'A reader' });
+    const meeting = await createEvent({ ...draft, calendarId: 'wrk' }, ZONE);
+    expect(meeting.after).toBeUndefined();
+    expect(meeting.identity).toBeUndefined();
+  });
 });
 
 describe('changing a repeating event (H31, E16)', () => {

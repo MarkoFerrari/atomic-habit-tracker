@@ -19,6 +19,9 @@ export interface HabitSource {
   exdates: string[];
   overrides?: Record<string, { start: string; end: string; title?: string; cancelled?: boolean }>;
   archivedOn?: string;
+  after?: string;
+  smallest?: string;
+  identity?: string;
 }
 
 export interface Occurrence {
@@ -30,12 +33,17 @@ export interface Occurrence {
   end: Wall;
   allDay: boolean;
   minutes: number; // duration
+  after?: string; // 085 (P3)
+  smallest?: string;
+  identity?: string;
 }
 
 const day = (w: string) => w.slice(0, 10) as IsoDay;
 const time = (w: string) => w.slice(11, 16) || '00:00';
 const toWall = (d: IsoDay, t: string) => `${d}T${t}` as Wall;
 const minutesBetween = (a: string, b: string) => Math.round((Date.parse(`${b}:00Z`) - Date.parse(`${a}:00Z`)) / 60_000);
+
+const design = (h: HabitSource) => ({ ...(h.after ? { after: h.after } : {}), ...(h.smallest ? { smallest: h.smallest } : {}), ...(h.identity ? { identity: h.identity } : {}) });
 
 /** Every occurrence of the habits that starts on `target` (moved occurrences included, cancelled ones not). */
 export function occurrencesOn(habits: readonly HabitSource[], target: IsoDay): Occurrence[] {
@@ -51,7 +59,7 @@ export function occurrencesOn(habits: readonly HabitSource[], target: IsoDay): O
     if (regular[regular.length - 1] === target && !overrides[target]) {
       const start = toWall(target, time(h.start));
       const end = addMinutes(start, length);
-      out.push({ eventId: h.id, occurrence: target, title: h.title, icon: h.icon, start, end, allDay: h.allDay, minutes: length });
+      out.push({ eventId: h.id, occurrence: target, title: h.title, icon: h.icon, start, end, allDay: h.allDay, minutes: length, ...design(h) });
     }
     // An occurrence moved onto this day (or kept on it with a new time). It belongs to the day it starts (E7).
     for (const [original, o] of Object.entries(overrides)) {
@@ -59,7 +67,7 @@ export function occurrencesOn(habits: readonly HabitSource[], target: IsoDay): O
       if (!occurrences(startDay, rule, [], original as IsoDay).includes(original as IsoDay)) continue;
       out.push({
         eventId: h.id, occurrence: original as IsoDay, title: o.title ?? h.title, icon: h.icon,
-        start: o.start as Wall, end: o.end as Wall, allDay: h.allDay, minutes: minutesBetween(o.start, o.end),
+        start: o.start as Wall, end: o.end as Wall, allDay: h.allDay, minutes: minutesBetween(o.start, o.end), ...design(h),
       });
     }
   }
@@ -67,7 +75,7 @@ export function occurrencesOn(habits: readonly HabitSource[], target: IsoDay): O
   return out.sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start.localeCompare(b.start) || a.title.localeCompare(b.title));
 }
 
-export interface AnswerLike { eventId: string; occurrence: string; status: AnswerStatus; reason?: string; answeredAt: string }
+export interface AnswerLike { eventId: string; occurrence: string; status: AnswerStatus; reason?: string; small?: boolean; answeredAt: string }
 export interface TodayRow extends Occurrence { state: HabitState; answer: AnswerLike | null; markDone: boolean }
 
 export interface TodayView {

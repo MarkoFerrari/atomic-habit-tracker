@@ -65,8 +65,8 @@ async function logArrival(kind, note) {
 
 const COPY = {
   recap: { title: 'Close the day', body: 'Answer today’s habits.' },
-  test: { title: 'ATOMIC test', body: 'Push works. This arrived while the app was closed.' },
-  reminder: { title: 'A habit starts now', body: 'Open ATOMIC to see it.' }, // only if decryption fails
+  test: { title: 'Atomic test', body: 'Push works. This arrived while the app was closed.' },
+  reminder: { title: 'A habit starts now', body: 'Open Atomic to see it.' }, // only if decryption fails
 };
 
 // 021: reminder text arrives encrypted. The key lives only in this phone's IndexedDB, as raw bytes

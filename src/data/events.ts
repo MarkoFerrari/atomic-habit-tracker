@@ -38,6 +38,9 @@ export interface EventDraft {
   reminders: number[];
   place: string;
   notes: string;
+  after: string; // 085
+  smallest: string;
+  identity: string;
 }
 
 const day = (w: string) => w.slice(0, 10) as IsoDay;
@@ -61,7 +64,7 @@ export function newDraft(on: IsoDay, cals: Calendar[], now: Date, zone: string):
   return {
     title: '', calendarId: cal?.id ?? '', allDay: false, start, end: addMinutes(start, 60),
     repeat: { kind: 'none', days: [weekday], until: null }, repeatChanged: false,
-    reminders: defaultReminders(cal), place: '', notes: '',
+    reminders: defaultReminders(cal), place: '', notes: '', after: '', smallest: '', identity: '',
   };
 }
 
@@ -71,6 +74,7 @@ export function draftOf(e: CalendarEvent, item: AgendaItem): EventDraft {
     title: item.title, calendarId: e.calendarId, allDay: e.allDay, start: item.start, end: item.end,
     repeat: repeatFromRule(e.rrule, item.occurrence), repeatChanged: false,
     reminders: [...e.reminders], place: e.place ?? '', notes: e.notes ?? '',
+    after: e.after ?? '', smallest: e.smallest ?? '', identity: e.identity ?? '',
   };
 }
 
@@ -94,6 +98,10 @@ function base(draft: EventDraft, cal: Calendar | undefined, zone: string, start:
     ...(draft.place.trim() ? { place: draft.place.trim() } : {}),
     ...(draft.notes.trim() ? { notes: draft.notes.trim() } : {}),
     ...(cal?.trackAsHabits ? { icon: guessHabitIcon(title) } : {}),
+    // 085: only habits carry these; undefined clears an old value when an edit empties it
+    after: cal?.trackAsHabits ? draft.after.trim() || undefined : undefined,
+    smallest: cal?.trackAsHabits ? draft.smallest.trim() || undefined : undefined,
+    identity: cal?.trackAsHabits ? draft.identity.trim() || undefined : undefined,
   };
 }
 
