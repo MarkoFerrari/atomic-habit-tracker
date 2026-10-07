@@ -6,7 +6,7 @@ ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Scr
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (6 Oct 2026): M0 live and under test on device; M1 in progress (domain rules, data layer, core components). Component gallery at `#gallery`.
+- Status (7 Oct 2026): M0 storage half passed on device (data survives the night and DuckDuckGo's clearing). Push function live on Scaleway; M0 push test on device next. M1 slices 1–3 deployed. Component gallery at `#gallery`.
 
 ---
 
@@ -48,10 +48,12 @@ iPhone (installed PWA, any browser)                   Push function (EU, CRON)
   - The recap push is generic; the app builds the recap from local data when it opens (025).
 - **Self-monitoring (027).** The app logs every recap push it receives. After 2 silent evenings, Today shows a banner with Send a test (E1).
 
-### Push host (open: owner decides)
-GitHub can't send the push. Pages only serves static files, and scheduled Actions are best effort: they often fire late, and they are disabled after 60 days without repo activity (011, 016). Two candidates:
-- **Scaleway Serverless Functions** (recommended): an EU company, running in Paris, Amsterdam and Warsaw, with CRON triggers and a monthly free tier.
-- **Cloudflare Workers**: Cron Triggers and a generous free tier, but a US company.
+### Push host: Scaleway (decided 7 Oct 2026)
+GitHub can't send the push. Pages only serves static files, and scheduled Actions are best effort: they often fire late, and they are disabled after 60 days without repo activity (011, 016).
+- **Scaleway Serverless Functions**, Paris (`fr-par`), project ATOMIC. An EU company; CRON triggers count as ordinary invocations within the free tier.
+- Memory: one JSON file per phone in a private Object Storage bucket (062). The serverless database was ruled out: an every-minute timer would never let it idle, so it would never be free.
+- `.github/workflows/function.yml` builds, tests and deploys `/function` (bucket, namespace, function, secrets, timer, health check) with `function/deploy.sh`. It runs on changes to `/function` on `main`, or by hand. The Pages deploy runs after it and looks up the function's URL.
+- Repo secrets (owner-managed, write-only): `SCW_ACCESS_KEY`, `SCW_SECRET_KEY` (an IAM application key limited to FunctionsFullAccess and ObjectStorageFullAccess on ATOMIC; expires Oct 2027), `SCW_DEFAULT_PROJECT_ID`, `SCW_DEFAULT_ORGANIZATION_ID`, `ATOMIC_INVITE_CODE`.
 
 ---
 
@@ -62,7 +64,8 @@ GitHub can't send the push. Pages only serves static files, and scheduled Action
 - A hand-written service worker, with no Workbox, so caching is explicit.
 - Vitest for domain rules; Playwright (WebKit) for smoke tests.
 - Token export: a script turns the Figma variables (Primitives, Color, Dimension, Motion) into `src/styles/tokens.css`, keeping Figma's names (`--text-primary`, `--space-16`, `--motion-duration-base`).
-- Deploy: a GitHub Action builds and publishes to GitHub Pages on push to `main` (`.github/workflows/deploy.yml`). The VAPID public key comes from the repo variable `VAPID_PUBLIC_KEY`.
+- Deploy: a GitHub Action builds and publishes to GitHub Pages on push to `main` (`.github/workflows/deploy.yml`). The build looks up the push function's URL on Scaleway (`VITE_PUSH_URL`) and adds that one origin to the CSP (030). The VAPID public key is fetched from the function (063).
+- Branches: every session's work goes to `wip`, which never deploys; only `main` deploys.
 
 Commands:
 - `npm run dev`: local server · `npm run build`: tokens + production build into `dist/`
@@ -382,20 +385,24 @@ The riskiest assumptions get tested before any screen is built.
 
 | Endpoint | Body | Purpose |
 |---|---|---|
-| `POST /subscribe` | `{ subscription, timezone }` | Store or renew the Web Push subscription and the time zone (E1, E6) |
+| `GET /` | — | Health check: `{ ok, service: 'atomic-push' }` |
+| `GET /vapid-public-key` | — | The VAPID public key the app subscribes with (063) |
+| `POST /subscribe` | `{ subscription, timezone, invite? }` | Store or renew the Web Push subscription and the time zone (E1, E6). A new phone needs the invite code. |
 | `PUT /reminders` | `{ items: [{ id, fireAt (UTC ISO), ciphertext }] }` | Replace the whole queue of upcoming reminders (the next 14 days) |
-| `POST /test` | `{}` | Send a test push now (E1) |
+| `POST /test` | `{ at? }` | Send a test push now, or schedule it up to 24 h ahead so it arrives with the app closed (E1, 064) |
+| `POST /` | `{ tick: true }` | The CRON trigger's call: one timer run |
 
-- **CRON every minute:**
-  - Send reminders whose `fireAt` ≤ now, then delete them.
-  - If local time in the stored zone is 22:30, send the recap push.
-  - Daylight saving is handled by converting from UTC (E5).
+- **CRON every minute** (Scaleway CRON runs in UTC):
+  - Send reminders and scheduled tests whose `fireAt` ≤ now, then delete them (failed ones leave after an hour).
+  - Send the recap push once per habit day, from 22:30 local until the day closes at 04:00, so a late timer run still sends it.
+  - Daylight saving is handled by converting from UTC with the zone rules (E5).
+  - If the push service says an address is gone, the device is paused, not deleted: its queue stays, and the app renews it without the invite code (E1).
 - **Recap payload:** `{ kind: 'recap' }`. It carries no data (025).
 - **Reminder payload:** `{ kind: 'reminder', ciphertext }`. The service worker decrypts it with a key held only in IndexedDB on the phone.
 - **Devices (059):** one record per device, keyed by a random device token created at subscribe time and sent as a header on every call. No accounts, no user table: each phone is independent, and its data never leaves it.
 - **Invite code (059):** `/subscribe` also needs a short invite code, kept in the host's secret store, so strangers who find the URL in this public repo can't use the free tier. Rate-limit every endpoint per device token.
 - **The function stores nothing else.** No logs containing payloads.
-- **Secrets:** the VAPID private key lives in the host's secret store, never in this repo.
+- **Secrets:** the invite code and storage keys live in the function's secret environment variables. The VAPID key pair is made by the function on first use and kept in its private bucket (063), so no person ever handles the private key. Neither is ever in this repo.
 
 ---
 
@@ -403,7 +410,7 @@ The riskiest assumptions get tested before any screen is built.
 
 | Item | Needed by |
 |---|---|
-| Push host: Scaleway (recommended) or Cloudflare; owner creates the account | M0 (push half) |
+| M0 push test on device: a scheduled test arrives with the app closed | M2 |
 | 034 calendar colours, 044 detail screens hide tab bar, 053 motion tokens, 060 days held: confirm | M1 |
 | 046 fifth calendar colour | M4 |
 | O7 backup nudge after 7 or 14 days | M4 |
@@ -477,6 +484,9 @@ The riskiest assumptions get tested before any screen is built.
 | 059 | For the owner; close friends may try it (push keyed per device, invite code) | Decided |
 | 060 | Days held = calendar days since the run's first done, not occurrences | Proposed |
 | 061 | Numbers without leading zeros (82%, not 082%) | Decided |
+| 062 | The push function's memory is Object Storage (one JSON file per phone), not a database | Decided |
+| 063 | The function makes its own VAPID keys and keeps them in its private bucket; the app fetches the public key | Proposed |
+| 064 | A test push can be scheduled up to 24 h ahead (`POST /test { at }`) | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 
