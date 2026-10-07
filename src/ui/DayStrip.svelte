@@ -82,7 +82,7 @@
 <style>
   .frame { container-type: inline-size; }
   .strip {
-    display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; touch-action: pan-x pan-y;
+    display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; touch-action: pan-x;
     padding-inline: calc(100cqw / 7 * 3); /* three days of room each side, so the first and last can reach the middle */
     overscroll-behavior-x: contain;
   }

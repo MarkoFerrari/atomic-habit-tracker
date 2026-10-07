@@ -71,7 +71,7 @@
 </div>
 
 <style>
-  .pager { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
+  .pager { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; } /* 091: a vertical drag must not pull the whole screen */
   .pager::-webkit-scrollbar { display: none; }
   .page { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; }
 </style>

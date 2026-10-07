@@ -13,8 +13,9 @@
     onleft?: () => void;
     onright?: () => void;
     onaction?: () => void;
+    quick?: { label: string; onclick: () => void }; // 091: a text link beside the action, e.g. Today
   }
-  let { type = 'large', title, eyebrow, leftLabel = 'Back', rightLabel, action, onleft, onright, onaction }: Props = $props();
+  let { type = 'large', title, eyebrow, leftLabel = 'Back', rightLabel, action, onleft, onright, onaction, quick }: Props = $props();
 </script>
 
 {#if type === 'large'}
@@ -23,6 +24,7 @@
       {#if eyebrow}<p class="t-body-small eyebrow">{eyebrow}</p>{/if}
       <h1 class="t-heading-large">{title}</h1>
     </div>
+    {#if quick}<button class="quick t-body-strong" onclick={quick.onclick}>{quick.label}</button>{/if}
     {#if action}
       <button class="action" aria-label={action.label} onclick={onaction}><Icon name={action.icon} /></button>
     {/if}
@@ -51,6 +53,7 @@
     width: var(--size-touch); height: var(--size-touch);
     border-radius: var(--radius-control); box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-control);
   }
+  .quick { min-height: var(--size-touch); padding: 0 var(--space-8); color: var(--text-accent); }
   .bar { display: flex; align-items: center; min-height: var(--size-touch); }
   .side { flex: 1; display: flex; min-width: 0; }
   .right { justify-content: flex-end; }

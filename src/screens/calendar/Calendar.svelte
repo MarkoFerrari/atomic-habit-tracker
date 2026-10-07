@@ -163,7 +163,7 @@
 
 <div class="page">
   <main class="screen calendar">
-    <TopBar {eyebrow} {title} action={{ icon: 'plus', label: 'New event' }} onaction={() => onnew?.(selected)} />
+    <TopBar {eyebrow} {title} quick={selected !== today ? { label: 'Today', onclick: () => (selected = today) } : undefined} action={{ icon: 'plus', label: 'New event' }} onaction={() => onnew?.(selected)} />
     <SegmentedControl label="Calendar view" selected={mode}
       options={[{ id: 'day', label: 'Day' }, { id: 'week', label: 'Week' }, { id: 'month', label: 'Month' }]}
       onselect={(m) => { mode = m; if (m === 'day') scrollToFocus(); }} />

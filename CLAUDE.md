@@ -518,6 +518,7 @@ The riskiest assumptions get tested before any screen is built.
 | 088 | The name on the Home Screen, in the browser tab and in push titles is "Atomic" in Title Case, like the other icons (U06). The wordmark and 018 are unchanged; iOS keeps the old label until the app is added again | Proposed |
 | 089 | The Calendar views scroll one step at a time (U08): Day's date strip by day, Week by week and Month by month (a pager of full-width pages, seven kept in memory). Day's strip: seven days visible, the middle one is the chosen day, it snaps like a wheel, and each step plays a very quiet synthesized tick (the time wheel too). The web can't use the system wheel sound or haptics; the tick is silent until the first touch and when the mute switch is on | Proposed |
 | 090 | Text fields have no heavy focus ring (U07): when focused, the same 1 px border turns from `border/control` to `border/strong`. Sheets' and buttons' keyboard focus ring stays | Proposed |
+| 091 | Calendar (U09): a "Today" link beside + when the chosen day is not today; the Day strip and the Week and Month pagers take horizontal drags only (`touch-action: pan-x`) and the page no longer rubber-bands, so touching them no longer pulls the whole screen | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 
