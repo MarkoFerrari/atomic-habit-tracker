@@ -489,6 +489,8 @@ The riskiest assumptions get tested before any screen is built.
 | 063 | The function makes its own VAPID keys and keeps them in its private bucket; the app fetches the public key | Proposed |
 | 064 | A test push can be scheduled up to 24 h ahead (`POST /test { at }`) | Proposed |
 | 065 | M2 includes a first .ics import of the HABITS calendar, so daily use starts at the end of M2 | Decided |
+| 066 | One habit calendar; switching on a second one in the review merges it in (023 generalised) | Proposed |
+| 067 | H04 asks for the invite code only when the push function doesn't know the phone yet | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

@@ -1,9 +1,9 @@
 <script lang="ts">
   // Toggle (Figma 32:168): Track as habits, All day, the 22:30 recap. The 44 px hit area comes from the parent row.
-  let { on = $bindable(false), disabled = false, label }: { on?: boolean; disabled?: boolean; label: string } = $props();
+  let { on = $bindable(false), disabled = false, label, onchange }: { on?: boolean; disabled?: boolean; label: string; onchange?: (on: boolean) => void } = $props();
 </script>
 
-<button class="toggle" class:on role="switch" aria-checked={on} aria-label={label} {disabled} onclick={() => (on = !on)}>
+<button class="toggle" class:on role="switch" aria-checked={on} aria-label={label} {disabled} onclick={() => { on = !on; onchange?.(on); }}>
   <span class="knob"></span>
 </button>
 

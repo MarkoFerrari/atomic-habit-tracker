@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig, type Plugin } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { svelteTesting } from '@testing-library/svelte/vite';
 import { readFileSync } from 'node:fs';
 
 // GitHub Pages serves the repo at /atomic-habit-tracker/.
@@ -38,7 +39,7 @@ function contentSecurityPolicy(): Plugin {
 
 export default defineConfig({
   base,
-  plugins: [svelte(), serviceWorker(), contentSecurityPolicy()],
+  plugins: [svelte(), serviceWorker(), contentSecurityPolicy(), ...(process.env.VITEST ? [svelteTesting()] : [])],
   define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'), __BUILT_AT__: JSON.stringify(new Date().toISOString()) },
   build: { target: 'safari16', assetsInlineLimit: 0, sourcemap: false },
   test: { environment: 'node', include: ['src/**/*.test.ts'] },

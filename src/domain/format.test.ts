@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { percent, progress, rateLabel } from './format';
+import { clockLabel, percent, progress, rateLabel, repeatLabel } from './format';
+import { parseRRule } from './recurrence';
 
 describe('number formatting (061)', () => {
   it('never pads with zeros', () => {
@@ -14,5 +15,23 @@ describe('number formatting (061)', () => {
   });
   it('keeps the number due next to the rate (006)', () => {
     expect(rateLabel({ done: 3, due: 4, rate: 0.75 })).toBe('75% · 4 due');
+  });
+});
+
+
+describe('schedule labels (H09)', () => {
+  const label = (r: string) => repeatLabel(parseRRule(r));
+  it('says it the way the design does', () => {
+    expect(label('FREQ=WEEKLY;BYDAY=TU,TH,SA')).toBe('Tue, Thu, Sat');
+    expect(label('FREQ=DAILY')).toBe('Every day');
+    expect(label('FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR')).toBe('Weekdays');
+    expect(label('FREQ=WEEKLY;INTERVAL=2;BYDAY=MO')).toBe('Every 2 weeks · Mon');
+    expect(label('FREQ=MONTHLY;BYDAY=-1FR')).toBe('Monthly, last Fri');
+    expect(repeatLabel(null)).toBe('Once');
+    expect(repeatLabel(parseRRule('FREQ=WEEKLY'), '2026-10-08' as never)).toBe('Thu'); // the start's weekday
+  });
+  it('shows clock time, or All day', () => {
+    expect(clockLabel('2026-10-05T05:30', false)).toBe('05:30');
+    expect(clockLabel('2026-10-05T00:00', true)).toBe('All day');
   });
 });

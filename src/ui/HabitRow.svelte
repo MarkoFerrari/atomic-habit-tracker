@@ -13,12 +13,17 @@
     level?: number; // mastery ring 0–5
     trailing?: string; // answer time, reason or "Missed"; overrides the default
     showMarkDone?: boolean;
+    /** A text action in place of "Mark as done", e.g. "Change icon" on the Habits found list (H09). */
+    actionLabel?: string;
+    onaction?: () => void;
+    /** Swipe to answer (040). Off where a row isn't an answerable occurrence. */
+    swipeable?: boolean;
     justDone?: boolean;
     onopen?: () => void;
     ondone?: () => void;
     onskip?: () => void;
   }
-  let { name, meta, status, icon, level = 0, trailing, showMarkDone = false, justDone = false, onopen, ondone, onskip }: Props = $props();
+  let { name, meta, status, icon, level = 0, trailing, showMarkDone = false, actionLabel, onaction, swipeable = true, justDone = false, onopen, ondone, onskip }: Props = $props();
 
   const answered = $derived(status === 'done' || status === 'skipped' || status === 'missed');
   const stateLabel = $derived({ open: 'upcoming', running: 'running now', done: 'done', skipped: 'skipped', missed: 'missed' }[status]);
@@ -30,7 +35,7 @@
   let start: { x: number; y: number; id: number } | null = null;
   let horizontal: boolean | null = null;
 
-  function down(e: PointerEvent) { start = { x: e.clientX, y: e.clientY, id: e.pointerId }; horizontal = null; }
+  function down(e: PointerEvent) { if (!swipeable) return; start = { x: e.clientX, y: e.clientY, id: e.pointerId }; horizontal = null; }
   function move(e: PointerEvent) {
     if (!start || e.pointerId !== start.id) return;
     const x = e.clientX - start.x;
@@ -66,6 +71,8 @@
   </button>
   {#if trailing ?? answered}
     <span class="trailing {status === 'done' ? 't-number-small' : 't-label-small'}">{trailing ?? (status === 'missed' ? 'Missed' : '')}</span>
+  {:else if actionLabel}
+    <button class="mark t-body-small" onclick={() => onaction?.()}>{actionLabel}</button>
   {:else if showMarkDone}
     <button class="mark t-body-small" onclick={() => ondone?.()}>Mark as done</button>
   {/if}
