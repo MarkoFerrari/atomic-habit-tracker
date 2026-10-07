@@ -355,6 +355,7 @@ The riskiest assumptions get tested before any screen is built.
 - Data layer with schema versioning.
 
 ### M2 · Core loop
+- Onboarding and a first import (065): import the HABITS calendar from a Proton `.ics` export, so Today runs on real habits from the end of M2. Matching by UID skips duplicates; the full import (every calendar, changed-event approval, E8) stays in M4.
 - Today, check-off with undo, skip with reason, habit sheet.
 - The 22:30 Evening Recap and the day result.
 - The 04:00 day close.
@@ -365,7 +366,7 @@ The riskiest assumptions get tested before any screen is built.
 - Encrypted reminders.
 
 ### M4 · Data
-- .ics import with UID matching.
+- Full .ics import: every calendar, re-import with changed events listed for approval (E8).
 - Settings and Calendars.
 - Backup and restore, plus the backup nudge.
 
@@ -487,6 +488,7 @@ The riskiest assumptions get tested before any screen is built.
 | 062 | The push function's memory is Object Storage (one JSON file per phone), not a database | Decided |
 | 063 | The function makes its own VAPID keys and keeps them in its private bucket; the app fetches the public key | Proposed |
 | 064 | A test push can be scheduled up to 24 h ahead (`POST /test { at }`) | Proposed |
+| 065 | M2 includes a first .ics import of the HABITS calendar, so daily use starts at the end of M2 | Decided |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 
