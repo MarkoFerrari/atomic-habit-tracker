@@ -6,7 +6,7 @@ ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Scr
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): M0 storage half passed on device (data survives the night and DuckDuckGo's clearing). Push function live on Scaleway; M0 push test on device next. M1 slices 1–3 deployed. Component gallery at `#gallery`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** Data survives the night, DuckDuckGo's clearing and a schema upgrade; a scheduled push from Scaleway arrives with the app closed. M1 slices 1–3 deployed. Next: M2. Component gallery at `#gallery`.
 
 ---
 
@@ -410,7 +410,7 @@ The riskiest assumptions get tested before any screen is built.
 
 | Item | Needed by |
 |---|---|
-| M0 push test on device: a scheduled test arrives with the app closed | M2 |
+| M0 step 6: does a scheduled time hold across a time-zone change? (vibration: not available on iOS, as expected) | M3 |
 | 034 calendar colours, 044 detail screens hide tab bar, 053 motion tokens, 060 days held: confirm | M1 |
 | 046 fifth calendar colour | M4 |
 | O7 backup nudge after 7 or 14 days | M4 |
