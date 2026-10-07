@@ -100,3 +100,21 @@ describe('Event detail (H29)', () => {
     expect((await allEvents())[0]!.exdates).toEqual(['2026-10-06']);
   });
 });
+
+describe('Duplicate an event (077)', () => {
+  it('offers Duplicate, and the copy needs a new date or time before it saves', async () => {
+    const onduplicate = vi.fn();
+    const item = expand(sync, '2026-10-06', '2026-10-06', ZONE)[0]!;
+    render(EventDetail, { item, onback: () => {}, onedit: () => {}, onduplicate, onchanged: () => {} });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Duplicate' }));
+    expect(onduplicate).toHaveBeenCalled();
+    cleanup();
+    const onsaved = vi.fn();
+    render(EventEditor, { mode: { kind: 'duplicate', event: sync, item }, oncancel: () => {}, onsaved });
+    expect(await screen.findByText('Duplicate event')).toBeTruthy();
+    await screen.findByPlaceholderText(/Title/); // the form is ready once the calendars are loaded
+    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Pick a new date or time for the copy.')).toBeTruthy();
+    expect(onsaved).not.toHaveBeenCalled();
+  });
+});

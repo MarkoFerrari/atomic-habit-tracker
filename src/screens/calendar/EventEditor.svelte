@@ -20,10 +20,10 @@
   import { parseRRule } from '../../domain/recurrence';
   import { repeatLabel, weekdayShort } from '../../domain/format';
   import { beforeLabel, reminderLabel } from '../../domain/reminders';
-  import { ruleFromRepeat, type RepeatKind, type Scope } from '../../domain/series';
+  import { MAX_EVERY, ruleFromRepeat, type RepeatKind, type Scope } from '../../domain/series';
   import { syncReminders } from '../../push/reminders';
 
-  type Mode = { kind: 'new'; day: IsoDay } | { kind: 'edit'; event: CalendarEvent; item: AgendaItem };
+  type Mode = { kind: 'new'; day: IsoDay } | { kind: 'edit'; event: CalendarEvent; item: AgendaItem } | { kind: 'duplicate'; event: CalendarEvent; item: AgendaItem };
   interface Props { mode: Mode; oncancel: () => void; onsaved: (day: IsoDay) => void }
   let { mode, oncancel, onsaved }: Props = $props();
 
@@ -37,7 +37,7 @@
     cals = await loadCalendars();
     draft = mode.kind === 'new' ? newDraft(mode.day, cals, new Date(), zone) : draftOf(mode.event, mode.item);
     original = $state.snapshot(draft) as EventDraft;
-    endTouched = mode.kind === 'edit';
+    endTouched = mode.kind !== 'new';
   });
 
   const cal = $derived(cals.find((c) => c.id === draft?.calendarId));
@@ -55,13 +55,13 @@
     return `${shortDate(draft.end)}, ${draft.end.slice(11)}`;
   });
   const KIND_LABEL: Record<RepeatKind, string> = {
-    none: 'Never', daily: 'Every day', weekdays: 'Weekdays', weekly: 'Every week', biweekly: 'Every 2 weeks', monthly: 'Every month', yearly: 'Every year', custom: 'Custom',
+    none: 'Never', daily: 'Every day', weekdays: 'Weekdays', weekly: 'Every week', biweekly: 'Every 2 weeks', monthly: 'Every month', yearly: 'Every year', days: 'Custom', custom: 'Custom',
   };
   const repeatText = $derived.by(() => {
     if (!draft) return '';
     const r = draft.repeat;
     let text = KIND_LABEL[r.kind];
-    if (r.kind === 'weekly' || r.kind === 'biweekly' || r.kind === 'custom') {
+    if (r.kind === 'weekly' || r.kind === 'biweekly' || r.kind === 'days' || r.kind === 'custom') {
       const rule = ruleFromRepeat(r);
       const read = rule ? parseRRule(rule) : null;
       if (read) text = repeatLabel(read, draft.start.slice(0, 10) as IsoDay, true);
@@ -121,7 +121,16 @@
     if (!draft) return;
     draft.repeat.kind = kind;
     draft.repeatChanged = true;
-    if (kind !== 'weekly' && kind !== 'biweekly') sheet = null;
+    if (kind === 'days' && !draft.repeat.every) draft.repeat.every = 1;
+    if (kind !== 'weekly' && kind !== 'biweekly' && kind !== 'days') sheet = null; // these three need more choices
+  }
+  function setEvery(n: number) { if (draft) { draft.repeat.every = n; draft.repeatChanged = true; } }
+  /** Custom's "At": the time of day of the start; the length stays. */
+  function setTime(v: string) {
+    if (!draft || !v) return;
+    const length = minutesBetween(draft.start, draft.end);
+    draft.start = `${draft.start.slice(0, 10)}T${v.slice(0, 5)}` as Wall;
+    draft.end = addMinutes(draft.start, length);
   }
   function toggleDay(d: number) {
     if (!draft) return;
@@ -145,6 +154,8 @@
     titleError = draft.title.trim() ? '' : 'Give it a name, like “Read - 20 min”.';
     timeError = draft.end < draft.start ? 'It has to end after it starts.' : '';
     problem = draft.calendarId ? '' : 'Choose a calendar first.';
+    // 077: a copy needs its own date or time, or it would sit exactly on top of the original.
+    if (!timeError && !problem && mode.kind === 'duplicate' && original && draft.start === original.start && draft.end === original.end) timeError = 'Pick a new date or time for the copy.';
     return !titleError && !timeError && !problem;
   }
   async function save() {
@@ -157,7 +168,7 @@
     saving = true; sheet = null;
     const plain = $state.snapshot(draft) as EventDraft;
     try {
-      if (mode.kind === 'new') await createEvent(plain, zone);
+      if (mode.kind !== 'edit') await createEvent(plain, zone);
       else await saveEdit(mode.event, mode.item, plain, scope, zone, habitDayOf(new Date(), zone));
       syncReminders().catch(() => {}); // 021: the push queue follows the calendar
       onsaved(plain.start.slice(0, 10) as IsoDay);
@@ -168,7 +179,7 @@
 </script>
 
 <main class="screen editor">
-  <TopBar type="modal" title={mode.kind === 'new' ? 'New event' : 'Edit event'} leftLabel="Cancel" rightLabel={saving ? 'Saving…' : 'Save'} onleft={oncancel} onright={save} />
+  <TopBar type="modal" title={mode.kind === 'new' ? 'New event' : mode.kind === 'duplicate' ? 'Duplicate event' : 'Edit event'} leftLabel="Cancel" rightLabel={saving ? 'Saving…' : 'Save'} onleft={oncancel} onright={save} />
   {#if draft}
     <TextField bind:value={draft.title} placeholder="Title, like “Read - 20 min”" error={titleError || undefined} autocapitalize="sentences" spellcheck />
     <div class="group">
@@ -214,7 +225,7 @@
   <Sheet open={sheet === 'repeat'} title="Repeat" onclose={() => (sheet = null)}>
     <div class="sheet">
       <ul class="list">
-        {#each (['none', 'daily', 'weekdays', 'weekly', 'biweekly', 'monthly', 'yearly'] as RepeatKind[]).concat(draft.repeat.raw ? ['custom'] : []) as kind (kind)}
+        {#each (['none', 'daily', 'weekdays', 'weekly', 'biweekly', 'monthly', 'yearly', 'days'] as RepeatKind[]).concat(draft.repeat.raw ? ['custom'] : []) as kind (kind)}
           <li>
             <button class="choice" aria-pressed={draft.repeat.kind === kind} onclick={() => chooseRepeat(kind)}>
               <span class="t-body-default grow">{kind === 'custom' ? `As imported: ${repeatText}` : KIND_LABEL[kind]}</span>
@@ -223,13 +234,24 @@
           </li>
         {/each}
       </ul>
-      {#if draft.repeat.kind === 'weekly' || draft.repeat.kind === 'biweekly'}
+      {#if draft.repeat.kind === 'days'}
+        <p class="t-label-small tertiary">Every</p>
+        <div class="days">
+          {#each Array.from({ length: MAX_EVERY }, (_, i) => i + 1) as n (n)}
+            <Chip label={n === 1 ? 'Week' : `${n} weeks`} selected={(draft.repeat.every ?? 1) === n} onclick={() => setEvery(n)} />
+          {/each}
+        </div>
+      {/if}
+      {#if draft.repeat.kind === 'weekly' || draft.repeat.kind === 'biweekly' || draft.repeat.kind === 'days'}
         <p class="t-label-small tertiary">On</p>
         <div class="days">
           {#each [0, 1, 2, 3, 4, 5, 6] as d (d)}
             <Chip label={['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d]!} selected={draft.repeat.days.includes(d)} onclick={() => toggleDay(d)} />
           {/each}
         </div>
+      {/if}
+      {#if draft.repeat.kind === 'days' && !draft.allDay}
+        <PickerRow label="At" value={draft.start.slice(11)} type="time" input={draft.start.slice(11)} onchange={setTime} />
       {/if}
       {#if draft.repeat.kind !== 'none'}
         <PickerRow label="Ends" value={draft.repeat.until ? shortDate(draft.repeat.until) : 'Never'} type="date"

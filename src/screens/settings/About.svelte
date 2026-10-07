@@ -19,11 +19,13 @@
   <p class="t-body-default">Your calendars, habits and answers live only on this phone. There’s no account, no analytics and no third-party requests.</p>
   <p class="t-body-default">One server sends the notifications: a small function in Paris (Scaleway). It keeps this phone’s push address, its time zone and a list of upcoming reminder times. Each reminder’s text is encrypted on this phone with a key that never leaves it, so the server can’t read it.</p>
   <p class="t-body-default">A backup is a file you save yourself, with the share sheet. It’s the only copy outside this phone.</p>
-  <SectionLabel text="Made with" />
-  <p class="t-body-small secondary">Geist and Geist Mono (SIL Open Font License), Lucide icons (ISC licence). The code is public: github.com/MarkoFerrari/atomic-habit-tracker</p>
+  <div class="spacer"></div>
+  <p class="site t-body-default"><a href="https://markoferrari.eu" target="_blank" rel="noopener noreferrer">markoferrari.eu</a></p>
 </main>
 
 <style>
   .about { display: flex; flex-direction: column; gap: var(--space-12); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
-  .secondary { color: var(--text-secondary); overflow-wrap: anywhere; }
+  .spacer { flex: 1; min-height: var(--space-48); }
+  .site { text-align: center; }
+  a { color: var(--text-accent); }
 </style>

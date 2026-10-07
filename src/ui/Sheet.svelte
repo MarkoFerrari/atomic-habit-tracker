@@ -102,6 +102,9 @@
     position: fixed; inset: 0; margin: 0; padding: 0; border: 0;
     width: 100%; max-width: 100%; height: 100%; max-height: 100%;
     background: transparent; display: flex; align-items: flex-end;
+    /* A dialog scrolls by default, and the closed sheet (pushed below the screen) makes it taller than the screen: on
+       open, iOS scrolled it into view, so the sheet showed mid-screen first and then sank into place (U03). */
+    overflow: clip; overscroll-behavior: contain;
   }
   dialog:not([open]) { display: none; }
   dialog::backdrop { background: var(--bg-scrim); opacity: 0; transition: opacity var(--motion-duration-slow) var(--motion-easing-standard); }

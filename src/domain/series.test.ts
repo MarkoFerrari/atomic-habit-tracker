@@ -25,6 +25,17 @@ describe('repeat picker (H30)', () => {
   });
 });
 
+describe('Custom repeat (077)', () => {
+  it('builds a rule from days and an interval, and reads it back', () => {
+    const rule = ruleFromRepeat({ kind: 'days', days: [4, 0, 2], until: null, every: 3 });
+    expect(rule).toBe('FREQ=WEEKLY;INTERVAL=3;BYDAY=MO,WE,FR');
+    expect(repeatFromRule(rule, '2026-10-05' as IsoDay)).toMatchObject({ kind: 'days', days: [0, 2, 4], every: 3 });
+  });
+  it('every week on chosen days is the plain weekly rule, with an end date when set', () => {
+    expect(ruleFromRepeat({ kind: 'days', days: [1, 3], until: '2026-12-31' as IsoDay, every: 1 })).toBe('FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261231');
+  });
+});
+
 describe('scoped changes (H31, E16)', () => {
   it('only this event: an exception, or a moved occurrence', () => {
     expect(excludeOne(habit, '2026-10-12').exdates).toContain('2026-10-12');

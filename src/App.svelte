@@ -36,6 +36,7 @@
     | { kind: 'event'; item: AgendaItem; from: Tab }
     | { kind: 'new'; day: IsoDay }
     | { kind: 'edit'; event: CalendarEvent; item: AgendaItem }
+    | { kind: 'duplicate'; event: CalendarEvent; item: AgendaItem }
     | { kind: 'settings'; screen: SettingsScreen }
     | { kind: 'calendar-edit'; calendar: CalendarRecord | null }
     | { kind: 'import'; ics: IcsCalendar; fileName: string }
@@ -120,10 +121,13 @@
     {#key top}
       <EventDetail item={top.item} backLabel={top.from === 'today' ? 'Today' : 'Calendar'} onback={pop}
         onedit={(event) => (stack = [...stack, { kind: 'edit', event, item: top.item }])}
+        onduplicate={(event) => (stack = [...stack, { kind: 'duplicate', event, item: top.item }])}
         onchanged={() => { stack = []; }} />
     {/key}
   {:else if top?.kind === 'new'}
     <EventEditor mode={{ kind: 'new', day: top.day }} oncancel={pop} onsaved={saved} />
+  {:else if top?.kind === 'duplicate'}
+    <EventEditor mode={{ kind: 'duplicate', event: top.event, item: top.item }} oncancel={pop} onsaved={saved} />
   {:else if top?.kind === 'edit'}
     <EventEditor mode={{ kind: 'edit', event: top.event, item: top.item }} oncancel={pop} onsaved={saved} />
   {:else if top?.kind === 'settings' && top.screen === 'habits'}<Habits onback={pop} />

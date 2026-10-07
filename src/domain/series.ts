@@ -19,10 +19,12 @@ export interface SeriesEvent extends EventSource {
 // --- RRULE text --------------------------------------------------------------------------------------
 
 const WEEKDAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+export const MAX_EVERY = 4; // Custom: every 1 to 4 weeks
 
 /** The repeat choices of H30 (the picker), and how each one reads. */
-export type RepeatKind = 'none' | 'daily' | 'weekdays' | 'weekly' | 'biweekly' | 'monthly' | 'yearly' | 'custom';
-export interface RepeatDraft { kind: RepeatKind; days: number[]; until: IsoDay | null; raw?: string }
+// 'days' is the picker's Custom (077): every N weeks, on the weekdays chosen. 'custom' is a rule the editor can't build (as imported).
+export type RepeatKind = 'none' | 'daily' | 'weekdays' | 'weekly' | 'biweekly' | 'days' | 'monthly' | 'yearly' | 'custom';
+export interface RepeatDraft { kind: RepeatKind; days: number[]; until: IsoDay | null; raw?: string; every?: number }
 
 export function repeatFromRule(rrule: string | undefined, start: IsoDay): RepeatDraft {
   const weekday = (new Date(`${start}T00:00:00Z`).getUTCDay() + 6) % 7;
@@ -38,6 +40,7 @@ export function repeatFromRule(rrule: string | undefined, start: IsoDay): Repeat
     if (r.interval === 1 && days.length === 7) return { kind: 'daily', days, until };
     return { kind: r.interval === 2 ? 'biweekly' : 'weekly', days, until };
   }
+  if (r.freq === 'WEEKLY' && plain && r.interval <= MAX_EVERY) return { kind: 'days', days, until, every: r.interval };
   if (r.freq === 'MONTHLY' && r.interval === 1 && !r.byDay && !r.byMonthDay) return { kind: 'monthly', days, until };
   if (r.freq === 'YEARLY' && r.interval === 1 && !r.byDay && !r.byMonthDay && !r.byMonth) return { kind: 'yearly', days, until };
   return { kind: 'custom', days, until, raw: rrule };
@@ -52,6 +55,7 @@ export function ruleFromRepeat(r: RepeatDraft): string | undefined {
     case 'weekdays': return `FREQ=WEEKLY${byDay([0, 1, 2, 3, 4])}${until}`;
     case 'weekly': return `FREQ=WEEKLY${byDay(r.days.length ? r.days : [0])}${until}`;
     case 'biweekly': return `FREQ=WEEKLY;INTERVAL=2${byDay(r.days.length ? r.days : [0])}${until}`;
+    case 'days': { const n = Math.min(Math.max(r.every ?? 1, 1), MAX_EVERY); return `FREQ=WEEKLY${n > 1 ? `;INTERVAL=${n}` : ''}${byDay(r.days.length ? r.days : [0])}${until}`; }
     case 'monthly': return `FREQ=MONTHLY${until}`;
     case 'yearly': return `FREQ=YEARLY${until}`;
     case 'custom': return r.raw ? withUntil(r.raw, r.until) : undefined;

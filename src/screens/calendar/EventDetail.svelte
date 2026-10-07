@@ -18,8 +18,8 @@
   import { wallOf } from '../../domain/zone';
   import type { Scope } from '../../domain/series';
 
-  interface Props { item: AgendaItem; backLabel?: string; onback: () => void; onedit: (e: CalendarEvent) => void; onchanged: () => void }
-  let { item, backLabel = 'Calendar', onback, onedit, onchanged }: Props = $props();
+  interface Props { item: AgendaItem; backLabel?: string; onback: () => void; onedit: (e: CalendarEvent) => void; onduplicate?: (e: CalendarEvent) => void; onchanged: () => void }
+  let { item, backLabel = 'Calendar', onback, onedit, onduplicate, onchanged }: Props = $props();
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let event = $state.raw<CalendarEvent | null>(null); // raw: it goes back to IndexedDB as is
@@ -113,6 +113,7 @@
       <Button icon="video" onclick={() => window.open(link!, '_blank', 'noopener,noreferrer')}>Join</Button>
     {/if}
     <div class="spacer"></div>
+    {#if onduplicate}<Button variant="secondary" onclick={() => event && onduplicate(event)} disabled={busy}>Duplicate</Button>{/if}
     {#if problem}<p class="t-body-small problem" role="alert">{problem}</p>{/if}
     <Button variant="tertiary" onclick={startDelete} disabled={busy}>Delete event</Button>
   {/if}
