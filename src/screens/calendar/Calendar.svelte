@@ -15,6 +15,7 @@
   import EmptyState from '../../ui/EmptyState.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import { swipe } from '../../ui/swipe';
+  import DayStrip from '../../ui/DayStrip.svelte';
   import { READY_TABS } from '../../ui/tabs';
   import { db } from '../../data/db';
   import { allEvents, calendars as loadCalendars } from '../../data/events';
@@ -161,12 +162,7 @@
       onselect={(m) => { mode = m; if (m === 'day') scrollToFocus(); }} />
 
     {#if mode === 'day'}
-      <div class="strip" use:swipe={{ onleft: () => pick(addDays(week[0]!, 7)), onright: () => pick(addDays(week[0]!, -7)) }}>
-        {#each week as d (d)}
-          <DatePill weekday={weekdayShort(d)} day={d.slice(8, 10)} selected={d === selected} today={d === today}
-            label={fullDate(d)} onclick={() => pick(d)} />
-        {/each}
-      </div>
+      <DayStrip {selected} {today} onselect={(d) => (selected = d)} onsettle={scrollToFocus} />
     {/if}
 
     {#if mode !== 'month' && cals.length > 1}
@@ -292,7 +288,6 @@
   }
   .spacer { flex: 1; }
   .secondary { color: var(--text-secondary); }
-  .strip { display: flex; justify-content: space-between; touch-action: pan-y; }
   .chips { display: flex; gap: var(--space-8); overflow-x: auto; scrollbar-width: none; flex: none; }
   .chips::-webkit-scrollbar { display: none; }
   .all-day { display: grid; gap: var(--space-4); }

@@ -32,6 +32,8 @@
     border: 0; border-radius: var(--radius-control); background: var(--bg-default); color: var(--text-primary);
     box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-control); /* 019: a meaningful outline at 3:1 */
   }
+  /* U07: no heavy ring on focus; the same hairline just gets darker */
+  input:focus, input:focus-visible { outline: none; box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-strong); }
   input.error { box-shadow: inset 0 0 0 var(--stroke-icon) var(--action-primary); }
   input::placeholder { color: var(--text-disabled); }
   .help { color: var(--text-tertiary); }

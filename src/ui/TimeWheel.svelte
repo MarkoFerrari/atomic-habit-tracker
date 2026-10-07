@@ -2,6 +2,7 @@
   // P5: two scrollable columns, hours and minutes. The row in the middle is the choice; a tap on any row picks it too.
   // Scroll-snap does the physics, so it feels like the iPhone's own wheel. Reports "HH:MM" on every change.
   import { onMount } from 'svelte';
+  import { tick as sound, unlockTick } from './tick';
   interface Props { hours: number[]; minutes: number[]; value: string; onchange: (value: string) => void }
   let { hours, minutes, value, onchange }: Props = $props();
 
@@ -27,7 +28,11 @@
     return list[Math.min(list.length - 1, Math.max(0, Math.round(el.scrollTop / item.offsetHeight)))]!;
   }
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let lastSteps = '';
   function scrolled() {
+    const steps = `${read(hourEl, hours)}:${read(minuteEl, minutes)}`;
+    if (lastSteps && steps !== lastSteps) sound(); // 089: one tick per step
+    lastSteps = steps;
     clearTimeout(timer);
     timer = setTimeout(() => {
       const next = `${pad(read(hourEl, hours))}:${pad(read(minuteEl, minutes))}`;
@@ -40,7 +45,7 @@
   }
 </script>
 
-<div class="wheel" role="group" aria-label="Time">
+<div class="wheel" role="group" aria-label="Time" onpointerdown={unlockTick}>
   <span class="band" aria-hidden="true"></span>
   <ul bind:this={hourEl} onscroll={scrolled} aria-label="Hours">
     {#each hours as h (h)}

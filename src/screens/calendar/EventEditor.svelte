@@ -366,6 +366,7 @@
   .choice .t-body-default { color: var(--text-primary); }
   .dot { width: var(--space-8); height: var(--space-8); border-radius: var(--radius-round); background: var(--cal); flex: none; }
   .days { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }
+  .notes:focus, .notes:focus-visible { outline: none; box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-strong); } /* U07 */
   .notes {
     width: 100%; padding: var(--space-12); border: 0; border-radius: var(--radius-control); resize: vertical;
     box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-control); color: var(--text-primary); background: var(--bg-default);

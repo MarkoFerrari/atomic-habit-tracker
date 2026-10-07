@@ -3,6 +3,7 @@
   // Sample content only (045).
   import Button from '../../ui/Button.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
+  import DayStrip from '../../ui/DayStrip.svelte';
   import StateIcon from '../../ui/StateIcon.svelte';
   import MasteryRing from '../../ui/MasteryRing.svelte';
   import HabitRow from '../../ui/HabitRow.svelte';
@@ -22,6 +23,7 @@
 
   const states: HabitState[] = ['open', 'running', 'done', 'skipped', 'missed'];
   const trailing: Record<HabitState, string | undefined> = { open: undefined, running: undefined, done: '06:31', skipped: 'No time', missed: undefined };
+  let stripDay = $state<import('../../domain/day').IsoDay>('2026-10-07');
   let tab = $state<Tab>('today');
   let demo = $state<HabitState>('running');
   let justDone = $state(false);
@@ -33,6 +35,10 @@
 
 <main class="screen">
   <TopBar title="Components" eyebrow="Sample · gallery" action={{ icon: 'plus', label: 'New event' }} />
+
+  <SectionLabel text="Day strip · scroll sideways, one day at a time" />
+  <DayStrip selected={stripDay} today="2026-10-07" onselect={(d) => (stripDay = d)} />
+  <p class="t-label-small" data-testid="strip-day">{stripDay}</p>
 
   <SectionLabel text="Buttons" />
   <div class="stack">
