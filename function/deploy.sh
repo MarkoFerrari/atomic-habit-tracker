@@ -33,7 +33,8 @@ fi
 step "Functions namespace"
 NS_ID=$(scw function namespace list name="$NAMESPACE" region="$REGION" -o json | jq -r '[.[] | select(.name == "'"$NAMESPACE"'")][0].id // empty')
 if [ -z "$NS_ID" ]; then
-  NS_ID=$(scw function namespace create name="$NAMESPACE" region="$REGION" -w -o json | jq -r .id)
+  NS_ID=$(scw function namespace create name="$NAMESPACE" region="$REGION" -o json | jq -r .id)
+  scw function namespace wait "$NS_ID" region="$REGION" -o json >/dev/null
   echo "  created: $NS_ID"; done_step created
 else
   echo "  exists: $NS_ID"; done_step exists
