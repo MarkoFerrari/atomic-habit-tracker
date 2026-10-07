@@ -6,7 +6,7 @@ ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Scr
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. On the phone for UX testing; M5 (Stats, ranks) next. Component gallery at `#gallery`, build test at `#build-test`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. **M5 built (0.5.0)**: Stats (week, month, year), habit detail, Badges with ranks, the weekly recap with Kaizen (080). On the phone for UX testing; M6 (polish, edge cases) next. Component gallery at `#gallery`, build test at `#build-test`.
 
 ---
 
@@ -377,6 +377,7 @@ The riskiest assumptions get tested before any screen is built.
 ### M5 · Progress
 - Stats: week, month, year, habit detail and weekly recap.
 - Runs, ranks and medals per habit (055).
+- Built 7 Oct 2026 (0.5.0): `src/domain/stats.ts` (week, month, year, habit detail, medals, weekly recap), `src/domain/adjust.ts` (Kaizen trial and review), `src/data/stats.ts`, screens in `src/screens/stats`. Real data only (045 sample data is not used; E19 first days are dimmed, never zero, 033). Not built: the Today marker for an active adjustment, the browser-tab preview, and the Playground ideas other than Kaizen (identity, cue, smallest version, plan B).
 
 ### M6 · Polish
 - Edge cases E1–E23.
@@ -508,6 +509,9 @@ The riskiest assumptions get tested before any screen is built.
 | 079 | The empty Today asks for a habit, not a calendar: primary New habit (it creates the HABITS calendar), Import from Proton (.ics) as a tertiary link. Figma H14 updated; code follows | Decided (owner, 7 Oct 2026) |
 | 080 | Kaizen: the weekly recap (H39) ends with one adjustment to try for 2 weeks (one variable, then review). Identity, cue, smallest version and plan B (Figma Playground P2–P5) stay proposals, not decided | Decided (owner, 7 Oct 2026) |
 | 081 | Twelve calendar colours, so up to twelve calendars each keep a hue: the original four plus Violet #7A3FC0, Orange #C25A0A, Teal #0E7490, Brown #8A5A3C, Slate #5B6B7D, Plum #9C2F9A, Gold #A37A00, Sky #3A8FD0 (markers only, 034; all ≥ 3:1 on white). The picker wraps to two rows. Resolves 046 | Proposed |
+| 082 | Weekly recap (H39, 080): shown from Monday for the week before, only if 3 or more habit days were due; the Stats banner stays until it is opened. It names one pattern (the most common skip reason, else the weakest habit) and proposes one adjustment by reason (smaller version, earlier slot, and so on) | Proposed |
+| 083 | Kaizen trial (080): one adjustment at a time, 14 days, then a review against the 14 days before (done ÷ due, with the due count). The owner keeps it for 2 more weeks or drops it; nothing is ever deleted. Stored in the Settings record (`adjustments`, `recapSeen`), so a backup carries it | Proposed |
+| 084 | Ranks are computed from answers and written to `ranks` the first time they are seen, so they are never taken back (047, E4). Days held counts calendar days (060) | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

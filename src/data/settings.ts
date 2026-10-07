@@ -20,7 +20,13 @@ export async function getSettings(): Promise<Settings> {
 }
 
 export async function updateSettings(change: Partial<Omit<Settings, 'key'>>): Promise<Settings> {
-  const next = { ...(await getSettings()), ...change, key: 'settings' as const };
-  await (await db()).put('settings', next);
+  // One read-write transaction, so two quick saves (an answer and a recap seen, say) never overwrite each other.
+  const database = await db();
+  const tx = database.transaction('settings', 'readwrite');
+  const stored = (await tx.store.get('settings')) as Settings | undefined;
+  const base = stored ?? defaultSettings(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const next = { ...base, ...change, key: 'settings' as const };
+  await tx.store.put(next);
+  await tx.done;
   return next;
 }

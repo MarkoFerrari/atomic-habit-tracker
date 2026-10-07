@@ -11,6 +11,10 @@
   import Calendar from './screens/calendar/Calendar.svelte';
   import EventDetail from './screens/calendar/EventDetail.svelte';
   import EventEditor from './screens/calendar/EventEditor.svelte';
+  import Stats from './screens/stats/Stats.svelte';
+  import HabitDetail from './screens/stats/HabitDetail.svelte';
+  import Badges from './screens/stats/Badges.svelte';
+  import WeeklyRecap from './screens/stats/WeeklyRecap.svelte';
   import Settings from './screens/settings/Settings.svelte';
   import Habits from './screens/settings/Habits.svelte';
   import Notifications from './screens/settings/Notifications.svelte';
@@ -38,6 +42,9 @@
     | { kind: 'new'; day: IsoDay; habit?: boolean }
     | { kind: 'edit'; event: CalendarEvent; item: AgendaItem }
     | { kind: 'duplicate'; event: CalendarEvent; item: AgendaItem }
+    | { kind: 'habit'; eventId: string; from: string }
+    | { kind: 'badges' }
+    | { kind: 'week-recap'; weekStart: IsoDay }
     | { kind: 'settings'; screen: SettingsScreen }
     | { kind: 'calendar-edit'; calendar: CalendarRecord | null }
     | { kind: 'import'; ics: IcsCalendar; fileName: string }
@@ -49,6 +56,8 @@
   let stack = $state.raw<Pushed[]>([]); // raw: events go back to IndexedDB, which can't store Svelte proxies
   let calDay = $state<IsoDay | undefined>();
   let calMode = $state<CalMode>('day');
+  let statsMode = $state<'week' | 'month' | 'year'>('week');
+  let statsMonth = $state<IsoDay | undefined>();
   const top = $derived(stack.at(-1) ?? null);
   let notice = $state(''); // one line for Calendars after an import
   const push = (p: Pushed) => { stack = [...stack, p]; };
@@ -129,6 +138,12 @@
         onduplicate={(event) => (stack = [...stack, { kind: 'duplicate', event, item: top.item }])}
         onchanged={() => { stack = []; }} />
     {/key}
+  {:else if top?.kind === 'habit'}
+    {#key top}<HabitDetail eventId={top.eventId} backLabel={top.from} onback={pop} />{/key}
+  {:else if top?.kind === 'badges'}
+    <Badges onback={pop} onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Badges' })} />
+  {:else if top?.kind === 'week-recap'}
+    <WeeklyRecap weekStart={top.weekStart} onback={pop} onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Recap' })} />
   {:else if top?.kind === 'new'}
     <EventEditor mode={{ kind: 'new', day: top.day, habit: top.habit }} oncancel={pop} onsaved={saved} />
   {:else if top?.kind === 'duplicate'}
@@ -152,6 +167,12 @@
     <RestorePreview preview={top.preview} fileName={top.fileName} oncancel={pop} ondone={restored} />
   {:else if tab === 'settings'}
     <Settings ontab={(t) => (tab = t)} onopen={(screen) => push({ kind: 'settings', screen })} />
+  {:else if tab === 'stats'}
+    <Stats ontab={(t) => (tab = t)} initialMode={statsMode} initialMonth={statsMonth}
+      onview={(m, month) => { statsMode = m; statsMonth = month; }}
+      onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Stats' })}
+      onbadges={() => push({ kind: 'badges' })}
+      onrecap={(weekStart) => push({ kind: 'week-recap', weekStart })} />
   {:else if tab === 'calendar'}
     <Calendar initialDay={calDay} initialMode={calMode} ontab={(t) => (tab = t)}
       onview={(d, m) => { calDay = d; calMode = m; }}

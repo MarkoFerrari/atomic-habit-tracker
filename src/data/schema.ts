@@ -3,6 +3,7 @@
 import type { IsoDay } from '../domain/day';
 import type { AnswerStatus, SkipReason } from '../domain/states';
 import type { RankId } from '../domain/ranks';
+import type { Adjustment } from '../domain/adjust';
 
 export const DB_NAME = 'atomic';
 export const DB_VERSION = 3;
@@ -67,6 +68,10 @@ export interface Settings {
   onboardingDone: boolean;
   /** 069: the 22:30 recap push, off unless switched on in Notifications (H46). */
   recapPush?: boolean;
+  /** 080: Kaizen. Every adjustment tried, newest last; at most one is active. Lives here so a backup carries it. */
+  adjustments?: Adjustment[];
+  /** The Monday of the last weekly recap that was opened (H34 banner). */
+  recapSeen?: IsoDay;
 }
 
 /** This phone's identity with the push function (059). Lives in the settings store, under its own key. */
