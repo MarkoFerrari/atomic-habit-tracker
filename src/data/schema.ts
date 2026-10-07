@@ -25,6 +25,8 @@ export interface CalendarEvent {
   rrule?: string;
   exdates: string[];
   reminders: number[]; // minutes before
+  /** Single occurrences moved or cancelled in the source calendar, keyed by the day they replace. */
+  overrides?: Record<string, { start: string; end: string; title?: string; cancelled?: boolean }>;
   archivedOn?: IsoDay; // E9
 }
 
