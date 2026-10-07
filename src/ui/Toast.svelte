@@ -6,7 +6,8 @@
   let el: HTMLElement;
 
   $effect(() => {
-    const hold = parseFloat(getComputedStyle(el).getPropertyValue('--motion-duration-toast-hold')) || 0;
+    const token = '--motion-duration-toast-hold';
+    const hold = parseFloat(getComputedStyle(el).getPropertyValue(token) || getComputedStyle(document.documentElement).getPropertyValue(token)) || 0;
     const timer = setTimeout(ondismiss, hold);
     return () => clearTimeout(timer);
   });

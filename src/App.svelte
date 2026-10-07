@@ -5,10 +5,11 @@
   import BuildTest from './screens/build-test/BuildTest.svelte';
   import Gallery from './screens/gallery/Gallery.svelte';
   import Onboarding from './screens/onboarding/Onboarding.svelte';
+  import Today from './screens/today/Today.svelte';
   import { isInstalled } from './data/context';
   import { getSettings } from './data/settings';
 
-  type View = 'loading' | 'gallery' | 'build-test' | 'onboarding' | 'today';
+  type View = 'loading' | 'gallery' | 'build-test' | 'onboarding' | 'import' | 'today';
   let view = $state<View>('loading');
 
   async function route() {
@@ -29,5 +30,6 @@
 {#if view === 'gallery'}<Gallery />
 {:else if view === 'build-test'}<BuildTest />
 {:else if view === 'onboarding'}<Onboarding ondone={() => (view = 'today')} />
-{:else if view === 'today'}<BuildTest /><!-- M2 slice 3: Today replaces this -->
+{:else if view === 'import'}<Onboarding from="bring" ondone={() => (view = 'today')} />
+{:else if view === 'today'}<Today onchoosecalendar={() => (view = 'import')} />
 {/if}

@@ -10,7 +10,8 @@
     { id: 'stats', label: 'Stats', icon: 'stats' },
     { id: 'settings', label: 'Settings', icon: 'settings' },
   ];
-  let { active, onselect }: { active: Tab; onselect?: (tab: Tab) => void } = $props();
+  // `ready`: tabs whose screens exist. The others show, but say they're not built yet (M3–M5).
+  let { active, onselect, ready = TABS.map((t) => t.id) }: { active: Tab; onselect?: (tab: Tab) => void; ready?: Tab[] } = $props();
 </script>
 
 <nav aria-label="Main">
@@ -18,8 +19,10 @@
     <button
       class:active={tab.id === active}
       aria-current={tab.id === active ? 'page' : undefined}
-      aria-label="{tab.label}, tab, {i + 1} of {TABS.length}"
-      onclick={() => onselect?.(tab.id)}
+      aria-label="{tab.label}, tab, {i + 1} of {TABS.length}{ready.includes(tab.id) ? '' : ', coming later'}"
+      aria-disabled={!ready.includes(tab.id)}
+      class:later={!ready.includes(tab.id)}
+      onclick={() => ready.includes(tab.id) && onselect?.(tab.id)}
     >
       <Icon name={tab.icon} />
       <span class="t-label-small">{tab.label}</span>
@@ -37,4 +40,5 @@
   span { color: var(--text-tertiary); }
   .active { color: var(--action-primary); }
   .active span { color: var(--text-accent); }
+  .later { opacity: 0.4; cursor: default; } /* as the disabled controls in Figma (40%) */
 </style>

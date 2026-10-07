@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db, resetDbForTests } from './db';
+import { db, wipeDbForTests } from './db';
 import { parseIcs } from './ics';
 import { commitImport, habitsFound, planImport, storedUids, toggleHabits } from './import';
 
@@ -22,10 +22,7 @@ const files = () => [
   { fileName: 'sport.ics', calendar: parseIcs(ics('SAMPLE SPORT', [ev('s1', 'Sample swim', '20261006T180000', '20261006T190000', 'FREQ=WEEKLY;BYDAY=TU')]), ZONE) },
 ];
 
-beforeEach(async () => {
-  resetDbForTests();
-  await new Promise<void>((resolve) => { const r = indexedDB.deleteDatabase('atomic'); r.onsuccess = () => resolve(); r.onerror = () => resolve(); });
-});
+beforeEach(() => wipeDbForTests());
 
 describe('planImport (H07, H08)', () => {
   it('counts events and repeats, skips duplicate IDs, and guesses the habit calendar by name', () => {

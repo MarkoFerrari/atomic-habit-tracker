@@ -47,6 +47,16 @@ export function db(): Promise<IDBPDatabase<AtomicDB>> {
 /** Test seam: forget the open connection (fake-indexeddb resets between tests). */
 export function resetDbForTests(): void { dbPromise = null; }
 
+/** Test seam: close the connection and delete the database, so each test starts empty. */
+export async function wipeDbForTests(): Promise<void> {
+  if (dbPromise) (await dbPromise).close();
+  dbPromise = null;
+  await new Promise<void>((resolve) => {
+    const r = indexedDB.deleteDatabase(DB_NAME);
+    r.onsuccess = r.onerror = r.onblocked = () => resolve();
+  });
+}
+
 export async function addDiagnostic(entry: Omit<Diagnostic, 'id'>): Promise<void> {
   await (await db()).add('diagnostics', entry);
 }

@@ -2,6 +2,7 @@
   // 02 Onboarding (Figma 65:3812), flow F1: Welcome (H01) → notifications (H04/H05) → bring your
   // calendars (H06) → files read (H07, or H07b) → review (H08) → habits found (H09) → your data (H10).
   // The import is a plan until H09's Continue: nothing is saved before the person has reviewed it.
+  import { untrack } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
   import Button from '../../ui/Button.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
@@ -26,10 +27,10 @@
   import wordmark from '../../../design/logo-wordmark.svg';
   import appIcon from '../../../design/app-icon.svg';
 
-  let { ondone }: { ondone: () => void } = $props();
-
   type Step = 'welcome' | 'notifications' | 'notifications-off' | 'bring' | 'unreadable' | 'found' | 'review' | 'habits' | 'data';
-  let step = $state<Step>('welcome');
+  // `from`: Today's empty state reopens the import at "Bring your calendars" (H14 → H06).
+  let { ondone, from = 'welcome' }: { ondone: () => void; from?: Step } = $props();
+  let step = $state<Step>(untrack(() => from)); // only the first screen; the flow moves on from there
   let busy = $state(false);
   let problem = $state('');
 

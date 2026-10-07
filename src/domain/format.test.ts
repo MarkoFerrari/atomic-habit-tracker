@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clockLabel, percent, progress, rateLabel, repeatLabel } from './format';
+import { clockLabel, percent, progress, rateLabel, repeatLabel, shortName } from './format';
 import { parseRRule } from './recurrence';
 
 describe('number formatting (061)', () => {
@@ -33,5 +33,15 @@ describe('schedule labels (H09)', () => {
   it('shows clock time, or All day', () => {
     expect(clockLabel('2026-10-05T05:30', false)).toBe('05:30');
     expect(clockLabel('2026-10-05T00:00', true)).toBe('All day');
+  });
+});
+
+describe('shortName (004)', () => {
+  it('drops the end point for sentences', () => {
+    expect(shortName('Breakfast 30 min')).toBe('Breakfast');
+    expect(shortName('Diorama - 45 min')).toBe('Diorama');
+    expect(shortName('Train 1 h')).toBe('Train');
+    expect(shortName('30 min')).toBe('30 min');
+    expect(shortName('Stretch')).toBe('Stretch');
   });
 });

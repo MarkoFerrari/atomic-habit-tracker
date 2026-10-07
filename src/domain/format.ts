@@ -53,3 +53,9 @@ export function repeatLabel(rule: Recurrence | null, start?: IsoDay): string {
 export function clockLabel(start: string, allDay: boolean): string {
   return allDay ? 'All day' : start.slice(11, 16);
 }
+
+/** 004: habits are written with their end point ("Diorama - 45 min"). Short form for sentences: "Diorama". */
+export function shortName(title: string): string {
+  const short = title.replace(/\s*[-–·:]?\s*\d+\s*(min|mins|minutes|h|hr|hours?)\.?$/i, '').trim();
+  return short || title;
+}
