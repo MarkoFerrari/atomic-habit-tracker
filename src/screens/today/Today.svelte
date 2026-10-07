@@ -3,7 +3,7 @@
   // and the habit sheet. H11 morning, H12 midday + Undo, H13 evening, H14 empty, H16 sheet, H17 skip.
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
-  import TabBar from '../../ui/TabBar.svelte';
+  import TabBar, { type Tab } from '../../ui/TabBar.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import HabitRow from '../../ui/HabitRow.svelte';
   import ListRow from '../../ui/ListRow.svelte';
@@ -20,14 +20,15 @@
   import { getSettings } from '../../data/settings';
   import { db } from '../../data/db';
   import { syncReminders } from '../../push/reminders';
+  import { READY_TABS } from '../../ui/tabs';
   import type { Answer, CalendarEvent } from '../../data/schema';
   import { habitDayOf, localParts, type IsoDay } from '../../domain/day';
   import { percent, shortName } from '../../domain/format';
   import { SKIP_REASONS, type AnswerStatus, type SkipReason } from '../../domain/states';
   import { greeting, runLine, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
 
-  interface Props { onrecap?: () => void; onchoosecalendar?: () => void }
-  let { onrecap, onchoosecalendar }: Props = $props();
+  interface Props { onrecap?: () => void; onchoosecalendar?: () => void; ontab?: (tab: Tab) => void }
+  let { onrecap, onchoosecalendar, ontab }: Props = $props();
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let now = $state(new Date());
@@ -181,7 +182,7 @@
       <Toast message={toast.message} onaction={() => toast?.undo()} ondismiss={() => (toast = null)} />
     </div>
   {/if}
-  <TabBar active="today" ready={['today']} />
+  <TabBar active="today" ready={READY_TABS} onselect={ontab} />
 </div>
 
 <Sheet open={sheetRow !== null} title={sheetRow?.title ?? ''} onclose={() => (sheetRow = null)}>
@@ -230,7 +231,7 @@
     bottom: calc(max(env(safe-area-inset-bottom), var(--space-12)) + var(--space-64) + var(--space-16)); /* above the tab bar (H12) */
   }
   .page :global(nav) { position: sticky; bottom: 0; }
-  .sheet { display: grid; gap: var(--space-12); padding: var(--space-8) var(--layout-gutter) var(--space-40); }
+  .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-40); } /* the sheet already pads 8 on top and the gutter at the sides (Figma 46:2315) */
   .summary { display: flex; align-items: center; gap: var(--space-12); }
   .chips { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }
 </style>

@@ -123,7 +123,9 @@ export function toCalendarEvent(e: IcsEvent, calendarId: string, clock: boolean,
     ...(!clock && !e.start.allDay ? { tz: e.start.tz ?? phoneZone } : {}),
     ...(e.rrule ? { rrule: e.rrule } : {}),
     exdates: e.exdates,
-    reminders: e.reminders,
+    reminders: clock ? [0] : e.reminders, // 069: a habit's push comes when it starts
+    ...(e.place ? { place: e.place } : {}),
+    ...(e.notes ? { notes: e.notes } : {}),
     ...(own.length
       ? { overrides: Object.fromEntries(own.map((o) => [o.occurrence, {
           start: toStored(o.start, clock, phoneZone), end: toStored(o.end, clock, phoneZone), title: o.title, ...(o.cancelled ? { cancelled: true } : {}),

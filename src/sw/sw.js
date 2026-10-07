@@ -107,24 +107,28 @@ self.addEventListener('push', (event) => {
     Promise.all([
       logArrival('push', `${kind} push received (sent ${data.sentAt ?? 'unknown'})`).catch(() => {}),
       notificationFor(kind, data).then((n) =>
-        self.registration.showNotification(n.title, { body: n.body, icon: scopeUrl('icons/icon-192.png'), tag: n.tag, data: { kind } })),
+        self.registration.showNotification(n.title, { body: n.body, icon: scopeUrl('icons/icon-192.png'), tag: n.tag, data: { kind, tag: n.tag } })),
     ]),
   );
 });
 
 // The recap notification opens the recap (F5); the app builds it from local data (025).
-// A reminder (069) opens Today, where the habit is answered.
+// A reminder opens its event (H29: "from any event or a reminder push"); a habit's opens Today.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const recap = event.notification.data?.kind === 'recap';
+  const data = event.notification.data ?? {};
+  const recap = data.kind === 'recap';
+  const tag = data.kind === 'reminder' && typeof data.tag === 'string' && data.tag.includes('|') ? data.tag : null;
+  const hash = recap ? '#recap' : tag ? `#event=${encodeURIComponent(tag)}` : '';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       const open = wins.find((w) => w.url.startsWith(self.registration.scope));
       if (open) {
         if (recap) open.postMessage({ type: 'open-recap' });
+        if (tag) open.postMessage({ type: 'open-event', tag });
         return open.focus();
       }
-      return self.clients.openWindow(self.registration.scope + (recap ? '#recap' : ''));
+      return self.clients.openWindow(self.registration.scope + hash);
     }),
   );
 });

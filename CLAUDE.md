@@ -6,7 +6,7 @@ ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Scr
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built (0.2.1)**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). On the phone for UX testing. Component gallery at `#gallery`, build test at `#build-test`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. On the phone for UX testing. Component gallery at `#gallery`, build test at `#build-test`.
 
 ---
 
@@ -366,6 +366,7 @@ The riskiest assumptions get tested before any screen is built.
 - Day, week and month views; event detail.
 - Create and edit events, including repeats ("this event / this and following / all", E16).
 - Event reminders for non-habit events (the encrypted channel itself shipped in M2, 069).
+- Built 7 Oct 2026 (0.3.0): `src/domain/agenda.ts` (every event expanded in the phone's zone, overlap layout, free bands), `src/domain/series.ts` (scoped edits), `src/data/events.ts`, screens in `src/screens/calendar`. DB v3 sets habits' reminders to [0] (069). Tapping a reminder opens its event (H29).
 
 ### M4 · Data
 - Full .ics import: every calendar, re-import with changed events listed for approval (E8).
@@ -495,6 +496,10 @@ The riskiest assumptions get tested before any screen is built.
 | 067 | H04 asks for the invite code only when the push function doesn't know the phone yet | Proposed |
 | 068 | Copy not in the design, proposed: day-result lines other than the one-slip example ("Every habit done.", "None held today. Tomorrow starts clean.", "2 of 4 held. A and B slipped."), "Nothing due today", the H08 merge hint; the H25 and H21 texts drop the parts about Stats and motion | Proposed |
 | 069 | A push when each habit starts; no 22:30 recap push for now. The owner answers in the app; the recap stays in the app. Built as a per-phone switch so the recap push can come back | Decided (owner, 7 Oct 2026) |
+| 070 | Day view free bands: gaps of 1 h or more between two events, inside 08:00–20:00 | Proposed |
+| 071 | Editor details not in the design: Calendar, Repeat (Never, Every day, Weekdays, Every week with days, Every 2 weeks, Every month, Every year, an end date), Reminder, Place and Notes open sheets; Starts and Ends open the iPhone's own date and time wheels; a new event starts at the next whole hour (09:00 on other days) in the habit calendar; H33 keeps the date strip and chips | Proposed |
+| 072 | Every event can remind (021): minutes before its start, 0 = at the start. A new event takes its calendar's default (R5): habits at the start (069), other calendars 15 min (Proton's default in the imported files) | Proposed |
+| 073 | "All events" on a habit that already has answers splits the series at today, so past answers keep their original time and title (E16) | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

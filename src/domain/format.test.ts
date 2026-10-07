@@ -45,3 +45,17 @@ describe('shortName (004)', () => {
     expect(shortName('Stretch')).toBe('Stretch');
   });
 });
+
+describe('dates (H26–H28)', () => {
+  it('names days, weeks and months as the design writes them', async () => {
+    const f = await import('./format');
+    expect(f.fullDate('2026-10-06')).toBe('Tuesday 6 October');
+    expect(f.isoWeek('2026-10-05')).toBe(41);
+    expect(f.isoWeek('2027-01-01')).toBe(53);
+    expect(f.isoWeek('2026-01-01')).toBe(1);
+    expect(f.weekRange('2026-10-05', '2026-10-11')).toBe('5–11 October');
+    expect(f.weekRange('2026-09-28', '2026-10-04')).toBe('28 September – 4 October');
+    expect(f.dayAndNumber('2026-10-11')).toBe('Sunday 11');
+    expect([f.hoursLabel(60), f.hoursLabel(90), f.hoursLabel(45)]).toEqual(['1h', '1h 30m', '45m']);
+  });
+});

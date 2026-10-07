@@ -343,5 +343,5 @@
   .preview-head { display: flex; justify-content: space-between; }
   .list > li + li { border-top: var(--stroke-hairline) solid var(--border-divider); }
   .notes { display: grid; gap: var(--space-4); }
-  .sheet { display: grid; gap: var(--space-12); padding: var(--space-8) var(--layout-gutter) var(--space-16); }
+  .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-16); }
 </style>

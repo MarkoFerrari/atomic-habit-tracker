@@ -237,5 +237,5 @@
   .spark.two { bottom: var(--space-16); left: calc(50% - var(--space-64) - var(--space-12)); }
   .spark.three { bottom: var(--space-8); left: calc(50% + var(--space-64) + var(--space-8)); }
   @keyframes spark { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  .sheet { display: grid; gap: var(--space-12); padding: var(--space-8) var(--layout-gutter) var(--space-40); }
+  .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-40); } /* the sheet already pads 8 on top and the gutter at the sides (Figma 46:2315) */
 </style>

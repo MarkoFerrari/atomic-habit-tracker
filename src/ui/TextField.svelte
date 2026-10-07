@@ -8,8 +8,10 @@
     error?: string;
     readonly?: boolean;
     autocomplete?: HTMLInputElement['autocomplete'];
+    autocapitalize?: 'none' | 'sentences' | 'words';
+    spellcheck?: boolean;
   }
-  let { value = $bindable(''), label, placeholder, help, error, readonly = false, autocomplete = 'off' }: Props = $props();
+  let { value = $bindable(''), label, placeholder, help, error, readonly = false, autocomplete = 'off', autocapitalize = 'none', spellcheck = false }: Props = $props();
   const id = `field-${Math.random().toString(36).slice(2, 8)}`;
 </script>
 
@@ -17,7 +19,7 @@
   {#if label}<label class="t-label-small label" for={id}>{label}</label>{/if}
   <input
     {id} class="t-body-default" class:error={!!error} bind:value {placeholder} {readonly} {autocomplete}
-    autocapitalize="none" spellcheck="false" aria-invalid={!!error} aria-describedby={error || help ? `${id}-help` : undefined}
+    {autocapitalize} {spellcheck} aria-invalid={!!error} aria-describedby={error || help ? `${id}-help` : undefined}
   />
   {#if error || help}<p id="{id}-help" class="t-label-small help" class:error={!!error}>{error ?? help}</p>{/if}
 </div>

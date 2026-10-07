@@ -16,6 +16,8 @@ export interface IcsEvent {
   repeatSupported: boolean; // false: imported as a single event, and listed as a problem
   exdates: IsoDay[];
   reminders: number[]; // minutes before the start
+  place?: string; // LOCATION, or URL when there is no location
+  notes?: string; // DESCRIPTION
 }
 export interface IcsOverride { uid: string; occurrence: IsoDay; start: IcsTime; end: IcsTime; title: string; cancelled: boolean }
 export interface IcsCalendar { name: string | null; color: string | null; events: IcsEvent[]; overrides: IcsOverride[]; problems: string[] }
@@ -146,8 +148,11 @@ export function parseIcs(text: string, phoneZone: string): IcsCalendar {
       .map((v) => durationMinutes(v))
       .filter((m): m is number => m !== null && m <= 0)
       .map((m) => -m);
+    const place = unescapeText(get('LOCATION')?.value ?? '') || get('URL')?.value.trim() || '';
+    const notes = unescapeText(get('DESCRIPTION')?.value ?? '');
     cal.events.push({
       uid, title, start, end, rrule: repeatSupported ? rrule : null, repeatSupported, exdates, reminders: [...new Set(reminders)],
+      ...(place ? { place } : {}), ...(notes ? { notes } : {}),
     });
   };
 

@@ -7,7 +7,7 @@ import type { CalendarEvent } from '../data/schema';
 
 const PUSH = 'https://push.example.test';
 const habit = (id: string, title: string, start: string, end: string): CalendarEvent =>
-  ({ id, calendarId: 'cal', title, start, end, allDay: false, timeMode: 'clock', rrule: 'FREQ=DAILY', exdates: [], reminders: [] });
+  ({ id, calendarId: 'cal', title, start, end, allDay: false, timeMode: 'clock', rrule: 'FREQ=DAILY', exdates: [], reminders: [0] });
 
 type Mod = typeof import('./reminders');
 let mod: Mod;

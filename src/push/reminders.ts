@@ -1,8 +1,7 @@
-// 069 + 021: a push when each habit starts. The phone plans the next 14 days of reminders, encrypts each
+// 069 + 021: a push when each habit starts, and each event's own reminders (M3). The phone plans the next 14 days of reminders, encrypts each
 // one's text with a key that never leaves the phone, and hands the push function only the ciphertext and
 // the time to send it. The service worker (src/sw/sw.js) decrypts it when the push arrives.
 import { db } from '../data/db';
-import { habitEvents, toSource } from '../data/answers';
 import type { ReminderKey } from '../data/schema';
 import { habitDayOf } from '../domain/day';
 import { planReminders } from '../domain/reminders';
@@ -83,9 +82,10 @@ async function syncOnce(now: Date): Promise<number | null> {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const today = habitDayOf(now, zone);
   const database = await db();
-  const [events, answers, key] = await Promise.all([habitEvents(), database.getAll('answers'), reminderKey()]);
+  const [events, cals, answers, key] = await Promise.all([database.getAll('events'), database.getAll('calendars'), database.getAll('answers'), reminderKey()]);
   const answered = new Set(answers.filter((a) => a.occurrence >= today).map((a) => a.key));
-  const plan = planReminders(events.map(toSource), answered, today, now, zone);
+  const habitCalendars = new Set(cals.filter((c) => c.trackAsHabits).map((c) => c.id));
+  const plan = planReminders(events, habitCalendars, answered, today, now, zone);
   const items = await Promise.all(plan.map(async (r) => ({
     id: r.id,
     fireAt: r.fireAt,

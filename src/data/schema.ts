@@ -5,11 +5,19 @@ import type { AnswerStatus, SkipReason } from '../domain/states';
 import type { RankId } from '../domain/ranks';
 
 export const DB_NAME = 'atomic';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export type CalendarToken = 'marko' | 'work' | 'family' | 'habits'; // 034; a fifth is still open (046)
 
-export interface Calendar { id: string; name: string; color: CalendarToken; trackAsHabits: boolean; createdAt: string }
+export interface Calendar {
+  id: string;
+  name: string;
+  color: CalendarToken;
+  trackAsHabits: boolean;
+  createdAt: string;
+  /** R5: a new event's reminder follows its calendar. Missing: habits [0] (a push at the start, 069), others [15]. */
+  defaultReminders?: number[];
+}
 
 export interface CalendarEvent {
   id: string;
@@ -24,7 +32,9 @@ export interface CalendarEvent {
   tz?: string; // origin zone for 'zoned' events (E6)
   rrule?: string;
   exdates: string[];
-  reminders: number[]; // minutes before
+  reminders: number[]; // minutes before; 0 = at the start (069)
+  place?: string; // H29/H30 "Place or link": LOCATION, or a URL
+  notes?: string; // DESCRIPTION
   /** Single occurrences moved or cancelled in the source calendar, keyed by the day they replace. */
   overrides?: Record<string, { start: string; end: string; title?: string; cancelled?: boolean }>;
   archivedOn?: IsoDay; // E9

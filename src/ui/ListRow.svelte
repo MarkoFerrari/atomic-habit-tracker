@@ -12,15 +12,16 @@
     icon?: IconName;
     on?: boolean;
     onclick?: () => void;
+    onchange?: (on: boolean) => void;
   }
-  let { type = 'navigation', label, value, icon, on = $bindable(false), onclick }: Props = $props();
+  let { type = 'navigation', label, value, icon, on = $bindable(false), onclick, onchange }: Props = $props();
 </script>
 
 {#if type === 'toggle'}
   <div class="row">
     {#if icon}<Icon name={icon} />{/if}
     <span class="label t-body-default">{label}</span>
-    <Toggle bind:on {label} />
+    <Toggle bind:on {label} {onchange} />
   </div>
 {:else}
   <button class="row {type}" {onclick}>
