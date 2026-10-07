@@ -80,11 +80,23 @@ export function toggleHabits(plan: ImportPlan, key: string): ImportPlan {
 
 export interface FoundHabit { uid: string; title: string; calendarName: string }
 
-/** H09: one habit per repeating event in the habit calendar (and any calendar merged into it). */
-export function habitsFound(plan: ImportPlan): FoundHabit[] {
+/** The last day a repeating event can occur, from its UNTIL (null: it never ends). */
+function untilDay(rrule: string): IsoDay | null {
+  const m = /UNTIL=(\d{4})(\d{2})(\d{2})/.exec(rrule);
+  return m ? (`${m[1]}-${m[2]}-${m[3]}` as IsoDay) : null;
+}
+
+/**
+ * H09: one habit per repeating event in the habit calendar (and any calendar merged into it) that still
+ * repeats from `today`. Series that already ended are imported as history but not listed (U01: a real
+ * export listed "Train, Gym, Gym, Train" because Proton splits a series each time it is edited).
+ */
+export function habitsFound(plan: ImportPlan, today: IsoDay = new Date().toISOString().slice(0, 10) as IsoDay): FoundHabit[] {
   return plan.calendars
     .filter((c) => c.role !== 'calendar')
-    .flatMap((c) => c.events.filter((e) => e.rrule).map((e) => ({ uid: e.uid, title: e.title, calendarName: c.name })));
+    .flatMap((c) => c.events
+      .filter((e) => e.rrule && (untilDay(e.rrule) ?? today) >= today)
+      .map((e) => ({ uid: e.uid, title: e.title, calendarName: c.name })));
 }
 
 const day = (t: IcsTime): IsoDay => t.wall.slice(0, 10) as IsoDay;

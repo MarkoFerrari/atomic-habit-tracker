@@ -44,6 +44,13 @@ describe('planImport (H07, H08)', () => {
     const off = toggleHabits(plan, 'file-1');
     expect(off.calendars.every((c) => c.role === 'calendar')).toBe(true);
   });
+  it('lists only series that still repeat, not ones that already ended (U01)', () => {
+    const plan = planImport(files(), new Set());
+    const ended = { ...plan, calendars: plan.calendars.map((c) => ({ ...c, events: c.events.map((e, i) =>
+      (i === 0 && e.rrule ? { ...e, rrule: `${e.rrule};UNTIL=20260830T205959Z` } : e)) })) };
+    expect(habitsFound(ended, '2026-10-07').map((h) => h.title)).toEqual(['Sample reading - 20 min']);
+    expect(habitsFound(ended, '2026-08-30').map((h) => h.title)).toEqual(['Sample run - 45 min', 'Sample reading - 20 min']);
+  });
 });
 
 describe('commitImport', () => {
