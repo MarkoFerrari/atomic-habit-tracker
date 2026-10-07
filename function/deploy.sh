@@ -34,11 +34,18 @@ step "Functions namespace"
 NS_ID=$(scw function namespace list name="$NAMESPACE" region="$REGION" -o json | jq -r '[.[] | select(.name == "'"$NAMESPACE"'")][0].id // empty')
 if [ -z "$NS_ID" ]; then
   NS_ID=$(scw function namespace create name="$NAMESPACE" region="$REGION" -o json | jq -r .id)
-  scw function namespace wait "$NS_ID" region="$REGION" -o json >/dev/null
-  echo "  created: $NS_ID"; done_step created
+  NS_NOTE=created
 else
-  echo "  exists: $NS_ID"; done_step exists
+  NS_NOTE=exists
 fi
+NS_STATUS=""
+for attempt in $(seq 1 36); do
+  NS_STATUS=$(scw function namespace get "$NS_ID" region="$REGION" -o json | jq -r .status)
+  [ "$NS_STATUS" = "ready" ] && break
+  sleep 5
+done
+if [ "$NS_STATUS" != "ready" ]; then echo "::error::Namespace $NS_ID is '$NS_STATUS', not ready, after 3 minutes."; exit 1; fi
+echo "  $NS_NOTE: $NS_ID"; done_step "$NS_NOTE"
 
 # Settings shared by create and update. Secrets go in the host's secret store (§10), never in plain variables.
 CONFIG=(
