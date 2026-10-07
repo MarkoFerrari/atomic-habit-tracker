@@ -16,6 +16,7 @@
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import { swipe } from '../../ui/swipe';
   import DayStrip from '../../ui/DayStrip.svelte';
+  import Pager from '../../ui/Pager.svelte';
   import { READY_TABS } from '../../ui/tabs';
   import { db } from '../../data/db';
   import { allEvents, calendars as loadCalendars } from '../../data/events';
@@ -79,9 +80,15 @@
   const habitCals = $derived(new Set(cals.filter((c) => c.trackAsHabits).map((c) => c.id)));
   const visible = $derived(events.filter((e) => !hidden.has(e.calendarId)));
   const week = $derived(weekOf(selected));
-  const grid = $derived(monthGrid(selected));
+  // 089: the pager keeps pages either side, so events are read for a generous span around the chosen week or month
+  const monthShift = (key: IsoDay, n: number): IsoDay => {
+    const total = Number(key.slice(0, 4)) * 12 + (Number(key.slice(5, 7)) - 1) + n;
+    return `${Math.floor(total / 12)}-${pad((total % 12) + 1)}-01` as IsoDay;
+  };
+  const monthKey = $derived(`${selected.slice(0, 7)}-01` as IsoDay);
   const range = $derived.by(() => {
-    if (mode === 'month') { const days = grid.flat().filter(Boolean) as IsoDay[]; return [days[0]!, days.at(-1)!] as const; }
+    if (mode === 'month') return [monthShift(monthKey, -6), addDays(monthShift(monthKey, 7), -1)] as const;
+    if (mode === 'week') return [addDays(week[0]!, -7 * 6), addDays(week[6]!, 7 * 6)] as const;
     return [week[0]!, week[6]!] as const;
   });
   const items = $derived(loaded ? agenda(visible, range[0], range[1], zone) : []);
@@ -221,49 +228,58 @@
         </div>
       {/if}
     {:else if mode === 'week'}
-      <div class="week" use:swipe={{ onleft: () => go(1), onright: () => go(-1) }}>
-        {#each week as d, col (d)}
-          {@const dayList = onDay(items, d).filter((i) => !i.allDay)}
-          {@const count = habitsDone(d)}
-          <button class="col" class:first={col === 0} aria-label="{fullDate(d)}, {dayList.length} events{count ? `, habits done ${count}` : ''}" onclick={() => pick(d, 'day')}>
-            <span class="t-label-small wd" class:today={d === today}>{weekdayLetter(d)}</span>
-            <span class="t-number-default num" class:today={d === today}>{d.slice(8, 10)}</span>
-            <span class="lane">
-              {#each dayList as i (itemKey(i))}
-                {@const top = minuteOfDay(i.start, d)}
-                {@const bottom = Math.max(minuteOfDay(i.end, d), top + 30)}
-                <span class="wblock" class:past={i.endAt <= now.getTime()} style:--cal="var(--calendar-{token(i)})"
-                  style:top={weekY(top)} style:height="max(var(--space-8), calc(var(--space-20) * {(bottom - Math.max(top, WEEK_FROM)) / 60}))"></span>
-              {/each}
-            </span>
-            <span class="t-number-small done" class:none={!count}>{count ?? '—'}</span>
-          </button>
-        {/each}
-      </div>
-      <p class="t-label-small caption">Habits done</p>
-    {:else}
-      <div class="month" use:swipe={{ onleft: () => go(1), onright: () => go(-1) }}>
-        <div class="row">
-          {#each week as d (d)}<span class="t-label-small head">{weekdayLetter(d)}</span>{/each}
-        </div>
-        {#each grid as row, r (r)}
-          <div class="row">
-            {#each row as d, c (d ?? `empty-${r}-${c}`)}
-              {#if d}
-                {@const dots = dotsOn(items, d, cals.filter((x) => !hidden.has(x.id)).map((x) => x.id))}
-                <button class="cell" class:selected={d === selected} class:past={d < today} class:today={d === today}
-                  aria-pressed={d === selected} aria-label="{fullDate(d)}{dots.length ? `, events in ${dots.map((id) => calById.get(id)?.name).join(', ')}` : ''}"
-                  onclick={() => pick(d)} ondblclick={() => pick(d, 'day')}>
-                  <span class="t-number-default">{d.slice(8, 10)}</span>
-                  <span class="dots">{#each dots as id (id)}<span class="mdot" style:--cal="var(--calendar-{calById.get(id)?.color})"></span>{/each}</span>
-                </button>
-              {:else}
-                <span class="cell"></span>
-              {/if}
+      <Pager label="Weeks" current={week[0]!} neighbour={(k, n) => addDays(k, 7 * n)}
+        onchange={(k) => (selected = addDays(k, Math.max(0, week.indexOf(selected))))}>
+        {#snippet children(key)}
+          <div class="week">
+            {#each weekOf(key) as d, col (d)}
+              {@const dayList = onDay(items, d).filter((i) => !i.allDay)}
+              {@const count = habitsDone(d)}
+              <button class="col" class:first={col === 0} aria-label="{fullDate(d)}, {dayList.length} events{count ? `, habits done ${count}` : ''}" onclick={() => pick(d, 'day')}>
+                <span class="t-label-small wd" class:today={d === today}>{weekdayLetter(d)}</span>
+                <span class="t-number-default num" class:today={d === today}>{d.slice(8, 10)}</span>
+                <span class="lane">
+                  {#each dayList as i (itemKey(i))}
+                    {@const top = minuteOfDay(i.start, d)}
+                    {@const bottom = Math.max(minuteOfDay(i.end, d), top + 30)}
+                    <span class="wblock" class:past={i.endAt <= now.getTime()} style:--cal="var(--calendar-{token(i)})"
+                      style:top={weekY(top)} style:height="max(var(--space-8), calc(var(--space-20) * {(bottom - Math.max(top, WEEK_FROM)) / 60}))"></span>
+                  {/each}
+                </span>
+                <span class="t-number-small done" class:none={!count}>{count ?? '—'}</span>
+              </button>
             {/each}
           </div>
-        {/each}
-      </div>
+        {/snippet}
+      </Pager>
+      <p class="t-label-small caption">Habits done</p>
+    {:else}
+      <Pager label="Months" current={monthKey} neighbour={monthShift} onchange={(k) => (selected = k)}>
+        {#snippet children(key)}
+          <div class="month">
+            <div class="row">
+              {#each week as d (d)}<span class="t-label-small head">{weekdayLetter(d)}</span>{/each}
+            </div>
+            {#each monthGrid(key) as row, r (r)}
+              <div class="row">
+                {#each row as d, c (d ?? `empty-${r}-${c}`)}
+                  {#if d}
+                    {@const dots = dotsOn(items, d, cals.filter((x) => !hidden.has(x.id)).map((x) => x.id))}
+                    <button class="cell" class:selected={d === selected} class:past={d < today} class:today={d === today}
+                      aria-pressed={d === selected} aria-label="{fullDate(d)}{dots.length ? `, events in ${dots.map((id) => calById.get(id)?.name).join(', ')}` : ''}"
+                      onclick={() => pick(d)} ondblclick={() => pick(d, 'day')}>
+                      <span class="t-number-default">{d.slice(8, 10)}</span>
+                      <span class="dots">{#each dots as id (id)}<span class="mdot" style:--cal="var(--calendar-{calById.get(id)?.color})"></span>{/each}</span>
+                    </button>
+                  {:else}
+                    <span class="cell"></span>
+                  {/if}
+                {/each}
+              </div>
+            {/each}
+          </div>
+        {/snippet}
+      </Pager>
       <SectionLabel text={fullDate(selected)} />
       {#if dayItems.length}
         <ul class="list">
@@ -312,7 +328,7 @@
     margin-top: calc(var(--space-4) * -1); border-radius: var(--radius-round); background: var(--action-primary); z-index: 1;
   }
 
-  .week { display: flex; touch-action: pan-y; }
+  .week { display: flex; }
   .col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
   .wd { color: var(--text-tertiary); }
   .num { color: var(--text-primary); }
@@ -333,7 +349,7 @@
   .done.none { color: var(--text-tertiary); }
   .caption { color: var(--text-tertiary); }
 
-  .month { display: grid; gap: var(--space-4); touch-action: pan-y; }
+  .month { display: grid; gap: var(--space-4); }
   .row { display: flex; }
   .head { flex: 1; text-align: center; color: var(--text-tertiary); }
   .cell {

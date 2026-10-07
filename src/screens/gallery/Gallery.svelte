@@ -4,6 +4,8 @@
   import Button from '../../ui/Button.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import DayStrip from '../../ui/DayStrip.svelte';
+  import Pager from '../../ui/Pager.svelte';
+  import { addDays } from '../../domain/day';
   import StateIcon from '../../ui/StateIcon.svelte';
   import MasteryRing from '../../ui/MasteryRing.svelte';
   import HabitRow from '../../ui/HabitRow.svelte';
@@ -24,6 +26,7 @@
   const states: HabitState[] = ['open', 'running', 'done', 'skipped', 'missed'];
   const trailing: Record<HabitState, string | undefined> = { open: undefined, running: undefined, done: '06:31', skipped: 'No time', missed: undefined };
   let stripDay = $state<import('../../domain/day').IsoDay>('2026-10-07');
+  let weekKey = $state<import('../../domain/day').IsoDay>('2026-10-05');
   let tab = $state<Tab>('today');
   let demo = $state<HabitState>('running');
   let justDone = $state(false);
@@ -39,6 +42,12 @@
   <SectionLabel text="Day strip · scroll sideways, one day at a time" />
   <DayStrip selected={stripDay} today="2026-10-07" onselect={(d) => (stripDay = d)} />
   <p class="t-label-small" data-testid="strip-day">{stripDay}</p>
+
+  <SectionLabel text="Pager · one week at a time" />
+  <Pager label="Weeks" current={weekKey} neighbour={(k, n) => addDays(k, 7 * n)} onchange={(k) => (weekKey = k)}>
+    {#snippet children(key)}<p class="t-body-default">Week of {key}</p>{/snippet}
+  </Pager>
+  <p class="t-label-small" data-testid="pager-week">{weekKey}</p>
 
   <SectionLabel text="Buttons" />
   <div class="stack">
