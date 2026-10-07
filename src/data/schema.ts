@@ -52,6 +52,9 @@ export interface Settings {
   onboardingDone: boolean;
 }
 
+/** This phone's identity with the push function (059). Lives in the settings store, under its own key. */
+export interface PushDevice { key: 'push-device'; token: string; subscribedAt: string | null }
+
 export type DiagnosticKind = 'record' | 'push' | 'notification' | 'persist';
 export interface Diagnostic {
   id?: number;

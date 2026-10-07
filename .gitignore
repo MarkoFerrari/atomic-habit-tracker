@@ -6,3 +6,4 @@ dist/
 # Rule 5 (CLAUDE.md): real data never gets committed
 *.ics
 atomic-backup-*.json
+function/function.zip

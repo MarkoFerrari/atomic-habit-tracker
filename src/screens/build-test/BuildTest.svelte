@@ -9,7 +9,7 @@
   import { addDiagnostic, listDiagnostics } from '../../data/db';
   import type { Diagnostic } from '../../data/schema';
   import { habitDayOf } from '../../domain/day';
-  import { askPermission, permission, pushSupported, showLocalTest, subscribe, VAPID_PUBLIC_KEY, type Permission } from '../../push/notifications';
+  import { askPermission, permission, PUSH_URL, pushDevice, pushSupported, sendTestPush, showLocalTest, turnOnPush, type Permission } from '../../push/notifications';
   import wordmark from '../../../design/logo-wordmark.svg';
 
   let ctx = $state<RunContext>(runContext());
@@ -19,7 +19,9 @@
   let perm = $state<Permission>(permission());
   let message = $state('');
   let messageAt = $state<'storage' | 'notifications' | 'haptics' | 'results'>('storage');
-  let subscriptionJson = $state('');
+  let subscribedAt = $state<string | null>(null);
+  let invite = $state('');
+  let busy = $state(false);
 
   const records = $derived(entries.filter((e) => e.kind === 'record'));
   const pushes = $derived(entries.filter((e) => e.kind === 'push'));
@@ -34,6 +36,7 @@
     ctx = runContext();
     entries = await listDiagnostics();
     perm = permission();
+    subscribedAt = (await pushDevice()).subscribedAt;
     if (navigator.storage?.persisted) persisted = (await navigator.storage.persisted()) ? 'yes' : 'no';
     if (navigator.storage?.estimate) {
       const { usage } = await navigator.storage.estimate();
@@ -71,13 +74,35 @@
     await refresh();
   }
 
-  async function subscribePush() {
+  async function enablePush() {
     messageAt = 'notifications';
+    busy = true;
     try {
-      subscriptionJson = JSON.stringify(await subscribe());
-      message = 'Subscribed. Send the results so the test push can be scheduled.';
+      await turnOnPush(invite);
+      invite = '';
+      message = 'Push is on for this iPhone. Now send a test.';
+      await addDiagnostic({ kind: 'notification', at: new Date().toISOString(), installed: ctx.installed, browser: ctx.browser, note: 'Push turned on' });
     } catch (e) {
-      message = `Couldn’t subscribe: ${(e as Error).message}`;
+      message = `Couldn’t turn on push: ${(e as Error).message}`;
+    } finally {
+      busy = false;
+      await refresh();
+    }
+  }
+
+  // M0 step 5: the test must arrive while the app is closed, so it's scheduled (064).
+  async function scheduleTest() {
+    messageAt = 'notifications';
+    busy = true;
+    try {
+      const at = await sendTestPush(2);
+      message = `Test push due at ${at ? when(at) : 'in 2 minutes'}. Close ATOMIC now (swipe it away) and lock the iPhone.`;
+      await addDiagnostic({ kind: 'notification', at: new Date().toISOString(), installed: ctx.installed, browser: ctx.browser, note: `Test push scheduled for ${at ?? '?'}` });
+    } catch (e) {
+      message = `Couldn’t schedule the test: ${(e as Error).message}`;
+    } finally {
+      busy = false;
+      await refresh();
     }
   }
 
@@ -98,7 +123,7 @@
       `Notifications: ${perm} · push supported: ${pushSupported()} · push arrivals: ${pushes.length}${pushes.at(-1) ? ` · last ${pushes.at(-1)!.at}` : ''}`,
       `Vibration API: ${canVibrate}`,
       `User agent: ${navigator.userAgent}`,
-      subscriptionJson ? `Subscription: ${subscriptionJson}` : '',
+      `Push service: ${PUSH_URL ? 'set up' : 'not set up'} · this iPhone: ${subscribedAt ? `on since ${subscribedAt}` : 'off'}`,
       '',
       ...entries.map((e) => `${e.at} · ${e.kind} · ${e.installed === null ? 'sw' : e.installed ? 'installed' : 'tab'} · ${e.browser} · ${e.note}`),
     ].filter((l, i) => l !== '' || i > 9).join('\n');
@@ -172,14 +197,26 @@
   <SectionLabel text="Notifications" />
   <KvRow label="Permission" value={perm === 'granted' ? 'Allowed' : perm === 'denied' ? 'Denied' : perm === 'default' ? 'Not asked yet' : 'Not available'} tone={perm === 'granted' ? 'done' : perm === 'denied' ? 'warn' : 'muted'} />
   <KvRow label="Push supported" value={pushSupported() ? 'Yes' : 'No'} tone={pushSupported() ? 'done' : 'warn'} />
+  <KvRow label="Push service" value={PUSH_URL ? 'Set up' : 'Not set up yet'} tone={PUSH_URL ? 'done' : 'muted'} />
+  <KvRow label="Push on this iPhone" value={subscribedAt ? `On since ${when(subscribedAt)}` : 'Off'} tone={subscribedAt ? 'done' : 'muted'} />
   <KvRow label="Pushes received" value={pushes.length ? `${pushes.length} · last ${when(pushes.at(-1)!.at)}` : 'None yet'} tone={pushes.length ? 'done' : 'muted'} />
   <div class="actions">
     {#if perm === 'default'}
       <Button onclick={allow} disabled={!ctx.installed}>Allow notifications</Button>
     {/if}
     <Button variant="secondary" onclick={localNotification} disabled={perm !== 'granted'}>Show a test notification</Button>
-    <Button variant="secondary" onclick={subscribePush} disabled={perm !== 'granted' || !VAPID_PUBLIC_KEY}>Subscribe to push</Button>
-    {#if !VAPID_PUBLIC_KEY}<p class="t-body-small hint">Push needs the push host (part B). Everything else can be tested now.</p>{/if}
+    {#if !PUSH_URL}
+      <p class="t-body-small hint">The push service isn’t deployed yet. Everything else can be tested now.</p>
+    {:else if !subscribedAt}
+      <label class="field">
+        <span class="t-label-small">Invite code</span>
+        <input class="t-body-default" bind:value={invite} autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="The phrase Marko gave you" />
+      </label>
+      <Button onclick={enablePush} disabled={perm !== 'granted' || !ctx.installed || busy || !invite.trim()}>Turn on push</Button>
+    {:else}
+      <Button onclick={scheduleTest} disabled={busy}>Send a test in 2 minutes</Button>
+      <Button variant="tertiary" onclick={enablePush} disabled={busy}>Renew push address</Button>
+    {/if}
   </div>
   {@render status('notifications')}
 
@@ -200,6 +237,9 @@
     <li>Reopen ATOMIC from the Home Screen. The oldest record must still be there.</li>
     <li>Allow notifications and show a test notification.</li>
     <li>Tomorrow, reopen, tap Share results and send them to Claude.</li>
+    <li>Push: enter the invite code, tap Turn on push, then Send a test in 2 minutes.</li>
+    <li>Close ATOMIC and lock the iPhone. The test must arrive while the app is closed.</li>
+    <li>Reopen ATOMIC: Pushes received goes up by one. Share the results.</li>
   </ol>
 </main>
 
@@ -215,5 +255,12 @@
   .actions { display: grid; gap: var(--space-8); padding: var(--space-16) 0 var(--space-8); }
   .log { display: grid; gap: var(--space-4); color: var(--text-secondary); padding-bottom: var(--space-8); }
   .message { padding-bottom: var(--space-8); color: var(--text-primary); }
+  .field { display: grid; gap: var(--space-4); }
+  .field span { color: var(--text-secondary); }
+  .field input {
+    min-height: var(--size-control); padding: 0 var(--space-12);
+    border-radius: var(--radius-control); background: var(--bg-default); color: var(--text-primary);
+    box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-control); /* 019: a meaningful outline at 3:1 */
+  }
   .steps { list-style: decimal; padding-left: var(--space-20); display: grid; gap: var(--space-8); color: var(--text-secondary); }
 </style>

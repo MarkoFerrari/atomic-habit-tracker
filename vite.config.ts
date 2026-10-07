@@ -26,9 +26,19 @@ function serviceWorker(): Plugin {
   };
 }
 
+// 030: the CSP allows 'self' plus the push function's origin, and nothing else.
+function contentSecurityPolicy(): Plugin {
+  const pushUrl = process.env.VITE_PUSH_URL;
+  const pushOrigin = pushUrl ? new URL(pushUrl).origin : '';
+  return {
+    name: 'atomic-csp',
+    transformIndexHtml: (html) => (pushOrigin ? html.replace("connect-src 'self'", `connect-src 'self' ${pushOrigin}`) : html),
+  };
+}
+
 export default defineConfig({
   base,
-  plugins: [svelte(), serviceWorker()],
+  plugins: [svelte(), serviceWorker(), contentSecurityPolicy()],
   define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'), __BUILT_AT__: JSON.stringify(new Date().toISOString()) },
   build: { target: 'safari16', assetsInlineLimit: 0, sourcemap: false },
   test: { environment: 'node', include: ['src/**/*.test.ts'] },
