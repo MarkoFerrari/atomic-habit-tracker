@@ -1,7 +1,7 @@
 <script lang="ts">
   // H43 New calendar (Figma 54:3192), also used to edit one; H49 Delete calendar (55:3711).
-  // Name, colour, Track as habits, default reminder (R5). The palette gap is real (046, E13): with four
-  // hues and four calendars, a fifth one shares a hue, and the screen says so instead of faking one.
+  // Name, colour, Track as habits, default reminder (R5). Twelve colours (081); a thirteenth calendar
+  // shares a hue, and the screen says so (E13).
   // Deleting says how many events go; Back up first is the primary action (R7).
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
@@ -12,7 +12,7 @@
   import Button from '../../ui/Button.svelte';
   import Icon from '../../ui/Icon.svelte';
   import { calendars as loadCalendars, defaultReminders } from '../../data/events';
-  import { TOKENS, deleteCalendar, eventCounts, nextColour, saveCalendar } from '../../data/calendars';
+  import { COLOUR_NAME, TOKENS, deleteCalendar, eventCounts, nextColour, saveCalendar } from '../../data/calendars';
   import { shareBackup } from '../../data/backup';
   import type { Calendar, CalendarToken } from '../../data/schema';
   import { reminderLabel } from '../../domain/reminders';
@@ -81,12 +81,12 @@
   <div class="swatches" role="radiogroup" aria-label="Colour">
     {#each TOKENS as t (t)}
       <button class="swatch" class:selected={t === color} role="radio" aria-checked={t === color}
-        aria-label="{t === 'marko' ? 'Green' : t === 'work' ? 'Crimson' : t === 'family' ? 'Blue' : 'Olive'}{usedBy(t) ? `, used by ${usedBy(t)}` : ''}"
+        aria-label="{COLOUR_NAME[t]}{usedBy(t) ? `, used by ${usedBy(t)}` : ''}"
         style:--sw="var(--calendar-{t})" onclick={() => (color = t)}><span></span></button>
     {/each}
   </div>
   {#if allUsed}
-    <p class="t-body-small accent">All four marker hues are in use. A fifth calendar needs a new hue that stays clear of done green and accent red.</p>
+    <p class="t-body-small accent">All twelve colours are in use, so this one shares a colour with another calendar.</p>
   {/if}
   <ListRow type="toggle" label="Track as habits" bind:on={habits} />
   {#if calendar && habits !== calendar.trackAsHabits}
@@ -122,7 +122,7 @@
 
 <style>
   .editor { display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
-  .swatches { display: flex; gap: var(--space-8); }
+  .swatches { display: flex; flex-wrap: wrap; gap: var(--space-8); }
   .swatch { width: var(--size-touch); height: var(--size-touch); display: grid; place-items: center; border-radius: var(--radius-round); }
   .swatch span { width: var(--space-32); height: var(--space-32); border-radius: var(--radius-round); background: var(--sw); }
   .swatch.selected { box-shadow: inset 0 0 0 var(--stroke-illustration) var(--border-strong); }

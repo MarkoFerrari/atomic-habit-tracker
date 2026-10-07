@@ -31,8 +31,8 @@
   import { SKIP_REASONS, type AnswerStatus, type SkipReason } from '../../domain/states';
   import { greeting, runLine, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
 
-  interface Props { onrecap?: () => void; onchoosecalendar?: () => void; ontab?: (tab: Tab) => void }
-  let { onrecap, onchoosecalendar, ontab }: Props = $props();
+  interface Props { onrecap?: () => void; onnewhabit?: () => void; onimport?: () => void; ontab?: (tab: Tab) => void }
+  let { onrecap, onnewhabit, onimport, ontab }: Props = $props();
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let now = $state(new Date());
@@ -147,8 +147,10 @@
       <!-- first read from IndexedDB: a frame or two -->
     {:else if events.length === 0}
       <div class="spacer"></div>
-      <EmptyState title="No habits yet" body="Habits come from a calendar marked Track as habits."
-        action={onchoosecalendar ? 'Choose a calendar' : undefined} onaction={onchoosecalendar} />
+      <!-- 079: the first action is a habit, not a calendar; New habit makes the HABITS calendar if there is none -->
+      <EmptyState title="No habits yet" body="A habit is an event you answer every day."
+        action={onnewhabit ? 'New habit' : undefined} onaction={onnewhabit}
+        secondary={onimport ? 'Import from Proton (.ics)' : undefined} onsecondary={onimport} />
       <div class="spacer"></div>
     {:else}
       {#if onrecap && showCloseTheDay(hour) && view.open.length}

@@ -29,12 +29,13 @@
   import { getEvent } from './data/events';
   import type { Calendar as CalendarRecord, CalendarEvent } from './data/schema';
   import { expand, type AgendaItem } from './domain/agenda';
-  import { addDays, type IsoDay } from './domain/day';
+  import { addDays, habitDayOf, type IsoDay } from './domain/day';
+  import { ensureHabitCalendar } from './data/calendars';
 
   type View = 'loading' | 'gallery' | 'build-test' | 'onboarding' | 'import' | 'app' | 'recap';
   type Pushed =
     | { kind: 'event'; item: AgendaItem; from: Tab }
-    | { kind: 'new'; day: IsoDay }
+    | { kind: 'new'; day: IsoDay; habit?: boolean }
     | { kind: 'edit'; event: CalendarEvent; item: AgendaItem }
     | { kind: 'duplicate'; event: CalendarEvent; item: AgendaItem }
     | { kind: 'settings'; screen: SettingsScreen }
@@ -52,6 +53,10 @@
   let notice = $state(''); // one line for Calendars after an import
   const push = (p: Pushed) => { stack = [...stack, p]; };
   function restored() { stack = []; view = 'app'; tab = 'today'; }
+  async function newHabit() {
+    await ensureHabitCalendar();
+    stack = [{ kind: 'new', day: habitDayOf(new Date(), zone), habit: true }];
+  }
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   async function route() {
@@ -125,7 +130,7 @@
         onchanged={() => { stack = []; }} />
     {/key}
   {:else if top?.kind === 'new'}
-    <EventEditor mode={{ kind: 'new', day: top.day }} oncancel={pop} onsaved={saved} />
+    <EventEditor mode={{ kind: 'new', day: top.day, habit: top.habit }} oncancel={pop} onsaved={saved} />
   {:else if top?.kind === 'duplicate'}
     <EventEditor mode={{ kind: 'duplicate', event: top.event, item: top.item }} oncancel={pop} onsaved={saved} />
   {:else if top?.kind === 'edit'}
@@ -153,6 +158,6 @@
       onopen={(item) => (stack = [{ kind: 'event', item, from: 'calendar' }])}
       onnew={(day) => (stack = [{ kind: 'new', day }])} />
   {:else}
-    <Today ontab={(t) => (tab = t)} onchoosecalendar={() => (view = 'import')} onrecap={() => (view = 'recap')} />
+    <Today ontab={(t) => (tab = t)} onnewhabit={newHabit} onimport={() => (view = 'import')} onrecap={() => (view = 'recap')} />
   {/if}
 {/if}

@@ -6,6 +6,7 @@ import { instantOf, type Wall } from '../domain/zone';
 import { db } from './db';
 import type { IcsCalendar, IcsEvent, IcsOverride, IcsTime } from './ics';
 import type { Calendar, CalendarEvent, CalendarToken } from './schema';
+import { TOKENS } from './calendars';
 
 export type CalendarRole = 'habits' | 'merge' | 'calendar';
 
@@ -23,8 +24,8 @@ export interface PlannedCalendar {
 export interface ImportPlan { calendars: PlannedCalendar[]; duplicates: number }
 
 // 034: calendar colours are markers. The habit calendar always gets the habits marker; the others
-// take the remaining three in order. A fifth calendar has no distinct colour yet (046, E13).
-const OTHER_COLORS: CalendarToken[] = ['marko', 'work', 'family'];
+// take the other eleven in order. More calendars take the next free hue (081).
+const OTHER_COLORS: CalendarToken[] = TOKENS.filter((t) => t !== 'habits');
 
 export function planImport(files: { fileName: string; calendar: IcsCalendar }[], existingUids: ReadonlySet<string>): ImportPlan {
   const seen = new Set(existingUids);

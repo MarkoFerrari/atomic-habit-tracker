@@ -4,7 +4,13 @@ import type { Calendar, CalendarEvent, CalendarToken } from './schema';
 import { instantOf, wallOf, type Wall } from '../domain/zone';
 import { guessHabitIcon } from '../ui/habit-icon-guess';
 
-export const TOKENS: CalendarToken[] = ['marko', 'work', 'family', 'habits']; // 046: a fifth hue is still open
+// 046, 081: twelve marker hues, so up to twelve calendars each keep their own.
+export const TOKENS: CalendarToken[] = ['marko', 'work', 'family', 'habits', 'violet', 'orange', 'teal', 'brown', 'slate', 'plum', 'gold', 'sky'];
+/** The spoken name of each hue (the first four tokens are historic names, not colours). */
+export const COLOUR_NAME: Record<CalendarToken, string> = {
+  marko: 'Green', work: 'Crimson', family: 'Blue', habits: 'Olive', violet: 'Violet', orange: 'Orange',
+  teal: 'Teal', brown: 'Brown', slate: 'Slate', plum: 'Plum', gold: 'Gold', sky: 'Sky',
+};
 
 /** How many events each calendar holds. */
 export async function eventCounts(): Promise<Map<string, number>> {
@@ -13,10 +19,21 @@ export async function eventCounts(): Promise<Map<string, number>> {
   return counts;
 }
 
-/** The first marker colour no calendar uses yet; when all four are taken (E13), the least used one. */
+/** The first marker colour no calendar uses yet; when all twelve are taken (E13), the least used one. */
 export function nextColour(cals: readonly Calendar[]): CalendarToken {
   const used = TOKENS.map((t) => cals.filter((c) => c.color === t).length);
   return TOKENS[used.indexOf(Math.min(...used))]!;
+}
+
+/** 079: New habit on an empty Today. Uses the calendar already tracked as habits, or makes the HABITS one. */
+export async function ensureHabitCalendar(): Promise<Calendar> {
+  const database = await db();
+  const all = await database.getAll('calendars');
+  const found = all.find((c) => c.trackAsHabits);
+  if (found) return found;
+  const made: Calendar = { id: crypto.randomUUID(), name: 'HABITS', color: 'habits', trackAsHabits: true, createdAt: new Date().toISOString() };
+  await database.put('calendars', made);
+  return made;
 }
 
 export async function saveCalendar(c: Calendar): Promise<void> {

@@ -23,7 +23,7 @@
   import { MAX_EVERY, ruleFromRepeat, type RepeatKind, type Scope } from '../../domain/series';
   import { syncReminders } from '../../push/reminders';
 
-  type Mode = { kind: 'new'; day: IsoDay } | { kind: 'edit'; event: CalendarEvent; item: AgendaItem } | { kind: 'duplicate'; event: CalendarEvent; item: AgendaItem };
+  type Mode = { kind: 'new'; day: IsoDay; habit?: boolean } | { kind: 'edit'; event: CalendarEvent; item: AgendaItem } | { kind: 'duplicate'; event: CalendarEvent; item: AgendaItem };
   interface Props { mode: Mode; oncancel: () => void; onsaved: (day: IsoDay) => void }
   let { mode, oncancel, onsaved }: Props = $props();
 
@@ -36,6 +36,7 @@
   onMount(async () => {
     cals = await loadCalendars();
     draft = mode.kind === 'new' ? newDraft(mode.day, cals, new Date(), zone) : draftOf(mode.event, mode.item);
+    if (mode.kind === 'new' && mode.habit) draft.repeat = { ...draft.repeat, kind: 'daily', until: null }; // 079: a habit repeats every day
     original = $state.snapshot(draft) as EventDraft;
     endTouched = mode.kind !== 'new';
   });
@@ -179,7 +180,7 @@
 </script>
 
 <main class="screen editor">
-  <TopBar type="modal" title={mode.kind === 'new' ? 'New event' : mode.kind === 'duplicate' ? 'Duplicate event' : 'Edit event'} leftLabel="Cancel" rightLabel={saving ? 'Saving…' : 'Save'} onleft={oncancel} onright={save} />
+  <TopBar type="modal" title={mode.kind === 'new' ? (mode.habit ? 'New habit' : 'New event') : mode.kind === 'duplicate' ? 'Duplicate event' : 'Edit event'} leftLabel="Cancel" rightLabel={saving ? 'Saving…' : 'Save'} onleft={oncancel} onright={save} />
   {#if draft}
     <TextField bind:value={draft.title} placeholder="Title, like “Read - 20 min”" error={titleError || undefined} autocapitalize="sentences" spellcheck />
     <div class="group">

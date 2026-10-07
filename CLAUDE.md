@@ -136,7 +136,7 @@ The rules live in `/src/domain` as pure functions, each with tests.
 ### Calendars
 - Each calendar has a name, a marker colour and a "Track as habits" toggle (off by default).
 - Calendar colours are markers only (bars, dots, chips), always shown with the calendar name, and never used as fills (034).
-- A fifth calendar colour is still open (046, E13).
+- Twelve marker colours (046, 081): Green, Crimson, Blue, Olive (the original four, stored as `marko`, `work`, `family`, `habits`) plus Violet, Orange, Teal, Brown, Slate, Plum, Gold, Sky. A thirteenth calendar shares a hue (E13).
 
 ### Data model (proposed; finalise at M1)
 ```ts
@@ -302,7 +302,7 @@ Numbers are plain whole numbers, never zero-padded (061): 82%, 18, 10/30. Geist 
 | E8 | Re-importing a file | Events matched by ID: duplicates skipped, changed events listed for approval; answers stay on their events. | H44 | Designed |
 | E11 | Wrong file type | Says what went wrong and how to export from Proton. | H07b | Designed |
 | E12 | Deleting a calendar | Shows how many events go; Back up first is the primary action. | H49 | Designed |
-| E13 | A fifth calendar | No distinct colour available yet (046). | H43 | Open |
+| E13 | More than twelve calendars | Twelve colours (081); the thirteenth shares a hue and the screen says so. | H43 | Designed |
 
 **Habits and ranks**
 
@@ -317,7 +317,7 @@ Numbers are plain whole numbers, never zero-padded (061): 82%, 18, 10/30. Geist 
 
 | ID | Case | Behaviour | Screens | Status |
 |---|---|---|---|---|
-| E17 | No habits tracked | Empty Today with Choose a calendar; the zero is typographic (000), not an illustration. | H14 | Designed |
+| E17 | No habits tracked | Empty Today with New habit (it makes the HABITS calendar) and Import from Proton as a link (079); the zero is typographic (000), not an illustration. | H14 | Designed |
 | E18 | A day with no events | Empty day with New event. | H33 | Designed |
 | E19 | The first days | Stats shows only what exists; days before the start are dimmed, never counted as missed; Badges show every rank locked with day counts. | H40, H38c | Designed |
 | E20 | Opened in a browser tab | Preview with sample data and Install ATOMIC. | H03 | Designed |
@@ -417,7 +417,6 @@ The riskiest assumptions get tested before any screen is built.
 |---|---|
 | M0 step 6: does a scheduled time hold across a time-zone change? (vibration: not available on iOS, as expected) | M3 |
 | 034 calendar colours, 044 detail screens hide tab bar, 053 motion tokens, 060 days held: confirm | M1 |
-| 046 fifth calendar colour | M4 |
 | O7 backup nudge after 7 or 14 days | M4 |
 | A short privacy note (what stays on the phone, what the push function holds): drafted in About (074), owner to confirm | before the first friend installs |
 | Name: trademark check for "ATOMIC" before any public launch (018) | launch |
@@ -473,7 +472,7 @@ The riskiest assumptions get tested before any screen is built.
 | 043 | Habit icons: enlarged Lucide set (44 icons, 8 groups) | Decided |
 | 044 | Pushed detail screens hide the tab bar | Proposed |
 | 045 | Stats use labelled sample data | Decided |
-| 046 | A fifth calendar colour | Open |
+| 046 | A fifth calendar colour | Decided by 081 |
 | 047 | Gamification: consistency ranks, Starter → Master | Decided (tiers dropped by 055) |
 | 048 | Delivery: one Figma section per journey | Decided |
 | 049 | Rank medal shape and colour progression | Revised by 055 |
@@ -508,6 +507,7 @@ The riskiest assumptions get tested before any screen is built.
 | 078 | About ends with the website, markoferrari.eu, in place of the "Made with" list; the font and icon licences stay in the repo (`public/fonts/OFL.txt`) | Proposed |
 | 079 | The empty Today asks for a habit, not a calendar: primary New habit (it creates the HABITS calendar), Import from Proton (.ics) as a tertiary link. Figma H14 updated; code follows | Decided (owner, 7 Oct 2026) |
 | 080 | Kaizen: the weekly recap (H39) ends with one adjustment to try for 2 weeks (one variable, then review). Identity, cue, smallest version and plan B (Figma Playground P2–P5) stay proposals, not decided | Decided (owner, 7 Oct 2026) |
+| 081 | Twelve calendar colours, so up to twelve calendars each keep a hue: the original four plus Violet #7A3FC0, Orange #C25A0A, Teal #0E7490, Brown #8A5A3C, Slate #5B6B7D, Plum #9C2F9A, Gold #A37A00, Sky #3A8FD0 (markers only, 034; all ≥ 3:1 on white). The picker wraps to two rows. Resolves 046 | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

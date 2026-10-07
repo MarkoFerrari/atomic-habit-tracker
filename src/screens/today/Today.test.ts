@@ -76,8 +76,9 @@ describe('Today (F4)', () => {
   it('with no habit calendar, shows the empty state (H14, E17)', async () => {
     const database = await db();
     await database.clear('events');
-    render(Today, { onchoosecalendar: () => {} });
+    render(Today, { onnewhabit: () => {}, onimport: () => {} });
     expect(await screen.findByText('No habits yet')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Choose a calendar' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'New habit' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Import from Proton (.ics)' })).toBeTruthy();
   });
 });

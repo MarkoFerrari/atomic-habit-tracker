@@ -7,7 +7,10 @@ import type { RankId } from '../domain/ranks';
 export const DB_NAME = 'atomic';
 export const DB_VERSION = 3;
 
-export type CalendarToken = 'marko' | 'work' | 'family' | 'habits'; // 034; a fifth is still open (046)
+// 034, 046, 081: marker hues. The first four keep their original names (stored in backups); eight more make twelve.
+export type CalendarToken =
+  | 'marko' | 'work' | 'family' | 'habits'
+  | 'violet' | 'orange' | 'teal' | 'brown' | 'slate' | 'plum' | 'gold' | 'sky';
 
 export interface Calendar {
   id: string;

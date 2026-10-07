@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db, wipeDbForTests } from './db';
 import { buildBackup } from './backup';
 import { BackupError, readBackup, restoreBackup } from './restore';
-import { deleteCalendar, eventCounts, nextColour, setDefaultReminders, setTrackAsHabits } from './calendars';
+import { TOKENS, deleteCalendar, ensureHabitCalendar, eventCounts, nextColour, setDefaultReminders, setTrackAsHabits } from './calendars';
 import { commitReimport, planReimport } from './reimport';
 import { parseIcs } from './ics';
 import type { Calendar, CalendarEvent } from './schema';
@@ -50,6 +50,21 @@ describe('calendars (H42, H43, H49)', () => {
     expect(nextColour([work])).toBe('marko');
     await setDefaultReminders(work, [10], true);
     expect((await (await db()).get('events', 'sync'))!.reminders).toEqual([10]);
+  });
+
+  it('offers twelve colours and always picks an unused one first (081)', () => {
+    expect(TOKENS).toHaveLength(12);
+    expect(new Set(TOKENS).size).toBe(12);
+    const used = TOKENS.slice(0, 11).map((color, i): Calendar => ({ ...work, id: `c${i}`, color }));
+    expect(nextColour(used)).toBe('sky');
+    expect(nextColour([...used, { ...work, id: 'x', color: 'sky' }])).toBe('marko'); // all taken: least used
+  });
+
+  it('New habit makes the HABITS calendar once, then reuses it (079)', async () => {
+    const first = await ensureHabitCalendar();
+    expect(first).toMatchObject({ name: 'HABITS', color: 'habits', trackAsHabits: true });
+    expect((await ensureHabitCalendar()).id).toBe(first.id);
+    expect((await (await db()).getAll('calendars')).filter((c) => c.trackAsHabits)).toHaveLength(1);
   });
 
   it('Track as habits turns real times into clock times, and back (028)', async () => {
