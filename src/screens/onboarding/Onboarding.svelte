@@ -26,10 +26,25 @@
   import { parseRRule } from '../../domain/recurrence';
   import wordmark from '../../../design/logo-wordmark.svg';
   import appIcon from '../../../design/app-icon.svg';
+  import { readBackup, BackupError, type BackupPreview } from '../../data/restore';
 
   type Step = 'welcome' | 'notifications' | 'notifications-off' | 'bring' | 'unreadable' | 'found' | 'review' | 'habits' | 'data';
   // `from`: Today's empty state reopens the import at "Bring your calendars" (H14 → H06).
-  let { ondone, from = 'welcome' }: { ondone: () => void; from?: Step } = $props();
+  interface Props { ondone: () => void; from?: Step; onrestore?: (preview: BackupPreview, fileName: string) => void }
+  let { ondone, from = 'welcome', onrestore }: Props = $props();
+
+  // E2, E3: a new or wiped phone starts here; a backup brings everything back (H48 previews it first).
+  let restoreInput = $state<HTMLInputElement>();
+  let restoreProblem = $state('');
+  async function pickBackup(e: Event) {
+    const el = e.currentTarget as HTMLInputElement;
+    const file = el.files?.[0];
+    el.value = '';
+    if (!file) return;
+    restoreProblem = '';
+    try { onrestore?.(readBackup(await file.text()), file.name); }
+    catch (err) { restoreProblem = err instanceof BackupError ? err.message : 'Couldn’t read that file. Try again.'; }
+  }
   let step = $state<Step>(untrack(() => from)); // only the first screen; the flow moves on from there
   let busy = $state(false);
   let problem = $state('');
@@ -182,14 +197,19 @@
     <p class="t-body-default secondary">A calendar for your days and your habits. Each evening, every habit gets a done or a skip, so a miss always leaves a trace.</p>
     <div class="spacer"></div>
     <Button onclick={start}>Get started</Button>
+    {#if onrestore}
+      <Button variant="tertiary" icon="download" onclick={() => restoreInput?.click()}>Restore from a backup</Button>
+      <input bind:this={restoreInput} type="file" accept=".json,application/json" hidden onchange={pickBackup} />
+      {#if restoreProblem}<p class="t-body-small error" role="alert">{restoreProblem}</p>{/if}
+    {/if}
 
   {:else if step === 'notifications'}
-    <TopBar eyebrow="1 of 4" title="One push a day" />
-    <p class="t-body-default secondary">At 22:30 ATOMIC asks you to close the day. Event reminders arrive only for the events you set them on.</p>
+    <TopBar eyebrow="1 of 4" title="A push when it starts" />
+    <p class="t-body-default secondary">When a habit starts, ATOMIC reminds you, and you answer in the app. Events remind you as their reminders say.</p>
     <SectionLabel text="What arrives" />
     <div class="feature">
       <Icon name="bell" />
-      <span><span class="t-body-strong block">22:30 · Close the day</span><span class="t-body-small secondary">Answer every habit in one go.</span></span>
+      <span><span class="t-body-strong block">Habits · at their start</span><span class="t-body-small secondary">Its name and time. Answer it on Today.</span></span>
     </div>
     <div class="feature">
       <Icon name="clock" />
@@ -199,8 +219,8 @@
     <div class="preview" aria-hidden="true">
       <img src={appIcon} alt="" />
       <span class="preview-text">
-        <span class="preview-head t-label-small"><span>ATOMIC</span><span class="tertiary">22:30</span></span>
-        <span class="t-body-small">Time to close the day.</span>
+        <span class="preview-head t-label-small"><span>Sample read - 20 min</span><span class="tertiary">22:00</span></span>
+        <span class="t-body-small">22:00 · 20 min</span>
       </span>
     </div>
     {#if needsInvite && PUSH_URL}

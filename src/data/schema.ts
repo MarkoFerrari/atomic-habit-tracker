@@ -62,6 +62,8 @@ export interface Settings {
   lastBackupAt: string | null;
   trackingStart: IsoDay | null;
   onboardingDone: boolean;
+  /** 069: the 22:30 recap push, off unless switched on in Notifications (H46). */
+  recapPush?: boolean;
 }
 
 /** This phone's identity with the push function (059). Lives in the settings store, under its own key. */

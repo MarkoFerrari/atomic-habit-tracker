@@ -6,7 +6,7 @@ ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Scr
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. On the phone for UX testing. Component gallery at `#gallery`, build test at `#build-test`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. On the phone for UX testing; M5 (Stats, ranks) next. Component gallery at `#gallery`, build test at `#build-test`.
 
 ---
 
@@ -371,6 +371,7 @@ The riskiest assumptions get tested before any screen is built.
 ### M4 · Data
 - Full .ics import: every calendar, re-import with changed events listed for approval (E8).
 - Settings and Calendars.
+- Built 7 Oct 2026 (0.4.0): `src/screens/settings` (H41–H49, About), `src/data/{calendars,habits,reimport,restore}.ts`. Track as habits converts a calendar's times (clock ⇄ real, 028). Restore keeps this phone's push device and reminder key.
 - Backup and restore, plus the backup nudge.
 
 ### M5 · Progress
@@ -418,7 +419,7 @@ The riskiest assumptions get tested before any screen is built.
 | 034 calendar colours, 044 detail screens hide tab bar, 053 motion tokens, 060 days held: confirm | M1 |
 | 046 fifth calendar colour | M4 |
 | O7 backup nudge after 7 or 14 days | M4 |
-| A short privacy note (what stays on the phone, what the push function holds) | before the first friend installs |
+| A short privacy note (what stays on the phone, what the push function holds): drafted in About (074), owner to confirm | before the first friend installs |
 | Name: trademark check for "ATOMIC" before any public launch (018) | launch |
 
 ---
@@ -500,6 +501,8 @@ The riskiest assumptions get tested before any screen is built.
 | 071 | Editor details not in the design: Calendar, Repeat (Never, Every day, Weekdays, Every week with days, Every 2 weeks, Every month, Every year, an end date), Reminder, Place and Notes open sheets; Starts and Ends open the iPhone's own date and time wheels; a new event starts at the next whole hour (09:00 on other days) in the habit calendar; H33 keeps the date strip and chips | Proposed |
 | 072 | Every event can remind (021): minutes before its start, 0 = at the start. A new event takes its calendar's default (R5): habits at the start (069), other calendars 15 min (Proton's default in the imported files) | Proposed |
 | 073 | "All events" on a habit that already has answers splits the series at today, so past answers keep their original time and title (E16) | Proposed |
+| 074 | Not designed, built to the system: About (version, privacy note, licences); "Bring back from today" for an archived habit; the Changed list sheet in Import; H46 for 069 (the 22:30 toggle is off by default, Last arrived has no chevron, a Turn on notifications banner); a calendar's default reminder can also be applied to the events already in it; Welcome has Restore from a backup (E2) | Proposed |
+| 075 | Backup nudge on Today (R7): "Last backup 9 days ago. If ATOMIC is removed, everything since is gone." with Back up now, after 7 days (O7 still open), or 7 days after tracking starts with no backup | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

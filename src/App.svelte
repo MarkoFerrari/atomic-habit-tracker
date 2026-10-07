@@ -11,11 +11,23 @@
   import Calendar from './screens/calendar/Calendar.svelte';
   import EventDetail from './screens/calendar/EventDetail.svelte';
   import EventEditor from './screens/calendar/EventEditor.svelte';
-  import type { Tab } from './ui/TabBar.svelte';
+  import Settings from './screens/settings/Settings.svelte';
+  import Habits from './screens/settings/Habits.svelte';
+  import Notifications from './screens/settings/Notifications.svelte';
+  import Data from './screens/settings/Data.svelte';
+  import About from './screens/settings/About.svelte';
+  import Calendars from './screens/settings/Calendars.svelte';
+  import CalendarEditor from './screens/settings/CalendarEditor.svelte';
+  import ImportPreview from './screens/settings/ImportPreview.svelte';
+  import RestorePreview from './screens/settings/RestorePreview.svelte';
+  import type { SettingsScreen } from './screens/settings/screens';
+  import type { BackupPreview } from './data/restore';
+  import type { IcsCalendar } from './data/ics';
+  import type { Tab } from './ui/tabs';
   import { isInstalled } from './data/context';
   import { getSettings } from './data/settings';
   import { getEvent } from './data/events';
-  import type { CalendarEvent } from './data/schema';
+  import type { Calendar as CalendarRecord, CalendarEvent } from './data/schema';
   import { expand, type AgendaItem } from './domain/agenda';
   import { addDays, type IsoDay } from './domain/day';
 
@@ -23,7 +35,11 @@
   type Pushed =
     | { kind: 'event'; item: AgendaItem; from: Tab }
     | { kind: 'new'; day: IsoDay }
-    | { kind: 'edit'; event: CalendarEvent; item: AgendaItem };
+    | { kind: 'edit'; event: CalendarEvent; item: AgendaItem }
+    | { kind: 'settings'; screen: SettingsScreen }
+    | { kind: 'calendar-edit'; calendar: CalendarRecord | null }
+    | { kind: 'import'; ics: IcsCalendar; fileName: string }
+    | { kind: 'restore'; preview: BackupPreview; fileName: string; from: 'onboarding' | 'data' };
   type CalMode = 'day' | 'week' | 'month';
 
   let view = $state<View>('loading');
@@ -32,6 +48,9 @@
   let calDay = $state<IsoDay | undefined>();
   let calMode = $state<CalMode>('day');
   const top = $derived(stack.at(-1) ?? null);
+  let notice = $state(''); // one line for Calendars after an import
+  const push = (p: Pushed) => { stack = [...stack, p]; };
+  function restored() { stack = []; view = 'app'; tab = 'today'; }
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   async function route() {
@@ -90,7 +109,10 @@
 
 {#if view === 'gallery'}<Gallery />
 {:else if view === 'build-test'}<BuildTest />
-{:else if view === 'onboarding'}<Onboarding ondone={() => { view = 'app'; tab = 'today'; }} />
+{:else if view === 'onboarding' && top?.kind === 'restore'}
+  <RestorePreview preview={top.preview} fileName={top.fileName} oncancel={() => (stack = [])} ondone={restored} />
+{:else if view === 'onboarding'}<Onboarding ondone={() => { view = 'app'; tab = 'today'; }}
+  onrestore={(preview, fileName) => (stack = [{ kind: 'restore', preview, fileName, from: 'onboarding' }])} />
 {:else if view === 'import'}<Onboarding from="bring" ondone={() => { view = 'app'; tab = 'today'; }} />
 {:else if view === 'recap'}<Recap onclose={closeRecap} />
 {:else if view === 'app'}
@@ -104,6 +126,23 @@
     <EventEditor mode={{ kind: 'new', day: top.day }} oncancel={pop} onsaved={saved} />
   {:else if top?.kind === 'edit'}
     <EventEditor mode={{ kind: 'edit', event: top.event, item: top.item }} oncancel={pop} onsaved={saved} />
+  {:else if top?.kind === 'settings' && top.screen === 'habits'}<Habits onback={pop} />
+  {:else if top?.kind === 'settings' && top.screen === 'notifications'}<Notifications onback={pop} />
+  {:else if top?.kind === 'settings' && top.screen === 'about'}<About onback={pop} />
+  {:else if top?.kind === 'settings' && top.screen === 'data'}
+    <Data onback={pop} onrestore={(preview, fileName) => push({ kind: 'restore', preview, fileName, from: 'data' })} />
+  {:else if top?.kind === 'settings' && top.screen === 'calendars'}
+    <Calendars onback={() => { notice = ''; pop(); }} {notice}
+      onedit={(calendar) => { notice = ''; push({ kind: 'calendar-edit', calendar }); }}
+      onimport={(ics, fileName) => { notice = ''; push({ kind: 'import', ics, fileName }); }} />
+  {:else if top?.kind === 'calendar-edit'}
+    <CalendarEditor calendar={top.calendar} oncancel={pop} ondone={pop} />
+  {:else if top?.kind === 'import'}
+    <ImportPreview ics={top.ics} fileName={top.fileName} oncancel={pop} ondone={(summary) => { notice = summary; pop(); }} />
+  {:else if top?.kind === 'restore'}
+    <RestorePreview preview={top.preview} fileName={top.fileName} oncancel={pop} ondone={restored} />
+  {:else if tab === 'settings'}
+    <Settings ontab={(t) => (tab = t)} onopen={(screen) => push({ kind: 'settings', screen })} />
   {:else if tab === 'calendar'}
     <Calendar initialDay={calDay} initialMode={calMode} ontab={(t) => (tab = t)}
       onview={(d, m) => { calDay = d; calMode = m; }}

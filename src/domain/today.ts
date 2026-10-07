@@ -119,6 +119,14 @@ export function showCloseTheDay(hour: number): boolean {
  * answer count as missed (052); today's counts only once answered. Days held per 060 (proposed).
  */
 export function runLine(h: HabitSource, answers: readonly AnswerLike[], trackingStart: IsoDay, today: IsoDay, stored: RankId | null = null): string {
+  const held = daysHeldFor(h, answers, trackingStart, today);
+  const next = nextRank(reachedRank(stored, held), held);
+  const target = next ? `${RANKS.find((r) => r.id === next.rank)!.label} at ${RANKS.find((r) => r.id === next.rank)!.days} days` : 'Master';
+  return held > 0 ? `Day ${held} · ${target}` : target;
+}
+
+/** Days held in the habit's current run (060), counting unanswered past occurrences as missed (052). */
+export function daysHeldFor(h: HabitSource, answers: readonly AnswerLike[], trackingStart: IsoDay, today: IsoDay): number {
   const startDay = day(h.start);
   const from = startDay > trackingStart ? startDay : trackingStart;
   const status = new Map(answers.filter((a) => a.eventId === h.id).map((a) => [a.occurrence, a.status]));
@@ -129,8 +137,5 @@ export function runLine(h: HabitSource, answers: readonly AnswerLike[], tracking
       if (s) return [{ day: d, status: s }];
       return d < today ? [{ day: d, status: 'missed' as const }] : [];
     });
-  const held = daysHeld(runOf(history), today);
-  const next = nextRank(reachedRank(stored, held), held);
-  const target = next ? `${RANKS.find((r) => r.id === next.rank)!.label} at ${RANKS.find((r) => r.id === next.rank)!.days} days` : 'Master';
-  return held > 0 ? `Day ${held} · ${target}` : target;
+  return daysHeld(runOf(history), today);
 }

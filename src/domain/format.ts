@@ -101,3 +101,24 @@ export function hoursLabel(minutes: number): string {
   const m = minutes % 60;
   return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
 }
+
+/** H41/H47: "Backed up today", "Backed up 9 days ago", "Never backed up" (R7). */
+export function backupAge(lastBackupAt: string | null, now: Date, prefix = 'Backed up '): string {
+  if (!lastBackupAt) return 'Never backed up';
+  const days = Math.floor((now.getTime() - Date.parse(lastBackupAt)) / 86_400_000);
+  const when = days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+  return prefix ? `${prefix}${when}` : when.charAt(0).toUpperCase() + when.slice(1);
+}
+
+/** "Today 08:00", "Yesterday 22:31", "Mon 5 Oct 22:31": when a push last arrived (H46). */
+export function arrivalLabel(iso: string, now: Date, zone: string): string {
+  const wall = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const time = new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
+  const day = wall(new Date(iso));
+  if (day === wall(now)) return `Today ${time}`;
+  if (day === wall(new Date(now.getTime() - 86_400_000))) return `Yesterday ${time}`;
+  return `${new Intl.DateTimeFormat('en-GB', { timeZone: zone, weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(iso))} ${time}`;
+}
+
+/** "1 event", "2 events" (061: plain whole numbers). */
+export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

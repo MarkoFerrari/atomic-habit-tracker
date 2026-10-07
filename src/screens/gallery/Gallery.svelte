@@ -7,7 +7,8 @@
   import MasteryRing from '../../ui/MasteryRing.svelte';
   import HabitRow from '../../ui/HabitRow.svelte';
   import TopBar from '../../ui/TopBar.svelte';
-  import TabBar, { type Tab } from '../../ui/TabBar.svelte';
+  import TabBar from '../../ui/TabBar.svelte';
+  import type { Tab } from '../../ui/tabs';
   import Banner from '../../ui/Banner.svelte';
   import RankMedal from '../../ui/RankMedal.svelte';
   import ListRow from '../../ui/ListRow.svelte';

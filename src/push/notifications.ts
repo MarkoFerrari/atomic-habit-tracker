@@ -3,13 +3,16 @@
 // Its VAPID public key is fetched from the function itself (063), so no key lives in this repo.
 import { db } from '../data/db';
 import type { PushDevice } from '../data/schema';
+import { getSettings, updateSettings } from '../data/settings';
 
 export type Permission = NotificationPermission | 'unsupported';
 
 export const PUSH_URL: string | undefined = import.meta.env.VITE_PUSH_URL || undefined;
 
-/** 069: no 22:30 recap push for now; a reminder arrives when each habit starts instead (src/push/reminders.ts). */
-export const RECAP_PUSH = false;
+/** 069: the 22:30 recap push is off unless switched on in Notifications (H46); habits remind at their start. */
+export async function recapWanted(): Promise<boolean> {
+  return (await getSettings()).recapPush ?? false;
+}
 
 export function permission(): Permission {
   return 'Notification' in window ? Notification.permission : 'unsupported';
@@ -80,7 +83,7 @@ export async function turnOnPush(invite: string): Promise<void> {
   if (sub && !sameKey(sub, key)) { await sub.unsubscribe(); sub = null; }
   sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(key) });
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const data = await call('/subscribe', 'POST', device.token, { subscription: sub.toJSON(), timezone, invite: invite.trim() || undefined, recap: RECAP_PUSH });
+  const data = await call('/subscribe', 'POST', device.token, { subscription: sub.toJSON(), timezone, invite: invite.trim() || undefined, recap: await recapWanted() });
   const latest = await pushDevice(); // a reminder sync may have written to it meanwhile
   // 069: keep only what the function confirmed, so an older function that ignored the flag gets asked again.
   const recap = typeof data.recap === 'boolean' ? data.recap : undefined;
@@ -101,4 +104,21 @@ export async function sendTestPush(delayMinutes = 0): Promise<string | null> {
   const at = delayMinutes > 0 ? new Date(Date.now() + delayMinutes * 60_000).toISOString() : undefined;
   const data = await call('/test', 'POST', device.token, at ? { at } : {});
   return typeof data.scheduledFor === 'string' ? data.scheduledFor : null;
+}
+
+/** H46: the recap push on or off, told to the push function at once (069). */
+export async function setRecapPush(on: boolean): Promise<void> {
+  await updateSettings({ recapPush: on });
+  if ((await pushDevice()).subscribedAt && permission() === 'granted') await turnOnPush('');
+}
+
+/** The last push this phone logged (027, E1): the service worker writes one line per arrival. */
+export async function lastPushArrival(): Promise<string | null> {
+  const database = await db();
+  let cursor = await database.transaction('diagnostics').store.index('at').openCursor(null, 'prev');
+  while (cursor) {
+    if (cursor.value.kind === 'push') return cursor.value.at;
+    cursor = await cursor.continue();
+  }
+  return null;
 }

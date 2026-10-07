@@ -2,8 +2,8 @@
   // Tab bar (Figma 37:410): root navigation, four tabs, each a full-width hit area.
   import Icon from './Icon.svelte';
   import type { IconName } from './icons';
+  import type { Tab } from './tabs';
 
-  export type Tab = 'today' | 'calendar' | 'stats' | 'settings';
   const TABS: { id: Tab; label: string; icon: IconName }[] = [
     { id: 'today', label: 'Today', icon: 'today' },
     { id: 'calendar', label: 'Calendar', icon: 'calendar' },

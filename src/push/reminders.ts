@@ -5,7 +5,7 @@ import { db } from '../data/db';
 import type { ReminderKey } from '../data/schema';
 import { habitDayOf } from '../domain/day';
 import { planReminders } from '../domain/reminders';
-import { call, permission, pushDevice, PUSH_URL, RECAP_PUSH, turnOnPush } from './notifications';
+import { call, permission, pushDevice, PUSH_URL, recapWanted, turnOnPush } from './notifications';
 
 /** What a reminder carries once decrypted. Short keys keep the ciphertext small. */
 export interface ReminderText { t: string; b: string; g: string }
@@ -76,7 +76,7 @@ async function syncOnce(now: Date): Promise<number | null> {
   let device = await pushDevice();
   if (!device.subscribedAt) return null;
   // 069: tell the function about the recap choice once (a phone subscribed before 069 still gets the recap).
-  if (device.recap !== RECAP_PUSH) {
+  if (device.recap !== (await recapWanted())) {
     try { await turnOnPush(''); device = await pushDevice(); } catch { /* the next open tries again */ }
   }
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;

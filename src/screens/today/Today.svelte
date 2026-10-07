@@ -3,7 +3,8 @@
   // and the habit sheet. H11 morning, H12 midday + Undo, H13 evening, H14 empty, H16 sheet, H17 skip.
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
-  import TabBar, { type Tab } from '../../ui/TabBar.svelte';
+  import TabBar from '../../ui/TabBar.svelte';
+  import type { Tab } from '../../ui/tabs';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import HabitRow from '../../ui/HabitRow.svelte';
   import ListRow from '../../ui/ListRow.svelte';
@@ -21,6 +22,9 @@
   import { db } from '../../data/db';
   import { syncReminders } from '../../push/reminders';
   import { READY_TABS } from '../../ui/tabs';
+  import Banner from '../../ui/Banner.svelte';
+  import { shareBackup } from '../../data/backup';
+  import { backupAge } from '../../domain/format';
   import type { Answer, CalendarEvent } from '../../data/schema';
   import { habitDayOf, localParts, type IsoDay } from '../../domain/day';
   import { percent, shortName } from '../../domain/format';
@@ -37,6 +41,11 @@
   let habitCalendarName = $state('');
   let trackingStart = $state<IsoDay | null>(null);
   let loaded = $state(false);
+  let backupNote = $state('');
+  async function backUpNow() {
+    try { await shareBackup(); } catch { /* the banner stays */ }
+    await load();
+  }
 
   const habitDay = $derived(habitDayOf(now, zone));
   const hour = $derived(localParts(now, zone).hour);
@@ -53,6 +62,13 @@
     events = evs;
     answers = ans;
     trackingStart = settings.trackingStart as IsoDay | null;
+    // R7 (O7 open: 7 or 14 days): a nudge once the last backup is older than the setting, or there's none
+    // and tracking has run that long. Everything since the last backup is lost if the app is removed (E2).
+    const nudge = settings.backupNudgeDays;
+    const since = settings.lastBackupAt ?? (trackingStart ? `${trackingStart}T00:00:00Z` : null);
+    backupNote = since && Date.now() - Date.parse(since) >= nudge * 86_400_000
+      ? `${settings.lastBackupAt ? `Last backup ${backupAge(settings.lastBackupAt, new Date(), '').toLowerCase()}` : 'No backup yet'}. If ATOMIC is removed, everything since is gone.`
+      : '';
     habitCalendarName = calendars.find((c) => c.trackAsHabits)?.name ?? '';
     loaded = true;
     // 069: after every load (open, return to the app, answer, undo) the push function gets a fresh queue,
@@ -125,6 +141,7 @@
 <div class="page">
   <main class="screen today">
     <TopBar eyebrow={dateLabel} title={greeting(hour)} />
+    {#if backupNote}<Banner message={backupNote} action="Back up now" onaction={backUpNow} />{/if}
 
     {#if !loaded}
       <!-- first read from IndexedDB: a frame or two -->

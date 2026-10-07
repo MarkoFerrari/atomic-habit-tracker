@@ -6,7 +6,8 @@
   // H33: a day with nothing on it. Swipe sideways to move by a day, a week or a month.
   import { onMount, tick } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
-  import TabBar, { type Tab } from '../../ui/TabBar.svelte';
+  import TabBar from '../../ui/TabBar.svelte';
+  import type { Tab } from '../../ui/tabs';
   import SegmentedControl from '../../ui/SegmentedControl.svelte';
   import DatePill from '../../ui/DatePill.svelte';
   import Chip from '../../ui/Chip.svelte';

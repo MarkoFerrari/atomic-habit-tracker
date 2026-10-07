@@ -26,13 +26,17 @@
 
   function close() {
     closing = true;
-    const done = () => { dialog.close(); closing = false; dy = 0; };
+    const done = () => { dialog?.close(); closing = false; dy = 0; }; // the sheet may be gone by then
     const ms = parseFloat(getComputedStyle(dialog).getPropertyValue('--motion-duration-fast')) || 0;
     setTimeout(done, ms);
   }
   function requestClose() { onclose(); }
 
-  function down(e: PointerEvent) { drag = { y: e.clientY, t: e.timeStamp, id: e.pointerId }; dragging = true; panel.setPointerCapture(e.pointerId); }
+  function down(e: PointerEvent) {
+    // A press on Close is a tap, not a drag: capturing it would steal its click.
+    if ((e.target as Element).closest('button')) return;
+    drag = { y: e.clientY, t: e.timeStamp, id: e.pointerId }; dragging = true; panel.setPointerCapture(e.pointerId);
+  }
   function move(e: PointerEvent) { if (drag && e.pointerId === drag.id) dy = Math.max(0, e.clientY - drag.y); }
   function up(e: PointerEvent) {
     if (!drag) return;

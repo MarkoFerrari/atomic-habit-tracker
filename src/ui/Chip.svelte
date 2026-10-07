@@ -2,13 +2,13 @@
   // Chip (Figma 33:160). Filter: calendar legend + filter, the dot takes the calendar token.
   // Reason: skip reasons, one tap selects. A 36 px chip inside a 44 px hit area (041).
   import type { CalendarToken } from '../data/schema';
-  interface Props { kind?: 'filter' | 'reason'; label: string; selected?: boolean; calendar?: CalendarToken; onclick?: () => void }
-  let { kind = 'reason', label, selected = false, calendar = 'habits', onclick }: Props = $props();
+  interface Props { kind?: 'filter' | 'reason'; label: string; selected?: boolean; calendar?: CalendarToken; dot?: boolean; onclick?: () => void }
+  let { kind = 'reason', label, selected = false, calendar = 'habits', dot = true, onclick }: Props = $props();
 </script>
 
 <button class="hit" aria-pressed={selected} {onclick}>
   <span class="chip {kind}" class:selected style:--dot="var(--calendar-{calendar})">
-    {#if kind === 'filter'}<span class="dot" aria-hidden="true"></span>{/if}
+    {#if kind === 'filter' && dot}<span class="dot" aria-hidden="true"></span>{/if}
     <span class="t-body-small">{label}</span>
   </span>
 </button>
