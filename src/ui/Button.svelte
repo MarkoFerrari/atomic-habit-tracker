@@ -31,11 +31,10 @@
   .btn:active:not(:disabled) { transform: scale(0.98); }
   .primary { background: var(--action-primary); color: var(--action-on-primary); }
   .primary:active:not(:disabled) { background: var(--action-primary-pressed); }
-  .secondary { background: var(--bg-default); color: var(--text-primary); box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-strong); }
-  .secondary:active:not(:disabled) { background: var(--bg-subtle); }
+  .secondary { background: var(--bg-subtle); color: var(--text-primary); } /* 035: a filled track, no outline (U02) */
+  .secondary:active:not(:disabled) { background: var(--border-divider); }
   .tertiary { color: var(--text-accent); }
   .tertiary:active:not(:disabled) { background: var(--bg-subtle); }
   .btn:disabled { color: var(--text-disabled); cursor: default; }
   .primary:disabled { background: var(--bg-subtle); }
-  .secondary:disabled { box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-divider); }
 </style>
