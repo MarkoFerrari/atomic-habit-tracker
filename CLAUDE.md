@@ -506,6 +506,8 @@ The riskiest assumptions get tested before any screen is built.
 | 076 | Sheets (U02, U03): slide up from the bottom in 400 ms and slide down the same way (standard curve, scrim fades with them), for every modal sheet. The handle follows the finger: down freely, up with resistance, past 30% of the height or 500 px/s closes. No X by default (`showClose` stays available). Secondary buttons are a `bg/subtle` fill with no outline (035). No focus ring on a sheet's first button when it opens. The dialog never scrolls (`overflow: clip`): scrolling made iOS show the sheet mid-screen first (U03). Replaces the 150 ms close of page 11 | Proposed |
 | 077 | Event detail has Duplicate (U04): it opens the editor with a copy, and Save is refused until the date or time differs from the original. The Repeat sheet has Custom (U05): every 1–4 weeks, on the weekdays chosen, at a time (the event's start time); one time per series, so different times on different days are separate events | Proposed |
 | 078 | About ends with the website, markoferrari.eu, in place of the "Made with" list; the font and icon licences stay in the repo (`public/fonts/OFL.txt`) | Proposed |
+| 079 | The empty Today asks for a habit, not a calendar: primary New habit (it creates the HABITS calendar), Import from Proton (.ics) as a tertiary link. Figma H14 updated; code follows | Decided (owner, 7 Oct 2026) |
+| 080 | Kaizen: the weekly recap (H39) ends with one adjustment to try for 2 weeks (one variable, then review). Identity, cue, smallest version and plan B (Figma Playground P2–P5) stay proposals, not decided | Decided (owner, 7 Oct 2026) |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 
