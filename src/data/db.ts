@@ -1,7 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import {
   DB_NAME, DB_VERSION,
-  type Answer, type Calendar, type CalendarEvent, type Diagnostic, type PushDevice, type PushLogEntry, type RankRecord, type Settings,
+  type Answer, type Calendar, type CalendarEvent, type Diagnostic, type PushDevice, type PushLogEntry, type RankRecord, type ReminderKey, type Settings,
 } from './schema';
 
 export interface AtomicDB extends DBSchema {
@@ -11,7 +11,7 @@ export interface AtomicDB extends DBSchema {
   answers: { key: string; value: Answer; indexes: { occurrence: string; eventId: string } };
   ranks: { key: string; value: RankRecord; indexes: { seriesId: string } };
   pushLog: { key: number; value: PushLogEntry; indexes: { receivedAt: string } };
-  settings: { key: string; value: Settings | PushDevice }; // keyed records, so no schema bump
+  settings: { key: string; value: Settings | PushDevice | ReminderKey }; // keyed records, so no schema bump
 }
 
 /** Upgrade steps, in order. The service worker may have created v1 (diagnostics) first. */

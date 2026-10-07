@@ -147,6 +147,16 @@ describe('recap (039, 025)', () => {
     await tick(deps);
     expect(sender.sent).toHaveLength(0);
   });
+  it('sends no recap to a phone that turned it off, and still sends its reminders (069)', async () => {
+    expect(JSON.parse((await subscribe({ recap: false })).body)).toEqual({ ok: true, recap: false });
+    await handle(req('PUT', '/reminders', { items: [{ id: 'r1', fireAt: '2026-10-07T19:30:00Z', ciphertext: 'c' }] }), deps);
+    clock = new Date('2026-10-07T19:31:00Z');
+    await tick(deps);
+    expect(sender.sent.map((s) => s.payload.kind)).toEqual(['reminder']);
+    // A renewal without the flag keeps the phone's choice.
+    await handle(req('POST', '/subscribe', { subscription: SUB, timezone: ZONE }), deps);
+    expect(store.devices.get(TOKEN)?.recap).toBe(false);
+  });
 });
 
 describe('expired push address (E1)', () => {

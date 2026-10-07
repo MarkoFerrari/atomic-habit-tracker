@@ -19,6 +19,7 @@
   import { answer, answersFor, answersOn, habitEvents, toSource, undoAnswer, ReadOnlyAnswerError } from '../../data/answers';
   import { getSettings } from '../../data/settings';
   import { db } from '../../data/db';
+  import { syncReminders } from '../../push/reminders';
   import type { Answer, CalendarEvent } from '../../data/schema';
   import { habitDayOf, localParts, type IsoDay } from '../../domain/day';
   import { percent, shortName } from '../../domain/format';
@@ -53,6 +54,9 @@
     trackingStart = settings.trackingStart as IsoDay | null;
     habitCalendarName = calendars.find((c) => c.trackAsHabits)?.name ?? '';
     loaded = true;
+    // 069: after every load (open, return to the app, answer, undo) the push function gets a fresh queue,
+    // so a habit answered early sends no reminder. Offline or failing: the last queue stays.
+    syncReminders().catch(() => {});
   }
 
   onMount(() => {

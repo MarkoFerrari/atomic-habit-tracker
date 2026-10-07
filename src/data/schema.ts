@@ -55,7 +55,17 @@ export interface Settings {
 }
 
 /** This phone's identity with the push function (059). Lives in the settings store, under its own key. */
-export interface PushDevice { key: 'push-device'; token: string; subscribedAt: string | null }
+export interface PushDevice {
+  key: 'push-device';
+  token: string;
+  subscribedAt: string | null;
+  /** 069: what the push function was last told about the recap push. Missing: never told (it sends the recap). */
+  recap?: boolean;
+  lastReminderSync?: string;
+}
+
+/** 021: the key reminder titles are encrypted with. Made on the phone, never sent anywhere, never in a backup. */
+export interface ReminderKey { key: 'reminder-key'; raw: Uint8Array<ArrayBuffer> }
 
 export type DiagnosticKind = 'record' | 'push' | 'notification' | 'persist';
 export interface Diagnostic {

@@ -2,11 +2,11 @@
 
 This file is the build spec for ATOMIC. Read it before every build session; it outranks memory and habit.
 
-ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Screen from any browser that can add web apps (Safari, Chrome, DuckDuckGo). Every event in the HABITS calendar has to be answered by the end of the day: done or skipped. A recap push at 22:30 closes the day. Over months, the app shows which habits held and which didn't.
+ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Screen from any browser that can add web apps (Safari, Chrome, DuckDuckGo). Every event in the HABITS calendar has to be answered by the end of the day: done or skipped. A push arrives when each habit starts, and the owner answers in the app (069); the in-app Evening Recap closes the day. Over months, the app shows which habits held and which didn't.
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built (0.2.0)**: onboarding with the first import (065), Today, the Evening Recap; on the phone for testing. Component gallery at `#gallery`, build test at `#build-test`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built (0.2.1)**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). On the phone for UX testing. Component gallery at `#gallery`, build test at `#build-test`.
 
 ---
 
@@ -32,7 +32,7 @@ iPhone (installed PWA, any browser)                   Push function (EU, CRON)
 │ Domain rules (pure TS, tested)       │ ───────────► │         timezone         │
 │ IndexedDB  ◄── the only data store   │  reminders   │         encrypted queue  │
 │ Service worker: offline + push       │ ───────────► │ every minute: send due   │
-│ Backup/restore: JSON via share sheet │ ◄─────────── │ 22:30 local: recap push  │
+│ Backup/restore: JSON via share sheet │ ◄─────────── │ (recap push: off, 069)   │
 └──────────────────────────────────────┘   Web Push   └──────────────────────────┘
           ▲  static files
    GitHub Pages (this repo)
@@ -41,12 +41,13 @@ iPhone (installed PWA, any browser)                   Push function (EU, CRON)
 - **PWA (001, 029, 058).** Installed from any iPhone browser that can add to the Home Screen; the installed app is the product, whichever browser installed it. A browser tab shows a sample-data preview and the install guide; nothing is saved in a tab (031).
 - **Storage (020).** IndexedDB, on the phone only, with no sync. Backup and restore use one JSON file through the share sheet (Files, Proton Drive). Restore replaces everything after a preview, and never merges (026).
 - **Events (015, 022, 023).** ATOMIC is a full calendar. Events arrive once, through `.ics` import from Proton, and are created and edited in the app from then on. Re-importing matches events by UID (E8).
-- **Push (016, 021, 039).**
+- **Push (016, 021, 039, 069).**
   - The function holds the Web Push subscription, the phone's time zone and a queue of upcoming reminders.
-  - A CRON trigger runs every minute. It sends due reminders and, at 22:30 local time, the recap push.
+  - A CRON trigger runs every minute. It sends due reminders. The 22:30 recap push is built but switched off per phone (069).
+  - Habit reminders (069): the app plans a push at each timed habit's start for the next 14 days, skipping answered occurrences, and replaces the queue every time Today loads or an answer changes. All-day habits get none. Tapping one opens Today.
   - Reminder titles are encrypted on the phone with a key that never leaves it. The service worker decrypts them when the push arrives.
-  - The recap push is generic; the app builds the recap from local data when it opens (025).
-- **Self-monitoring (027).** The app logs every recap push it receives. After 2 silent evenings, Today shows a banner with Send a test (E1).
+  - The recap push, when on, is generic; the app builds the recap from local data when it opens (025).
+- **Self-monitoring (027).** The app logs every push it receives. After 2 silent evenings, Today shows a banner with Send a test (E1). With the recap push off (069), "silent" has to be measured on reminders instead: decide before E1 is built (M6).
 
 ### Push host: Scaleway (decided 7 Oct 2026)
 GitHub can't send the push. Pages only serves static files, and scheduled Actions are best effort: they often fire late, and they are disabled after 60 days without repo activity (011, 016).
@@ -357,14 +358,14 @@ The riskiest assumptions get tested before any screen is built.
 ### M2 · Core loop
 - Onboarding and a first import (065): import the HABITS calendar from a Proton `.ics` export, so Today runs on real habits from the end of M2. Matching by UID skips duplicates; the full import (every calendar, changed-event approval, E8) stays in M4.
 - Today, check-off with undo, skip with reason, habit sheet.
-- The 22:30 Evening Recap and the day result.
+- The Evening Recap and the day result (opened from Today's Close the day row; the 22:30 push is off, 069).
 - The 04:00 day close (computed: an unanswered occurrence of a closed day is missed, 052; nothing is written at 04:00).
 - Built in M2 (7 Oct 2026). Moved on, by design: Next up / First event (event blocks) → M3; restore from a backup, the browser-tab preview (H02, H03) → M4; new rank sheets (H22, H22b) → M5, recomputed from answers so none are lost; warning banners (H15) → M6.
 
 ### M3 · Calendar
 - Day, week and month views; event detail.
 - Create and edit events, including repeats ("this event / this and following / all", E16).
-- Encrypted reminders.
+- Event reminders for non-habit events (the encrypted channel itself shipped in M2, 069).
 
 ### M4 · Data
 - Full .ics import: every calendar, re-import with changed events listed for approval (E8).
@@ -389,18 +390,18 @@ The riskiest assumptions get tested before any screen is built.
 |---|---|---|
 | `GET /` | — | Health check: `{ ok, service: 'atomic-push' }` |
 | `GET /vapid-public-key` | — | The VAPID public key the app subscribes with (063) |
-| `POST /subscribe` | `{ subscription, timezone, invite? }` | Store or renew the Web Push subscription and the time zone (E1, E6). A new phone needs the invite code. |
+| `POST /subscribe` | `{ subscription, timezone, invite?, recap? }` | Store or renew the Web Push subscription and the time zone (E1, E6). A new phone needs the invite code. `recap: false` turns the 22:30 recap push off for this phone (069); left out, the last choice stays. Replies `{ ok, recap }` so the app records only a confirmed choice. |
 | `PUT /reminders` | `{ items: [{ id, fireAt (UTC ISO), ciphertext }] }` | Replace the whole queue of upcoming reminders (the next 14 days) |
 | `POST /test` | `{ at? }` | Send a test push now, or schedule it up to 24 h ahead so it arrives with the app closed (E1, 064) |
 | `POST /` | `{ tick: true }` | The CRON trigger's call: one timer run |
 
 - **CRON every minute** (Scaleway CRON runs in UTC):
   - Send reminders and scheduled tests whose `fireAt` ≤ now, then delete them (failed ones leave after an hour).
-  - Send the recap push once per habit day, from 22:30 local until the day closes at 04:00, so a late timer run still sends it.
+  - Send the recap push once per habit day, from 22:30 local until the day closes at 04:00, so a late timer run still sends it. Skipped for a phone with `recap: false` (069).
   - Daylight saving is handled by converting from UTC with the zone rules (E5).
   - If the push service says an address is gone, the device is paused, not deleted: its queue stays, and the app renews it without the invite code (E1).
 - **Recap payload:** `{ kind: 'recap' }`. It carries no data (025).
-- **Reminder payload:** `{ kind: 'reminder', ciphertext }`. The service worker decrypts it with a key held only in IndexedDB on the phone.
+- **Reminder payload:** `{ kind: 'reminder', ciphertext }`. The service worker decrypts it with a key held only in IndexedDB on the phone: 256-bit AES-GCM, stored as raw bytes under `settings/reminder-key`, never in a backup. Ciphertext = base64url(iv ‖ sealed `{ t: title, b: "08:00 · 30 min", g: tag }`).
 - **Devices (059):** one record per device, keyed by a random device token created at subscribe time and sent as a header on every call. No accounts, no user table: each phone is independent, and its data never leaves it.
 - **Invite code (059):** `/subscribe` also needs a short invite code, kept in the host's secret store, so strangers who find the URL in this public repo can't use the free tier. Rate-limit every endpoint per device token.
 - **The function stores nothing else.** No logs containing payloads.
@@ -463,7 +464,7 @@ The riskiest assumptions get tested before any screen is built.
 | 036 | 12 px smallest text; line heights in multiples of 4 | Proposed |
 | 037 | One light app icon; reduced mark at 32 px and below | Proposed |
 | 038 | Heatmap in 5 steps, with outlines and labels | Proposed |
-| 039 | Recap push at 22:30, after the last habit; the day closes at 04:00 | Decided |
+| 039 | Recap push at 22:30, after the last habit; the day closes at 04:00 | Decided (push part switched off by 069) |
 | 040 | "Mark as done" only on the habit due now | Proposed |
 | 041 | 44 px hit areas, lighter visuals | Proposed |
 | 042 | The Evening Recap looks the same every evening | Decided |
@@ -493,6 +494,7 @@ The riskiest assumptions get tested before any screen is built.
 | 066 | One habit calendar; switching on a second one in the review merges it in (023 generalised) | Proposed |
 | 067 | H04 asks for the invite code only when the push function doesn't know the phone yet | Proposed |
 | 068 | Copy not in the design, proposed: day-result lines other than the one-slip example ("Every habit done.", "None held today. Tomorrow starts clean.", "2 of 4 held. A and B slipped."), "Nothing due today", the H08 merge hint; the H25 and H21 texts drop the parts about Stats and motion | Proposed |
+| 069 | A push when each habit starts; no 22:30 recap push for now. The owner answers in the app; the recap stays in the app. Built as a per-phone switch so the recap push can come back | Decided (owner, 7 Oct 2026) |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

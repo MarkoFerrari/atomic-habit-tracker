@@ -8,6 +8,9 @@ export type Permission = NotificationPermission | 'unsupported';
 
 export const PUSH_URL: string | undefined = import.meta.env.VITE_PUSH_URL || undefined;
 
+/** 069: no 22:30 recap push for now; a reminder arrives when each habit starts instead (src/push/reminders.ts). */
+export const RECAP_PUSH = false;
+
 export function permission(): Permission {
   return 'Notification' in window ? Notification.permission : 'unsupported';
 }
@@ -47,7 +50,7 @@ export async function pushDevice(): Promise<PushDevice> {
   return fresh;
 }
 
-async function call(path: string, method: string, token: string, body?: unknown): Promise<Record<string, unknown>> {
+export async function call(path: string, method: string, token: string, body?: unknown): Promise<Record<string, unknown>> {
   if (!PUSH_URL) throw new Error('The push service isn’t set up yet');
   let res: Response;
   try {
@@ -77,8 +80,11 @@ export async function turnOnPush(invite: string): Promise<void> {
   if (sub && !sameKey(sub, key)) { await sub.unsubscribe(); sub = null; }
   sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(key) });
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  await call('/subscribe', 'POST', device.token, { subscription: sub.toJSON(), timezone, invite: invite.trim() || undefined });
-  await (await db()).put('settings', { ...device, subscribedAt: new Date().toISOString() });
+  const data = await call('/subscribe', 'POST', device.token, { subscription: sub.toJSON(), timezone, invite: invite.trim() || undefined, recap: RECAP_PUSH });
+  const latest = await pushDevice(); // a reminder sync may have written to it meanwhile
+  // 069: keep only what the function confirmed, so an older function that ignored the flag gets asked again.
+  const recap = typeof data.recap === 'boolean' ? data.recap : undefined;
+  await (await db()).put('settings', { ...latest, subscribedAt: new Date().toISOString(), recap });
 }
 
 function sameKey(sub: PushSubscription, key: string): boolean {

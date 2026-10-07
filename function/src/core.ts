@@ -14,6 +14,8 @@ export interface Device {
   timezone: string;
   queue: QueueItem[];
   lastRecapDay?: string;
+  /** 069: the phone chose no recap push. Missing means on, as built for 039. */
+  recap?: boolean;
   /** The push service said this address is gone; sending pauses until the app subscribes again (E1). */
   paused?: boolean;
   createdAt: string;
@@ -132,11 +134,13 @@ async function subscribe(req: Req, deps: Deps): Promise<Res> {
   device.subscription = subscription;
   device.timezone = timezone;
   device.paused = false;
+  if (typeof body.recap === 'boolean') device.recap = body.recap; // 069
   device.updatedAt = now.toISOString();
   // Subscribing during the recap window doesn't fire tonight's recap straight away.
   if (!existing && inRecapWindow(now, timezone)) device.lastRecapDay = habitDay(now, timezone);
   await deps.store.put(device);
-  return json(existing ? 200 : 201, { ok: true });
+  // The app records the recap choice only once the function confirms it (069).
+  return json(existing ? 200 : 201, { ok: true, recap: device.recap !== false });
 }
 
 async function putReminders(req: Req, deps: Deps): Promise<Res> {
@@ -230,7 +234,7 @@ export async function tick(deps: Deps): Promise<{ devices: number; sent: number;
     }
 
     const today = habitDay(now, device.timezone);
-    if (!gone && inRecapWindow(now, device.timezone) && device.lastRecapDay !== today) {
+    if (!gone && device.recap !== false && inRecapWindow(now, device.timezone) && device.lastRecapDay !== today) {
       // 025: the recap push carries no data; the app builds the recap from local data.
       const result = await deps.sender.send(device.subscription, { kind: 'recap', sentAt: now.toISOString() }, { ttl: 6 * 3600, urgency: 'normal' });
       if (result === 'gone') gone = true;

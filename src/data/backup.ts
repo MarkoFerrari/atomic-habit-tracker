@@ -26,7 +26,7 @@ export async function buildBackup(now = new Date()): Promise<Backup> {
     app: 'atomic', schemaVersion: DB_VERSION, exportedAt: now.toISOString(),
     calendars, events, answers, ranks, pushLog,
     // The push-device record stays out: it identifies this phone to the push function (059),
-    // and a restored copy on another phone must register as a new device.
+    // and a restored copy on another phone must register as a new device. The reminder key stays out too (021).
     settings: settings.filter((s) => s.key === 'settings'),
   };
 }
