@@ -81,12 +81,18 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// The recap notification opens the recap (F5); the app builds it from local data (025).
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const recap = event.notification.data?.kind === 'recap';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       const open = wins.find((w) => w.url.startsWith(self.registration.scope));
-      return open ? open.focus() : self.clients.openWindow(self.registration.scope);
+      if (open) {
+        if (recap) open.postMessage({ type: 'open-recap' });
+        return open.focus();
+      }
+      return self.clients.openWindow(self.registration.scope + (recap ? '#recap' : ''));
     }),
   );
 });

@@ -6,7 +6,7 @@ ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Scr
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): **M0 passed on device (GO).** Data survives the night, DuckDuckGo's clearing and a schema upgrade; a scheduled push from Scaleway arrives with the app closed. M1 slices 1–3 deployed. Next: M2. Component gallery at `#gallery`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built (0.2.0)**: onboarding with the first import (065), Today, the Evening Recap; on the phone for testing. Component gallery at `#gallery`, build test at `#build-test`.
 
 ---
 
@@ -358,7 +358,8 @@ The riskiest assumptions get tested before any screen is built.
 - Onboarding and a first import (065): import the HABITS calendar from a Proton `.ics` export, so Today runs on real habits from the end of M2. Matching by UID skips duplicates; the full import (every calendar, changed-event approval, E8) stays in M4.
 - Today, check-off with undo, skip with reason, habit sheet.
 - The 22:30 Evening Recap and the day result.
-- The 04:00 day close.
+- The 04:00 day close (computed: an unanswered occurrence of a closed day is missed, 052; nothing is written at 04:00).
+- Built in M2 (7 Oct 2026). Moved on, by design: Next up / First event (event blocks) → M3; restore from a backup, the browser-tab preview (H02, H03) → M4; new rank sheets (H22, H22b) → M5, recomputed from answers so none are lost; warning banners (H15) → M6.
 
 ### M3 · Calendar
 - Day, week and month views; event detail.
@@ -491,6 +492,7 @@ The riskiest assumptions get tested before any screen is built.
 | 065 | M2 includes a first .ics import of the HABITS calendar, so daily use starts at the end of M2 | Decided |
 | 066 | One habit calendar; switching on a second one in the review merges it in (023 generalised) | Proposed |
 | 067 | H04 asks for the invite code only when the push function doesn't know the phone yet | Proposed |
+| 068 | Copy not in the design, proposed: day-result lines other than the one-slip example ("Every habit done.", "None held today. Tomorrow starts clean.", "2 of 4 held. A and B slipped."), "Nothing due today", the H08 merge hint; the H25 and H21 texts drop the parts about Stats and motion | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 
