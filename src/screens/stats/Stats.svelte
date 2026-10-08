@@ -16,6 +16,8 @@
   import { perfectDays, weekStrip } from '../../domain/award';
   import { addDays } from '../../domain/day';
   import YearBar from '../../ui/YearBar.svelte';
+  import Sky from '../../ui/Sky.svelte';
+  import { sky as skyOf } from '../../domain/moments';
   import ListRow from '../../ui/ListRow.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import EmptyState from '../../ui/EmptyState.svelte';
@@ -66,6 +68,7 @@
   const week = $derived(ctx && hasData ? weekView(ctx, ctx.today) : null);
   const monthly = $derived(ctx && hasData ? monthView(ctx, month ?? ctx.today) : null);
   const yearly = $derived(ctx && hasData ? yearView(ctx, ctx.today) : null);
+  const yearSky = $derived(ctx && hasData && mode === 'year' ? skyOf(ctx, Number(ctx.today.slice(0, 4))) : null); // 109 (W3)
 
   // H34: the recap banner stays until it is opened. A trial due for review asks to be opened too (080).
   const recapStart = $derived(today ? recapWeekStart(today) : null);
@@ -148,6 +151,12 @@
             <span class="t-body-small secondary">In {yearly.year} so far</span></span>
           </div>
         </section>
+        {#if yearSky}
+          <section class="weeks">
+            <SectionLabel text="Perfect weeks · {yearSky.perfect}" />
+            <Sky sky={yearSky} />
+          </section>
+        {/if}
         <div class="year" role="group" aria-label="Year {yearly.year}">
           {#each yearly.bars as b (b.month)}
             <YearBar letter={b.letter} rate={b.rate.rate} due={b.rate.due} ahead={b.ahead}
@@ -181,5 +190,6 @@
 
 
 
+  .weeks { display: grid; }
   .year { display: flex; gap: var(--space-4); justify-content: space-between; }
 </style>

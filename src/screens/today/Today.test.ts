@@ -169,5 +169,38 @@ describe('Today (F4)', () => {
     for (const d of ['2026-10-02', '2026-10-03', '2026-10-04']) await database.put('answers', { key: `breakfast|${d}`, eventId: 'breakfast', occurrence: d as `${number}-${number}-${number}`, status: 'done', answeredAt: `${d}T05:10:00Z`, history: [] });
     render(Today, {});
     expect(await screen.findByText('Sample breakfast slipped yesterday. Do it today and your 5-day run holds.')).toBeTruthy();
+    expect(screen.getByText('“Fall seven times, stand up eight.”')).toBeTruthy(); // 108: the quote above the line (110)
+    // Done today: 5 days held is halfway to Apprentice, and a milestone outranks the comeback (one quote, 107)
+    await fireEvent.click(await within(row('Sample breakfast 30 min')).findByRole('button', { name: 'Mark as done' }));
+    expect(await screen.findByText('Milestone · day 5')).toBeTruthy();
+    expect(screen.getByText('Sample breakfast: halfway to Apprentice. Keep going.')).toBeTruthy();
+    expect(screen.getByText('“Well begun is half done.”')).toBeTruthy();
+    expect(screen.queryByText(/slipped yesterday/)).toBeNull();
+  });
+
+  it('done the day after a miss: the comeback, its quote, and a mark in the week strip (108)', async () => {
+    const database = await db();
+    await updateSettings({ trackingStart: '2026-10-03' });
+    await database.put('events', habit('breakfast', 'Sample breakfast 30 min', '2026-10-03T08:00', '2026-10-03T08:30', 'FREQ=DAILY', 'coffee'));
+    for (const d of ['2026-10-03', '2026-10-04']) await database.put('answers', { key: `breakfast|${d}`, eventId: 'breakfast', occurrence: d as `${number}-${number}-${number}`, status: 'done', answeredAt: `${d}T05:10:00Z`, history: [] });
+    render(Today, {});
+    await fireEvent.click(await within(await screen.findByRole('group', { name: 'Sample breakfast 30 min' })).findByRole('button', { name: 'Mark as done' }));
+    expect(await screen.findByText('Comeback · Sample breakfast')).toBeTruthy();
+    expect(screen.getByText('Back after a miss: your 4-day run holds.')).toBeTruthy();
+    expect(screen.getByText('“When thou hast failed, return back again.”')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Tuesday 6 October, today: .*a run saved/ })).toBeTruthy();
+  });
+
+  it('closing a perfect week plays the week award after the day’s star (109)', async () => {
+    const database = await db();
+    await database.clear('events');
+    await database.put('events', habit('gym', 'Sample gym 45 min', '2026-10-05T08:00', '2026-10-05T08:45', 'FREQ=WEEKLY;BYDAY=MO,TU', 'dumbbell'));
+    await database.put('answers', { key: 'gym|2026-10-05', eventId: 'gym', occurrence: '2026-10-05', status: 'done', answeredAt: '2026-10-05T04:50:00Z', history: [] });
+    render(Today, {});
+    expect(await screen.findByText('One more habit closes a perfect week.')).toBeTruthy(); // W1: nothing is due after Tuesday
+    await fireEvent.click(await within(row('Sample gym 45 min')).findByRole('button', { name: 'Mark as done' }));
+    expect(await screen.findByText(/Perfect week\. 2 of 2 days\. the 1st this year\./, {}, { timeout: 3000 })).toBeTruthy();
+    const { getSettings } = await import('../../data/settings');
+    await vi.waitFor(async () => expect((await getSettings()).weekAwardShown).toBe('2026-10-05')); // once a week
   });
 });

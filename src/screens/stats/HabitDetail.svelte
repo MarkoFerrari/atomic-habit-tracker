@@ -2,6 +2,8 @@
   // H4 Habit detail (Figma page 14, section 04; was H37): the star medal leads, then the next rank in plain numbers,
   // done of due, the best run and twelve weeks of bars. Below: why it wasn't done (C4) and when it gets done.
   // Kaizen (080): the trial in progress shows here. A pushed screen: no tab bar (044).
+  // 107: the next-rank bar carries its milestone ticks, and the last milestone keeps its quote here.
+  // 108: runs saved, the current run drawn occurrence by occurrence with a mark on each comeback.
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
   import Stat from '../../ui/Stat.svelte';
@@ -19,12 +21,19 @@
   import type { IsoDay } from '../../domain/day';
   import { activeAdjustment } from '../../domain/adjust';
   import { loadStats, type StatsData } from '../../data/stats';
+  import { getSettings } from '../../data/settings';
+  import { lastMilestone } from '../../data/moments';
+  import { milestoneDays, runsSaved } from '../../domain/moments';
+  import type { QuoteState } from '../../domain/quotes';
+  import Icon from '../../ui/Icon.svelte';
+  import { dayAndNumber } from '../../domain/format';
 
   interface Props { eventId: string; backLabel?: string; onback: () => void; onedit?: (eventId: string) => void }
   let { eventId, backLabel = 'Stats', onback, onedit }: Props = $props();
 
   let data = $state.raw<StatsData | null>(null);
-  onMount(async () => { data = await loadStats(); });
+  let quotes = $state.raw<QuoteState | undefined>(undefined);
+  onMount(async () => { const [d, settings] = await Promise.all([loadStats(), getSettings()]); quotes = settings.quotes; data = d; });
 
   const habit = $derived(data?.ctx.habits.find((h) => h.id === eventId) ?? null);
   const detail = $derived<HabitDetail | null>(data && habit ? habitDetail(data.ctx, habit, data.stored.get(habit.id) ?? null, data.zone) : null);
@@ -42,6 +51,9 @@
   const best = $derived(data && habit ? bestRun(data.ctx, habit) : 0);
   const nextLabel = $derived(detail?.medal.next ? RANKS.find((r) => r.id === detail.medal.next!.rank)!.label : '');
   const starsToGo = $derived(detail?.medal.next ? ({ starter: 1, builder: 2, keeper: 3, artisan: 3, master: 3 } as const)[detail.medal.next.rank] : 0);
+  const ticks = $derived(detail?.medal.next ? milestoneDays(detail.medal.next.rank) : []);
+  const milestone = $derived(lastMilestone(quotes, eventId));
+  const saved = $derived(data && habit ? runsSaved(data.ctx, habit) : null);
   const maxTime = $derived(Math.max(1, ...(detail?.times ?? []).map((t) => t.count)));
   const rows = $derived(detail ? [...SKIP_REASONS.map((k) => ({ key: k as string, label: SKIP_REASON_LABEL[k], n: detail.why[k] })), { key: WHY_NONE, label: 'No reason given', n: detail.why[WHY_NONE] }] : []);
 </script>
@@ -61,8 +73,18 @@
     {#if detail.medal.next}
       <section class="next">
         <p class="line"><span class="t-body-strong">{nextRankLine(detail.medal)}</span><span class="t-number-default secondary">{detail.medal.held}/{detail.medal.next.days}</span></p>
-        <ProgressBar value={detail.medal.held} of={detail.medal.next.days} label="Toward {nextLabel}" count={false} />
+        <ProgressBar value={detail.medal.held} of={detail.medal.next.days} label="Toward {nextLabel}" count={false} {ticks} />
         <p class="t-body-small secondary">Don’t miss it twice in a row and {starsToGo === 1 ? 'the first star joins' : `${starsToGo} more stars join`} the ring.</p>
+      </section>
+    {/if}
+
+    {#if milestone}
+      <section class="milestone" aria-label="Last milestone">
+        <SectionLabel text="Last milestone · day {milestone.day}" />
+        <figure>
+          <blockquote class="t-heading-small">“{milestone.quote.text}”</blockquote>
+          <figcaption class="t-label-small tertiary">{milestone.quote.source}</figcaption>
+        </figure>
       </section>
     {/if}
 
@@ -80,6 +102,20 @@
       </div>
       <p class="t-label-small tertiary">Outlined weeks are before you started. Full green: every due day done.</p>
     </section>
+
+    {#if saved && saved.total > 0}
+      <section class="saved">
+        <SectionLabel text="Runs saved · {saved.total}" />
+        {#if saved.cells.length}
+          <div class="run" role="img" aria-label="Current run: {saved.cells.length} due days, {saved.cells.filter((c) => c.comeback).length} saved after a miss">
+            {#each saved.cells as c (c.day)}
+              <span class="run-cell {c.status}">{#if c.comeback}<span class="mark"><Icon name="refresh" size="small" /></span>{/if}</span>
+            {/each}
+          </div>
+        {/if}
+        <p class="t-body-small secondary">{saved.recent.map((r) => `Missed ${dayAndNumber(r.missedOn)}, back ${dayAndNumber(r.backOn)}.`).join(' ')} Each mark is a run saved: done right after a miss.</p>
+      </section>
+    {/if}
 
     {#if smallCount > 0}
       <p class="t-body-small secondary">Done {doneCount}: {doneCount - smallCount} in full, {smallCount} as the 2-min version.</p>
@@ -127,6 +163,15 @@
   .text { display: grid; gap: var(--space-4); min-width: 0; }
   .next { display: grid; gap: var(--space-8); }
   .line { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
+  .milestone figure { display: grid; gap: var(--space-4); margin: 0; }
+  .milestone blockquote { margin: 0; }
+  .saved { display: grid; gap: var(--space-8); }
+  .run { display: flex; gap: var(--space-4); align-items: center; height: var(--space-16); }
+  .run-cell { position: relative; flex: 1; max-width: var(--space-16); height: var(--space-8); border-radius: var(--radius-control-inner); background: var(--state-done); }
+  .run-cell.missed, .run-cell.skipped { background: none; border: var(--stroke-hairline) solid var(--border-control); }
+  .mark { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: var(--space-16); height: var(--space-16); display: grid; place-items: center;
+    border-radius: var(--radius-round); background: var(--state-done); color: var(--icon-inverse); outline: var(--stroke-illustration) solid var(--bg-default); }
+  .mark :global(svg) { width: var(--space-12); height: var(--space-12); }
   .numbers { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-16); }
   .weeks { display: grid; gap: var(--space-8); }
   .bars { display: flex; justify-content: space-between; align-items: flex-end; height: calc(var(--space-64) + var(--space-24)); }

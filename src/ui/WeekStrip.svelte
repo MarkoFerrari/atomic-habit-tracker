@@ -2,7 +2,9 @@
   // Week strip (Figma 219:91, 096): Monday to Sunday under the Today ring, and the header of the Habits week grid.
   // Perfect = the award star; partial = the green share done; missed = outlined at 3:1; open = today (or a day still
   // answerable), ink; future = dashed and never counted (033). The perfect-day star lands in today's cell (093).
+  // 108: a day a run was saved carries the comeback mark, a small green badge on the cell.
   import AwardStar from './AwardStar.svelte';
+  import Icon from './Icon.svelte';
   import type { StripDay } from '../domain/award';
   import { fullDate } from '../domain/format';
 
@@ -12,7 +14,7 @@
   const C = 2 * Math.PI * R;
   const said = (d: StripDay) => {
     const what = { perfect: 'perfect day', partial: `${d.done} of ${d.due} done`, missed: `none of ${d.due} done`, open: `${d.done} of ${d.due} done so far`, future: 'ahead', empty: 'nothing due' }[d.state];
-    return `${fullDate(d.day)}${d.today ? ', today' : ''}: ${what}`;
+    return `${fullDate(d.day)}${d.today ? ', today' : ''}: ${what}${d.comeback ? ', a run saved' : ''}`;
   };
 </script>
 
@@ -22,7 +24,7 @@
     <li>
       <button class="day" class:today={d.today} disabled={!onday} onclick={() => onday?.(d)} aria-label={said(d)}>
         <span class="t-label-small letter">{d.letter}</span>
-        <span class="cell {state}" data-strip-cell={d.today ? 'today' : undefined}>
+        <span class="cell {state}" data-strip-cell={d.today ? 'today' : undefined} data-strip-day={d.day}>
           {#if state === 'perfect'}
             <AwardStar size="cell" />
           {:else}
@@ -35,6 +37,7 @@
               {/if}
             </svg>
           {/if}
+          {#if d.comeback}<span class="mark" aria-hidden="true"><Icon name="refresh" size="small" /></span>{/if}
         </span>
         <span class="dot" aria-hidden="true"></span>
       </button>
@@ -58,6 +61,11 @@
   .future .ring, .empty .ring { stroke: var(--border-control); stroke-width: var(--stroke-hairline); stroke-dasharray: 3 3; }
   .dot { width: var(--space-4); height: var(--space-4); border-radius: var(--radius-round); background: transparent; }
   .today .dot { background: var(--text-primary); }
+  .mark { position: absolute; top: calc(var(--space-4) * -1); right: calc(var(--space-4) * -1); width: var(--space-16); height: var(--space-16);
+    display: grid; place-items: center; border-radius: var(--radius-round); background: var(--state-done); color: var(--icon-inverse);
+    outline: var(--stroke-illustration) solid var(--bg-default); animation: mark-in var(--motion-duration-base) var(--motion-easing-enter) both; }
+  .mark :global(svg) { width: var(--space-12); height: var(--space-12); }
+  @keyframes mark-in { from { opacity: 0; transform: scale(0.4); } }
   /* The star landing (093): the cell bumps once, 1 → 1.12 → 1. */
   :global(.bump) { animation: bump calc(var(--motion-duration-fast) * 2) var(--motion-easing-spring); }
   @keyframes bump { 50% { transform: scale(1.12); } }

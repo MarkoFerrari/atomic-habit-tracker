@@ -10,7 +10,7 @@ import { bestHeld, habitDays, mondayOf, rateOf, type Context, type HabitDay, typ
  *  future: ahead · empty: nothing due, or before tracking started (never counted, 033). */
 export type StripState = 'perfect' | 'partial' | 'missed' | 'open' | 'future' | 'empty';
 export interface DayVerdict { state: StripState; done: number; due: number; share: number }
-export interface StripDay extends DayVerdict { day: IsoDay; letter: string; today: boolean }
+export interface StripDay extends DayVerdict { day: IsoDay; letter: string; today: boolean; comeback?: boolean } // 108: a run saved that day
 
 /** One day's verdict from its habit occurrences. Today counts what is due today, answered or not. */
 export function dayVerdict(cells: readonly HabitDay[], day: IsoDay, today: IsoDay): DayVerdict {
@@ -26,11 +26,11 @@ export function dayVerdict(cells: readonly HabitDay[], day: IsoDay, today: IsoDa
 }
 
 /** Monday to Sunday of the week that holds `today`. */
-export function weekStrip(ctx: Context): StripDay[] {
+export function weekStrip(ctx: Context, comebacks?: ReadonlySet<IsoDay>): StripDay[] {
   const from = mondayOf(ctx.today);
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   const cells = habitDays(ctx, from, days[6]!);
-  return days.map((day) => ({ day, letter: weekdayLetter(day), today: day === ctx.today, ...dayVerdict(cells, day, ctx.today) }));
+  return days.map((day) => ({ day, letter: weekdayLetter(day), today: day === ctx.today, ...dayVerdict(cells, day, ctx.today), ...(comebacks?.has(day) ? { comeback: true } : {}) }));
 }
 
 /** Perfect days from `from` to `to` (never past today). */

@@ -1,6 +1,7 @@
 // One IndexedDB database for the whole app (020).
 // Every schema change bumps DB_VERSION and adds one `if (oldVersion < n)` step in db.ts. Steps never change once shipped.
 import type { IsoDay } from '../domain/day';
+import type { QuoteState } from '../domain/quotes';
 import type { AnswerStatus, SkipReason } from '../domain/states';
 import type { RankId } from '../domain/ranks';
 import type { Adjustment } from '../domain/adjust';
@@ -86,6 +87,10 @@ export interface Settings {
   ranksSeen?: string[];
   /** 097: show events from other calendars. Unused since 104 (the Calendar left the app); kept so backups read the same. */
   showEvents?: boolean;
+  /** 110: which quote went to which moment, and how far each pool has turned. */
+  quotes?: QuoteState;
+  /** 109: the Monday of the last week whose perfect-week award played. */
+  weekAwardShown?: IsoDay;
 }
 
 /** This phone's identity with the push function (059). Lives in the settings store, under its own key. */

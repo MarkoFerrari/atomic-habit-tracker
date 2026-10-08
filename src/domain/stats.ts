@@ -159,7 +159,7 @@ export interface Medal {
 }
 
 /** The run history of a habit: closed or answered occurrences up to today (052), in date order. */
-function historyOf(ctx: Context, h: HabitSource): DueDay[] {
+export function historyOf(ctx: Context, h: HabitSource): DueDay[] {
   const startDay = h.start.slice(0, 10) as IsoDay;
   const from = ctx.trackingStart && ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
   if (from > ctx.today) return [];

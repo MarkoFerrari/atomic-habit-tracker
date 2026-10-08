@@ -13,6 +13,14 @@
   import ProgressRing from '../../ui/ProgressRing.svelte';
   import WeekStrip from '../../ui/WeekStrip.svelte';
   import PerfectDayAward from '../../ui/PerfectDayAward.svelte';
+  import PerfectWeekAward from '../../ui/PerfectWeekAward.svelte';
+  import QuoteBlock from '../../ui/QuoteBlock.svelte';
+  import AwardStar from '../../ui/AwardStar.svelte';
+  import { todayMoment, weekAwardDue, markWeekAward, type TodayMoment, type WeekAward } from '../../data/moments';
+  import { comebackDaySet, weekCloses, weekLine } from '../../domain/moments';
+  import { addDays as plusDays } from '../../domain/day';
+  import { mondayOf } from '../../domain/stats';
+  import type { StatsData } from '../../data/stats';
   import RankReached from './RankReached.svelte';
   import Icon from '../../ui/Icon.svelte';
   import { loadStats, medals as loadMedals } from '../../data/stats';
@@ -59,6 +67,8 @@
   let strip = $state.raw<StripDay[]>([]);
   let medalOf = $state.raw<Map<string, Medal>>(new Map());
   let risk = $state('');
+  let moment = $state<TodayMoment | null>(null);
+  let weekLeft = $state<number | null>(null);
   let awardShown = $state<{ day: IsoDay; done: number } | null>(null);
   let reveal = $state.raw<Medal[]>([]); // H5: ranks reached since the last visit
   let seenKeys: string[] = [];
@@ -100,9 +110,14 @@
     const stats = await loadStats(now);
     const list = await loadMedals(stats);
     medalOf = new Map(list.map((m) => [m.eventId, m]));
-    strip = stats.ctx.trackingStart ? weekStrip(stats.ctx) : [];
+    const monday = mondayOf(stats.ctx.today);
+    strip = stats.ctx.trackingStart ? weekStrip(stats.ctx, comebackDaySet(stats.ctx, monday, plusDays(monday, 6))) : [];
     const atRisk = runAtRisk(stats.ctx);
     risk = atRisk ? runAtRiskLine(atRisk, stats.ctx.today) : '';
+    // 107–110: one quote at most (milestone, then comeback, then the morning after a miss) and the perfect-week line
+    moment = await todayMoment(stats, list, atRisk);
+    weekLeft = weekCloses(stats.ctx);
+    lastStats = stats;
     await findReveals(list, settings.ranksSeen);
     loaded = true;
     void maybeAward();
@@ -140,13 +155,24 @@
   const perfectThisWeek = $derived(strip.filter((d) => d.state === 'perfect').length);
   const celebrated = $derived(!!awardShown && awardShown.day === habitDay && awardShown.done >= view.done);
   async function maybeAward() {
-    if (!perfect || celebrated || award || reveal.length) return; // H5 first: the award waits for it to close
+    if (award || weekAward || reveal.length) return; // H5 first: the awards wait for it to close
+    if (!perfect || celebrated) { await maybeWeekAward(); return; }
     await tick(); // the ring is in the page before the star rises from it
     if (!perfect || celebrated || award) return;
     flying = true;
     award = { from: ringEl?.getBoundingClientRect() ?? null, line: `${view.done} of ${view.due} done · ${perfectThisWeek} this week` };
     awardShown = { day: habitDay, done: view.done };
     updateSettings({ awardShown: { day: habitDay, done: view.done } }).catch(() => {});
+  }
+  // --- the perfect-week award (109): after the day's star has landed, once a week at most ------------------------
+  let lastStats: StatsData | null = null;
+  let weekAward = $state<(WeekAward & { days: string[] }) | null>(null);
+  async function maybeWeekAward() {
+    if (award || weekAward || reveal.length || !lastStats) return;
+    const due = await weekAwardDue(lastStats);
+    if (!due || award || weekAward) return;
+    weekAward = { ...due, days: Array.from({ length: 7 }, (_, i) => plusDays(due.monday, i)) };
+    markWeekAward(due.monday).catch(() => {});
   }
   function landed() {
     flying = false;
@@ -278,11 +304,18 @@
           </div>
         </div>
         {#if strip.length}<WeekStrip days={strip} hideToday={flying} />{/if}
+        {#if weekLeft && !perfect}
+          <!-- 109 (W1): the last due day of a week that is perfect so far -->
+          <p class="week-line t-body-small"><AwardStar size="tiny" />{weekLine(weekLeft)}</p>
+        {/if}
         {#if trial && trialHabit}
           <!-- 080: the adjustment being tried stays in sight until its review -->
           <p class="t-body-small secondary">Trying until {fullDate(trial.reviewOn)} · {shortName(trialHabit.title)}: {trial.text}</p>
         {/if}
       </section>
+      {#if moment}
+        <QuoteBlock label={moment.label} quote={moment.quote} line={moment.line} bar={moment.bar} />
+      {/if}
       {#if risk}
         <p class="note t-body-small"><Icon name="refresh" />{risk}</p>
       {/if}
@@ -330,7 +363,9 @@
 
 {#if award}
   <PerfectDayAward from={award.from} line={award.line} target={() => document.querySelector('[data-strip-cell="today"]')?.getBoundingClientRect() ?? null}
-    onlanded={landed} onend={() => (award = null)} />
+    onlanded={landed} onend={() => { award = null; void maybeWeekAward(); }} />
+{:else if weekAward}
+  <PerfectWeekAward days={weekAward.days} line={weekAward.line} quote={weekAward.quote} onend={() => (weekAward = null)} />
 {:else if reveal.length}
   <RankReached items={reveal} onclose={closeReveal} onbadges={() => { closeReveal(); onbadges?.(); }} />
 {/if}
@@ -387,6 +422,7 @@
   .ring { display: flex; }
   .numbers { display: grid; gap: var(--space-4); }
   .done-line { color: var(--text-done); }
+  .week-line { display: flex; align-items: center; gap: var(--space-8); color: var(--text-primary); }
   .note { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); background: var(--bg-subtle); border-radius: var(--radius-control); color: var(--text-primary); }
   .lists { display: grid; }
   .tertiary { color: var(--text-tertiary); }
