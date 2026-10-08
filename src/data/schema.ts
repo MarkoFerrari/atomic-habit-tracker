@@ -78,8 +78,10 @@ export interface Settings {
   adjustments?: Adjustment[];
   /** The Monday of the last weekly recap that was opened (H34 banner). */
   recapSeen?: IsoDay;
-  /** 093: the habit day the perfect-day award last played, so it plays once a day. */
+  /** 093: the habit day the perfect-day award last played. Read by 0.6.0–0.6.2 only; 106 uses `awardShown`. */
   awardShownOn?: IsoDay;
+  /** 106: the day and the number done when the award last played: it plays again only with more done that day. */
+  awardShown?: { day: IsoDay; done: number };
   /** H5: rank records (`${eventId}|${rank}`) already revealed. Missing: none revealed yet, and none owed. */
   ranksSeen?: string[];
   /** 097: show events from other calendars. Unused since 104 (the Calendar left the app); kept so backups read the same. */

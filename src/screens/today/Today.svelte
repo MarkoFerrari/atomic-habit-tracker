@@ -3,7 +3,7 @@
   // Next and Done, 40 apart (092). Check-off with Undo, skip with a reason, the habit sheet. Each row names its next
   // rank (098); the morning after a miss, one line says today keeps the run (099). The last habit of the day plays
   // the perfect-day award (093), once a day; a rank reached opens H5 the next time Today loads (E15, never a push).
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
   import TabBar from '../../ui/TabBar.svelte';
   import type { Tab } from '../../ui/tabs';
@@ -59,7 +59,7 @@
   let strip = $state.raw<StripDay[]>([]);
   let medalOf = $state.raw<Map<string, Medal>>(new Map());
   let risk = $state('');
-  let awardShownOn = $state<IsoDay | null>(null);
+  let awardShown = $state<{ day: IsoDay; done: number } | null>(null);
   let reveal = $state.raw<Medal[]>([]); // H5: ranks reached since the last visit
   let seenKeys: string[] = [];
   let backupNote = $state('');
@@ -95,7 +95,7 @@
       ? `${settings.lastBackupAt ? `Last backup ${backupAge(settings.lastBackupAt, new Date(), '').toLowerCase()}` : 'No backup yet'}. If ATOMIC is removed, everything since is gone.`
       : '';
     habitCalendarName = calendars.find((c) => c.trackAsHabits)?.name ?? '';
-    awardShownOn = settings.awardShownOn ?? null;
+    awardShown = settings.awardShown ?? null;
     // 096, 098, 099: the week strip, every habit's medal, and a run at risk. Medals write ranks reached (084).
     const stats = await loadStats(now);
     const list = await loadMedals(stats);
@@ -105,6 +105,7 @@
     risk = atRisk ? runAtRiskLine(atRisk, stats.ctx.today) : '';
     await findReveals(list, settings.ranksSeen);
     loaded = true;
+    void maybeAward();
     // 069: after every load (open, return to the app, answer, undo) the push function gets a fresh queue,
     // so a habit answered early sends no reminder. Offline or failing: the last queue stays.
     syncReminders().catch(() => {});
@@ -126,19 +127,26 @@
     const fresh = new Set(keys.filter((k) => !seen.includes(k)).map((k) => k.split('|')[0]));
     reveal = list.filter((m) => m.rank && fresh.has(m.eventId));
   }
-  async function closeReveal() { reveal = []; await updateSettings({ ranksSeen: seenKeys }); }
+  async function closeReveal() { reveal = []; await updateSettings({ ranksSeen: seenKeys }); void maybeAward(); }
 
-  // --- the perfect-day award (093): once a day, when the last due habit is done here ----------------------
+  // --- the perfect-day award (093, 106) ----------------------------------------------------------------
+  // It plays whenever Today shows a perfect day it hasn't celebrated yet: right after the last habit is marked
+  // done, or on opening Today when the day was finished elsewhere (the Recap). Once per day and count: undo and
+  // redo don't replay it, but a habit added later and done earns it again (U11).
   let ringEl = $state<HTMLElement>();
   let award = $state<{ from: DOMRect | null; line: string } | null>(null);
   let flying = $state(false);
   const perfect = $derived(view.due > 0 && view.done === view.due);
   const perfectThisWeek = $derived(strip.filter((d) => d.state === 'perfect').length);
-  function startAward() {
+  const celebrated = $derived(!!awardShown && awardShown.day === habitDay && awardShown.done >= view.done);
+  async function maybeAward() {
+    if (!perfect || celebrated || award || reveal.length) return; // H5 first: the award waits for it to close
+    await tick(); // the ring is in the page before the star rises from it
+    if (!perfect || celebrated || award) return;
     flying = true;
     award = { from: ringEl?.getBoundingClientRect() ?? null, line: `${view.done} of ${view.due} done · ${perfectThisWeek} this week` };
-    awardShownOn = habitDay;
-    updateSettings({ awardShownOn: habitDay }).catch(() => {});
+    awardShown = { day: habitDay, done: view.done };
+    updateSettings({ awardShown: { day: habitDay, done: view.done } }).catch(() => {});
   }
   function landed() {
     flying = false;
@@ -156,15 +164,13 @@
   async function set(row: TodayRow, status: AnswerStatus, reason?: SkipReason, small = false) {
     problem = '';
     try {
-      const wasPerfect = perfect;
       const before = await answer(row.eventId, row.occurrence, status, habitDay, reason, small);
       const name = shortName(row.title);
       toast = {
         message: status === 'done' ? `${name} ${small ? 'done, 2-min version' : 'done'}` : `${name} skipped`,
         undo: async () => { await undoAnswer(row.eventId, row.occurrence, before); await load(); },
       };
-      await load();
-      if (status === 'done' && !wasPerfect && perfect && awardShownOn !== habitDay && row.occurrence === habitDay) startAward();
+      await load(); // load() plays the award if this answer made the day perfect (106)
     } catch (e) {
       problem = e instanceof ReadOnlyAnswerError ? e.message : 'Couldn’t save the answer. Try again.';
     }

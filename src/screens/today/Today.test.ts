@@ -132,7 +132,33 @@ describe('Today (F4)', () => {
     expect(await screen.findByText('2 of 2')).toBeTruthy();
     expect(await screen.findByRole('status')).toBeTruthy(); // the award announces "Perfect day. 2 of 2 done…"
     const { getSettings } = await import('../../data/settings');
-    await vi.waitFor(async () => expect((await getSettings()).awardShownOn).toBe('2026-10-06')); // once a day
+    await vi.waitFor(async () => expect((await getSettings()).awardShown).toEqual({ day: '2026-10-06', done: 2 })); // once per day and count
+  });
+
+  it('plays the award on opening Today when the day was finished elsewhere, once (106)', async () => {
+    const database = await db();
+    await database.delete('events', 'train');
+    for (const id of ['breakfast', 'read']) await database.put('answers', { key: `${id}|2026-10-06`, eventId: id, occurrence: '2026-10-06', status: 'done', answeredAt: '2026-10-06T04:50:00Z', history: [] });
+    await updateSettings({ awardShownOn: '2026-10-06' }); // 0.6.0–0.6.2 marked the day, but the award may never have been seen (U10, U11)
+    render(Today, {});
+    expect(await screen.findByRole('status')).toBeTruthy();
+    cleanup();
+    await updateSettings({ awardShown: { day: '2026-10-06', done: 2 } });
+    render(Today, {});
+    expect(await screen.findByText('2 of 2')).toBeTruthy();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole('status')).toBeNull(); // already celebrated with 2 done
+  });
+
+  it('a habit added after the award earns it again when done (106)', async () => {
+    const database = await db();
+    await database.delete('events', 'train');
+    for (const id of ['breakfast']) await database.put('answers', { key: `${id}|2026-10-06`, eventId: id, occurrence: '2026-10-06', status: 'done', answeredAt: '2026-10-06T04:50:00Z', history: [] });
+    await updateSettings({ awardShown: { day: '2026-10-06', done: 1 } }); // perfect at 1 of 1, then Read was added
+    render(Today, {});
+    expect(await screen.findByText('1 of 2')).toBeTruthy();
+    await fireEvent.click(await within(row('Sample read 30 min')).findByRole('button', { name: 'Mark as done' }));
+    expect(await screen.findByRole('status')).toBeTruthy();
   });
 
   it('the morning after a miss, one line says today keeps the run (099)', async () => {
