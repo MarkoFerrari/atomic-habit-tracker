@@ -2,7 +2,8 @@
   // The Habits tab (Figma page 14, section 04: H1 list, H2 week, H3 month; 097). It takes the Calendar's place in the
   // tab bar: three views of the same habits. The list shows each habit's star medal and how close its next rank is,
   // in green (098). Week puts the week strip over the grid; Month is the one month grid of the app (it absorbs H35),
-  // with a small star on every perfect day. Days before the start and days ahead are never zero (033).
+  // where a perfect day is simply the full green cell (111: the corner star left). Days before the start and days
+  // ahead are never zero (033).
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
   import TabBar from '../../ui/TabBar.svelte';
@@ -12,7 +13,6 @@
   import WeekStrip from '../../ui/WeekStrip.svelte';
   import WeekCell from '../../ui/WeekCell.svelte';
   import HeatCell from '../../ui/HeatCell.svelte';
-  import AwardStar from '../../ui/AwardStar.svelte';
   import Icon from '../../ui/Icon.svelte';
   import EmptyState from '../../ui/EmptyState.svelte';
   import type { IconName } from '../../ui/icons';
@@ -119,7 +119,6 @@
             <span class="day">
               <HeatCell day={Number(c.day.slice(8, 10))} level={c.level} kind={c.kind}
                 label="{fullDate(c.day)}: {c.kind === 'ahead' ? 'ahead' : c.rate.due ? `${percent(c.rate.rate)}, ${c.rate.done} of ${c.rate.due} done` : 'nothing due'}{monthStars.has(c.day) ? ', perfect day' : ''}" />
-              {#if monthStars.has(c.day)}<span class="star"><AwardStar size="tiny" /></span>{/if}
             </span>
           {/each}
         </div>
@@ -153,5 +152,4 @@
   .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-8); }
   .wd { text-align: center; color: var(--text-tertiary); }
   .day { position: relative; }
-  .star { position: absolute; top: calc(var(--space-4) * -1); right: calc(var(--space-4) * -1); display: flex; }
 </style>

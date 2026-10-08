@@ -1,5 +1,5 @@
 <script lang="ts">
-  // E2 Settings (Figma page 14, section 05; was H41): two groups, 32 apart (092). Your own events stay in Proton,
+  // E2 Settings (Figma page 14, section 05; was H41): one list, every row the same distance apart (111). Your own events stay in Proton,
   // Google or Outlook: the Calendar and the .ics import left the app (104). Your data shows the age of the last
   // backup (R7).
   import { onMount } from 'svelte';
@@ -35,8 +35,6 @@
     <section class="group">
       <ListRow icon="sprout" label="Habits" value={habits} onclick={() => onopen('habits')} />
       <ListRow icon="bell" label="Notifications" value={notifications} onclick={() => onopen('notifications')} />
-    </section>
-    <section class="group">
       <ListRow icon="lock" label="Your data" value={data} onclick={() => onopen('data')} />
       <ListRow icon="info" label="About" onclick={() => onopen('about')} />
     </section>
