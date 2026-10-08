@@ -2,11 +2,11 @@
 
 This file is the build spec for ATOMIC. Read it before every build session; it outranks memory and habit.
 
-ATOMIC is a habit tracker first (097): habits, a nudge when each starts, an answer, a reward. Your own events can be shown beside them, but the calendar is optional. It is installed onto an iPhone Home Screen from any browser that can add web apps (Safari, Chrome, DuckDuckGo). Every event in the HABITS calendar has to be answered by the end of the day: done or skipped. A push arrives when each habit starts, and the owner answers in the app (069); the in-app Evening Recap closes the day. Over months, the app shows which habits held and which didn't.
+ATOMIC is a habit tracker first (097): habits, a nudge when each starts, an answer, a reward. Your own calendar stays in Proton, Google or Outlook: ATOMIC holds habits only (104). It is installed onto an iPhone Home Screen from any browser that can add web apps (Safari, Chrome, DuckDuckGo). Every event in the HABITS calendar has to be answered by the end of the day: done or skipped. A push arrives when each habit starts, and the owner answers in the app (069); the in-app Evening Recap closes the day. Over months, the app shows which habits held and which didn't.
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. **M5 built (0.5.0, Playground P2–P5 in 0.5.1)**: Stats (week, month, year), habit detail, Badges with ranks, the weekly recap with Kaizen (080). **0.6.0 (8 Oct 2026): habits first**, from Figma page 14: new start flow with a stepper, Today with the week strip and the perfect-day award, the Habits tab (list, week, month), star medals, Stats with perfect days, Settings with an optional Calendar view. On the phone for UX testing; M6 (polish, edge cases) next. Component gallery at `#gallery`, build test at `#build-test`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. **M5 built (0.5.0, Playground P2–P5 in 0.5.1)**: Stats (week, month, year), habit detail, Badges with ranks, the weekly recap with Kaizen (080). **0.6.0 (8 Oct 2026): habits first**, from Figma page 14: new start flow with a stepper, Today with the week strip and the perfect-day award, the Habits tab (list, week, month), star medals, Stats with perfect days, Settings. **0.6.2 (8 Oct 2026):** the Calendar and the .ics import left the app (104), Starter is now Apprentice (105). On the phone for UX testing; M6 (polish, edge cases) next. Component gallery at `#gallery`, build test at `#build-test`.
 
 ---
 
@@ -40,7 +40,7 @@ iPhone (installed PWA, any browser)                   Push function (EU, CRON)
 
 - **PWA (001, 029, 058).** Installed from any iPhone browser that can add to the Home Screen; the installed app is the product, whichever browser installed it. A browser tab shows a sample-data preview and the install guide; nothing is saved in a tab (031).
 - **Storage (020).** IndexedDB, on the phone only, with no sync. Backup and restore use one JSON file through the share sheet (Files, Proton Drive). Restore replaces everything after a preview, and never merges (026).
-- **Events (015, 022, 023).** ATOMIC is a full calendar. Events arrive once, through `.ics` import from Proton, and are created and edited in the app from then on. Re-importing matches events by UID (E8).
+- **Events (015, 022, 023; narrowed by 097 and 104).** Habits are repeating events in the HABITS calendar, created and edited in the app. The Calendar views, other calendars and the `.ics` import left the app in 0.6.2 (104): their code stays in the repo, unrouted, and events already on a phone stay in its database and backups, but only habits show and remind.
 - **Push (016, 021, 039, 069).**
   - The function holds the Web Push subscription, the phone's time zone and a queue of upcoming reminders.
   - A CRON trigger runs every minute. It sends due reminders. The 22:30 recap push is built but switched off per phone (069).
@@ -115,12 +115,12 @@ The rules live in `/src/domain` as pure functions, each with tests.
 
 ### Runs and ranks (047, 051, 055)
 - A run lasts as long as the habit is **never missed twice in a row**. A skip counts as a miss (051). One miss is forgiven; a second miss in a row sends the run back to day 1.
-- **Days held (060, proposed)** = calendar days from the run's first done to today, inclusive. Calendar days, not occurrences, so a three-times-a-week habit reaches Starter on the same calendar as a daily one; a weekly habit would otherwise need 7 years for Master.
+- **Days held (060, proposed)** = calendar days from the run's first done to today, inclusive. Calendar days, not occurrences, so a three-times-a-week habit reaches Apprentice on the same calendar as a daily one; a weekly habit would otherwise need 7 years for Master.
 - Ranks are reached by days held in a run, per habit:
 
   | Rank | Days held | Stars in the ring (100) |
   |---|---|---|
-  | Starter | 10 | 1 |
+  | Apprentice (id `starter`, 105) | 10 | 1 |
   | Builder | 30 | 3 |
   | Keeper | 90 | 6 |
   | Artisan | 182 (6 months) | 9 |
@@ -258,7 +258,7 @@ Numbers are plain whole numbers, never zero-padded (061): 82%, 18, 10/30. Geist 
 | 02 Onboarding | 65:3812 | notifications, import, choose habit calendar |
 | 03 Today | 65:3816 | day list, check-off, skip with reason, habit sheet (H11–H13) |
 | 04 Evening Recap | 65:3820 | 22:30 recap: all at once / one by one, day result, ranks reached (H22), Mastered (H22b) |
-| 05 Calendar | 65:3824 | day, week and month views, event detail, create/edit, repeats |
+| 05 Calendar | 65:3824 | day, week and month views, event detail, create/edit, repeats (removed from the app by 104; the habit editor H30 still applies) |
 | 06 Stats | 65:3828 | week, month, year, habit detail, weekly recap |
 | 07 Badges and ranks | 65:3832 | medals per habit (H38, H38b, H38c) |
 | 08 Settings and habits | 65:3836 | settings, edit habit, icon picker |
@@ -479,7 +479,7 @@ The riskiest assumptions get tested before any screen is built.
 | 044 | Pushed detail screens hide the tab bar | Proposed |
 | 045 | Stats use labelled sample data | Decided |
 | 046 | A fifth calendar colour | Decided by 081 |
-| 047 | Gamification: consistency ranks, Starter → Master | Decided (tiers dropped by 055) |
+| 047 | Gamification: consistency ranks, Starter (Apprentice since 105) → Master | Decided (tiers dropped by 055) |
 | 048 | Delivery: one Figma section per journey | Decided |
 | 049 | Rank medal shape and colour progression | Revised by 055 |
 | 050 | 32 px top padding on every screen | Decided |
@@ -529,13 +529,15 @@ The riskiest assumptions get tested before any screen is built.
 | 094 | `motion/duration/hold` = 1200 ms, the award's still moment | Proposed |
 | 095 | A stepper (segment + label + check per step: grey, green when done) replaces "1 of X" on every flow with steps; Back sits above it, the chevron flush left | Decided (owner, 8 Oct 2026) |
 | 096 | Week strip under the Today ring (perfect, partial, missed, open, ahead) and as the header of the Habits week grid | Proposed |
-| 097 | Habits first: tabs Today · Habits · Stats · Settings. Start is welcome → reminders → your habit → when; no import or account on the way in. The Calendar is an optional view (Settings → Show my events: on by default only when other calendars' events are on the phone). Supersedes 015, 022 and 023 as the product's centre; the calendar code stays | Decided (owner, 8 Oct 2026) |
+| 097 | Habits first: tabs Today · Habits · Stats · Settings. Start is welcome → reminders → your habit → when; no import or account on the way in. The Calendar was an optional view (Settings → Show my events) until 104 removed it. Supersedes 015, 022 and 023 as the product's centre; the calendar code stays | Decided (owner, 8 Oct 2026) |
 | 098 | Every habit row names its next rank ("Builder in 6 days"); progress bars are always green | Decided (owner, 8 Oct 2026) |
 | 099 | The morning after a miss, one line on Today says today keeps the run | Proposed |
-| 100 | Star medal: the habit's icon ringed by 12 slots; Starter 1, Builder 3, Keeper 6, Artisan 9, Master 12. Replaces the shapes and colours of 049/055 | Decided (owner, 8 Oct 2026) |
+| 100 | Star medal: the habit's icon ringed by 12 slots; Apprentice (was Starter) 1, Builder 3, Keeper 6, Artisan 9, Master 12. Replaces the shapes and colours of 049/055 | Decided (owner, 8 Oct 2026) |
 | 101 | The 5-segment mastery ring leaves the rows (two systems for one idea); "Per week" goals wait for rules on rates and runs (006, 051) | Proposed |
 | 102 | No number without a picture: Stats drops the big rate line, and the Habits week and month drop their summaries; the strip, stars and green bars carry it. Habits week rows are divided. Today's heat cell loses the strong outline once it is coloured. Star medal stars sit like a watch: star n at n o'clock, so the 6th is opposite the 12th and the 9th opposite the 3rd | Decided (owner, 8 Oct 2026) |
 | 103 | The selected segment of every segmented control is filled with `action/primary`, no border, label in `action/on-primary` | Decided (owner, 8 Oct 2026) |
+| 104 | The Calendar leaves the app: no Show my events, no Calendar views, no Calendars and import, no .ics import from Today. Imported calendars go stale the day after the import and nothing syncs them back (020), so they promised more than they gave. Only habits show and remind; other events already on a phone stay in IndexedDB and backups. The habit editor hides the Calendar row and says Edit habit. The code stays, unrouted, in case a read-only overlay comes back | Decided (owner, 8 Oct 2026) |
+| 105 | The first rank is Apprentice, not Starter: "Starter in 6 days" read as "starts in 6 days". Label only; the stored id stays `starter`, so ranks already reached keep their records | Decided (owner, 8 Oct 2026) |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

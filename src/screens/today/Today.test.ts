@@ -46,7 +46,7 @@ describe('Today (F4)', () => {
     expect(await screen.findByText('0 of 3')).toBeTruthy();
     expect(screen.getByText('3 due today')).toBeTruthy();
     expect(screen.getByRole('list', { name: 'This week' })).toBeTruthy(); // the week strip (096)
-    expect(screen.getByText(/08:00 · Starter in 10 days/)).toBeTruthy(); // the next rank on the row (098)
+    expect(screen.getByText(/08:00 · Apprentice in 10 days/)).toBeTruthy(); // the next rank on the row (098)
     expect(within(row('Sample breakfast 30 min')).getByRole('button', { name: 'Mark as done' })).toBeTruthy();
     expect(within(row('Sample read 30 min')).queryByRole('button', { name: 'Mark as done' })).toBeNull();
   });
@@ -115,10 +115,10 @@ describe('Today (F4)', () => {
   it('with no habit calendar, shows the empty state (H14, E17)', async () => {
     const database = await db();
     await database.clear('events');
-    render(Today, { onnewhabit: () => {}, onimport: () => {} });
+    render(Today, { onnewhabit: () => {} });
     expect(await screen.findByText('Start with one habit')).toBeTruthy();
     expect(screen.getAllByRole('button', { name: 'New habit' }).length).toBeGreaterThan(0); // the top bar's + and the big button (079)
-    expect(screen.queryByRole('button', { name: 'Import from Proton (.ics)' })).toBeNull(); // habits first (097)
+    expect(screen.queryByRole('button', { name: 'Import from Proton (.ics)' })).toBeNull(); // habits first (097); the import left the app (104)
   });
 
   it('the last habit of the day plays the award once; the ring stays green with the star (093)', async () => {

@@ -43,7 +43,7 @@ describe('star medal (100)', () => {
   });
   it('names the next rank in days, or Mastered (098)', () => {
     expect(nextRankLine({ rank: 'starter', next: { rank: 'builder', daysLeft: 6, days: 30 } })).toBe('Builder in 6 days');
-    expect(nextRankLine({ rank: null, next: { rank: 'starter', daysLeft: 1, days: 10 } })).toBe('Starter in 1 day');
+    expect(nextRankLine({ rank: null, next: { rank: 'starter', daysLeft: 1, days: 10 } })).toBe('Apprentice in 1 day');
     expect(nextRankLine({ rank: 'master', next: null })).toBe('Mastered');
   });
 });

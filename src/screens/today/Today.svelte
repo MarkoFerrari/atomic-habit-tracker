@@ -45,8 +45,8 @@
   import { SKIP_REASONS, type AnswerStatus, type SkipReason } from '../../domain/states';
   import { greeting, runLine, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
 
-  interface Props { onrecap?: () => void; onnewhabit?: () => void; onimport?: () => void; ontab?: (tab: Tab) => void; onbadges?: () => void }
-  let { onrecap, onnewhabit, onimport, ontab, onbadges }: Props = $props();
+  interface Props { onrecap?: () => void; onnewhabit?: () => void; ontab?: (tab: Tab) => void; onbadges?: () => void }
+  let { onrecap, onnewhabit, ontab, onbadges }: Props = $props();
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let now = $state(new Date());

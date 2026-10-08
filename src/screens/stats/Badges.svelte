@@ -61,7 +61,7 @@
       </section>
     {/if}
   {:else}
-    <p class="t-body-default secondary">No habits yet. Medals appear here once a calendar is tracked as habits.</p>
+    <p class="t-body-default secondary">No habits yet. Medals appear here once you add a habit.</p>
   {/if}
 </main>
 

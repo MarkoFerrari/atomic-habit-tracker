@@ -1,6 +1,6 @@
 // 047, 055: consistency ranks, reached by days held in a run. Ranks are never lost.
 export const RANKS = [
-  { id: 'starter', label: 'Starter', days: 10 },
+  { id: 'starter', label: 'Apprentice', days: 10 }, // 105: was Starter ("Starter in 6 days" read as a start date); the id stays
   { id: 'builder', label: 'Builder', days: 30 },
   { id: 'keeper', label: 'Keeper', days: 90 },
   { id: 'artisan', label: 'Artisan', days: 182 },

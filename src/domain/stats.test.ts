@@ -69,7 +69,7 @@ describe('medals (047, 051, 060)', () => {
     const d = new Date(`${from}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + i);
     return ans('b', d.toISOString().slice(0, 10), 'done');
   });
-  it('a 12-day run is Builder-bound: Starter reached, days held 12', () => {
+  it('a 12-day run is Builder-bound: Apprentice reached, days held 12', () => {
     const c = { ...ctx(doneRun('2027-11-14', 12)), habits: [breakfast] };
     const m = medalOf(c, breakfast, null);
     expect(m).toMatchObject({ rank: 'starter', held: 12, next: { rank: 'builder', days: 30, daysLeft: 18 } });

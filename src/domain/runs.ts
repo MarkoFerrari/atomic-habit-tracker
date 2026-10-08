@@ -35,7 +35,7 @@ export function runOf(history: readonly DueDay[]): Run {
 
 /**
  * Days held (060, proposed): calendar days from the run's first done to `asOf`, inclusive.
- * Calendar days, not occurrences, so a 3-times-a-week habit and a daily one reach Starter on the same calendar.
+ * Calendar days, not occurrences, so a 3-times-a-week habit and a daily one reach Apprentice on the same calendar.
  */
 export function daysHeld(run: Run, asOf: IsoDay): number {
   if (!run.startedOn) return 0;

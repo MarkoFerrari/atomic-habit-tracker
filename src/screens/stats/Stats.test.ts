@@ -87,7 +87,7 @@ describe('Badges, habit detail and recap', () => {
     render(Badges, { onback: noop, onhabit: noop });
     expect(await screen.findByText('Your medals · 2')).toBeTruthy();
     expect(screen.getAllByText(/No medal yet/).length).toBe(2);
-    expect(screen.getByText(/^Next · Starter/)).toBeTruthy();
+    expect(screen.getByText(/^Next · Apprentice/)).toBeTruthy();
     expect((await (await db()).getAll('ranks'))).toEqual([]); // nothing reached, nothing written
   });
 
@@ -95,7 +95,7 @@ describe('Badges, habit detail and recap', () => {
     const database = await db();
     for (let d = 1; d <= 12; d += 1) await database.put('answers', ans('r', `2027-11-${String(d).padStart(2, '0')}`, 'done'));
     render(Badges, { onback: noop, onhabit: noop });
-    expect(await screen.findByText(/^Starter · run of/)).toBeTruthy();
+    expect(await screen.findByText(/^Apprentice · run of/)).toBeTruthy();
     await vi.waitFor(async () => expect((await database.getAll('ranks')).map((r) => r.rank)).toEqual(['starter']));
   });
 

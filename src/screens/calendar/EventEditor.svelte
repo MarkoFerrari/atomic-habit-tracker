@@ -185,12 +185,15 @@
 </script>
 
 <main class="screen editor">
-  <TopBar type="modal" title={mode.kind === 'new' ? (mode.habit ? 'New habit' : 'New event') : mode.kind === 'duplicate' ? 'Duplicate event' : 'Edit event'} leftLabel="Cancel" rightLabel={saving ? 'Saving…' : 'Save'} onleft={oncancel} onright={save} />
+  <TopBar type="modal" title={mode.kind === 'new' ? (mode.habit ? 'New habit' : 'New event') : mode.kind === 'duplicate' ? 'Duplicate event' : cal?.trackAsHabits ? 'Edit habit' : 'Edit event'} leftLabel="Cancel" rightLabel={saving ? 'Saving…' : 'Save'} onleft={oncancel} onright={save} />
   {#if draft}
     <TextField bind:value={draft.title} placeholder="Title, like “Read - 20 min”" error={titleError || undefined} autocapitalize="sentences" spellcheck />
-    <div class="group">
-      <ListRow label="Calendar" value={cal?.name ?? 'Choose'} onclick={() => (sheet = 'calendar')} />
-    </div>
+    {#if !cal?.trackAsHabits}
+      <!-- 104: a habit stays a habit; the Calendar row is only for other events (unrouted since 104) -->
+      <div class="group">
+        <ListRow label="Calendar" value={cal?.name ?? 'Choose'} onclick={() => (sheet = 'calendar')} />
+      </div>
+    {/if}
     <div class="group">
       <ListRow type="toggle" label="All day" on={draft.allDay} onchange={setAllDay} />
     </div>

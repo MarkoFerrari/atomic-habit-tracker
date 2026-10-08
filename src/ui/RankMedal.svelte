@@ -1,6 +1,6 @@
 <script lang="ts">
   // Star medal (Figma 228:3338, 100), one per habit (055): the habit's own icon on a disc, ringed by twelve slots like
-  // the European flag. Stars fill like a watch, star n at n o'clock, as ranks are reached: Starter 1, Builder 3, Keeper 6,
+  // the European flag. Stars fill like a watch, star n at n o'clock, as ranks are reached: Apprentice 1, Builder 3, Keeper 6,
   // Artisan 9, Master 12. Empty slots stay as dots, so the way to Master is always in sight. Ranks are never lost.
   // The gold alone is under 3:1 on white, so the rank's name always travels with the medal (1.4.11).
   import { iconMarkup, type IconName } from './icons';

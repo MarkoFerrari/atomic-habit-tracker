@@ -123,7 +123,7 @@ export function showCloseTheDay(hour: number): boolean {
 }
 
 /**
- * The run line on the habit sheet (H16): "Day 4 · Starter at 10 days". Past occurrences without an
+ * The run line on the habit sheet (H16): "Day 4 · Apprentice at 10 days". Past occurrences without an
  * answer count as missed (052); today's counts only once answered. Days held per 060 (proposed).
  */
 export function runLine(h: HabitSource, answers: readonly AnswerLike[], trackingStart: IsoDay, today: IsoDay, stored: RankId | null = null): string {

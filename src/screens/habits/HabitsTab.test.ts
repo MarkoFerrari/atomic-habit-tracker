@@ -41,7 +41,7 @@ describe('Habits tab (097)', () => {
     render(HabitsTab, { onhabit: () => {} });
     expect(await screen.findByText('Sample breakfast 30 min')).toBeTruthy();
     expect(screen.getByText('2 habits')).toBeTruthy();
-    expect(screen.getByText(/Every day · 08:00 · Builder in 5 days/)).toBeTruthy(); // 25 days held (1–25 Nov), Starter reached
+    expect(screen.getByText(/Every day · 08:00 · Builder in 5 days/)).toBeTruthy(); // 25 days held (1–25 Nov), Apprentice reached
     expect(screen.getAllByRole('progressbar').length).toBe(2);
   });
 

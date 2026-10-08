@@ -76,11 +76,11 @@ describe('runLine (H16)', () => {
   const breakfast = habits[1]!;
   const a = (occurrence: string, status: AnswerLike['status']): AnswerLike => ({ eventId: 'breakfast', occurrence, status, answeredAt: '' });
   it('counts calendar days from the run’s first done (060)', () => {
-    expect(runLine(breakfast, [], d('2026-10-06'), d('2026-10-06'))).toBe('Starter at 10 days');
-    expect(runLine(breakfast, [a('2026-10-06', 'done')], d('2026-10-06'), d('2026-10-06'))).toBe('Day 1 · Starter at 10 days');
-    expect(runLine(breakfast, [a('2026-10-06', 'done'), a('2026-10-08', 'done')], d('2026-10-06'), d('2026-10-09'))).toBe('Day 4 · Starter at 10 days'); // one miss is forgiven
+    expect(runLine(breakfast, [], d('2026-10-06'), d('2026-10-06'))).toBe('Apprentice at 10 days');
+    expect(runLine(breakfast, [a('2026-10-06', 'done')], d('2026-10-06'), d('2026-10-06'))).toBe('Day 1 · Apprentice at 10 days');
+    expect(runLine(breakfast, [a('2026-10-06', 'done'), a('2026-10-08', 'done')], d('2026-10-06'), d('2026-10-09'))).toBe('Day 4 · Apprentice at 10 days'); // one miss is forgiven
   });
   it('two misses in a row end the run (051)', () => {
-    expect(runLine(breakfast, [a('2026-10-06', 'done'), a('2026-10-07', 'skipped')], d('2026-10-06'), d('2026-10-09'))).toBe('Starter at 10 days');
+    expect(runLine(breakfast, [a('2026-10-06', 'done'), a('2026-10-07', 'skipped')], d('2026-10-06'), d('2026-10-09'))).toBe('Apprentice at 10 days');
   });
 });

@@ -8,6 +8,7 @@ import RestorePreview from './RestorePreview.svelte';
 import Habits from './Habits.svelte';
 import CalendarEditor from './CalendarEditor.svelte';
 import Notifications from './Notifications.svelte';
+import Settings from './Settings.svelte';
 import { db, wipeDbForTests } from '../../data/db';
 import { parseIcs } from '../../data/ics';
 import { readBackup } from '../../data/restore';
@@ -91,14 +92,21 @@ describe('New calendar (H43)', () => {
   });
 });
 
+describe('Settings (E2)', () => {
+  it('has no Calendar and no import, even with events from another calendar on the phone (104)', async () => {
+    await (await db()).put('events', { ...train, id: 'meet', calendarId: 'wrk', title: 'Sample meeting' });
+    render(Settings, { onopen: () => {} });
+    expect(await screen.findByText('Your data')).toBeTruthy();
+    expect(screen.queryByText('Show my events')).toBeNull();
+    expect(screen.queryByText('Calendars and import')).toBeNull();
+  });
+});
+
 describe('Notifications (H46)', () => {
-  it('sets a calendar’s default reminder, and can apply it to its events', async () => {
+  it('has no per-calendar defaults any more: only habits remind (104)', async () => {
     render(Notifications, { onback: () => {} });
-    await fireEvent.click(await screen.findByRole('button', { name: /SAMPLE HABITS/ }));
-    await fireEvent.click(await screen.findByRole('button', { name: '10 min before' }));
-    await fireEvent.click(screen.getByRole('switch', { name: /Also change the 1 event/ }));
-    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await vi.waitFor(async () => expect((await (await db()).get('events', 'train'))!.reminders).toEqual([10]));
-    expect((await (await db()).get('calendars', 'hab'))!.defaultReminders).toEqual([10]);
+    expect(await screen.findByText(/Habits remind you when they start/)).toBeTruthy();
+    expect(screen.queryByText('Event reminders by default')).toBeNull();
+    expect(screen.queryByRole('button', { name: /SAMPLE HABITS/ })).toBeNull();
   });
 });

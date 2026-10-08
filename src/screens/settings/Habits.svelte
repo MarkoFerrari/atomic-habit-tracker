@@ -1,7 +1,6 @@
 <script lang="ts">
   // H45 Habits and H45b Edit habit (Figma 54:3333, 54:3478): icon, display name, archive.
-  // Archived habits (E9) keep their history and badges. New habits come from events on a calendar with
-  // Track as habits on. Each row shows the schedule and the rank reached (047): "no rank yet" before day 10.
+  // Archived habits (E9) keep their history and badges. New habits start from + on Today or Habits (104). Each row shows the schedule and the rank reached (047): "no rank yet" before day 10.
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
@@ -87,7 +86,7 @@
       {/each}
     </ul>
   {/if}
-  <p class="t-body-small note">Archived habits keep their history and badges. New habits come from events on a calendar with Track as habits on.</p>
+  <p class="t-body-small note">Archived habits keep their history and badges. Add a new habit with + on Today or Habits.</p>
 </main>
 
 <Sheet open={editing !== null} title="Edit habit" showClose onclose={() => (editing = null)}>

@@ -85,7 +85,9 @@ async function syncOnce(now: Date): Promise<number | null> {
   const [events, cals, answers, key] = await Promise.all([database.getAll('events'), database.getAll('calendars'), database.getAll('answers'), reminderKey()]);
   const answered = new Set(answers.filter((a) => a.occurrence >= today).map((a) => a.key));
   const habitCalendars = new Set(cals.filter((c) => c.trackAsHabits).map((c) => c.id));
-  const plan = planReminders(events, habitCalendars, answered, today, now, zone);
+  // 104: only habits remind. Other calendars' events stay in the database (and in backups) but no longer push.
+  const habits = events.filter((e) => habitCalendars.has(e.calendarId));
+  const plan = planReminders(habits, habitCalendars, answered, today, now, zone);
   const items = await Promise.all(plan.map(async (r) => ({
     id: r.id,
     fireAt: r.fireAt,

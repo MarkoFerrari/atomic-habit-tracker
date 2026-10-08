@@ -82,7 +82,7 @@ export interface Settings {
   awardShownOn?: IsoDay;
   /** H5: rank records (`${eventId}|${rank}`) already revealed. Missing: none revealed yet, and none owed. */
   ranksSeen?: string[];
-  /** 097: show events from other calendars (Calendar view). Missing: on when there are events outside the habits. */
+  /** 097: show events from other calendars. Unused since 104 (the Calendar left the app); kept so backups read the same. */
   showEvents?: boolean;
 }
 

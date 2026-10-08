@@ -58,6 +58,12 @@ describe('syncReminders (069)', () => {
     const first = await mod.unseal(await mod.reminderKey(), items[0]!.ciphertext);
     expect(first.t).toBe('Sample read 15 min');
   });
+  it('plans habits only: other calendars’ events stay on the phone but no longer push (104)', async () => {
+    const database = await db();
+    await database.put('calendars', { id: 'work', name: 'SAMPLE WORK', color: 'work', trackAsHabits: false, createdAt: '' });
+    await database.put('events', { ...habit('meet', 'Sample meeting', '2026-10-01T15:00', '2026-10-01T16:00'), calendarId: 'work', reminders: [15] });
+    expect(await mod.syncReminders(new Date('2026-10-07T12:00:00Z'))).toBe(14);
+  });
   it('tells the function once that the recap push is off (a phone subscribed before 069)', async () => {
     await (await db()).put('settings', { key: 'push-device', token: 'x'.repeat(43), subscribedAt: '2026-10-01T10:00:00Z' });
     // turnOnPush needs a service worker; without one the sync still goes ahead and tries again next time.

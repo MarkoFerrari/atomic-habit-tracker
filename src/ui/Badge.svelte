@@ -1,6 +1,6 @@
 <script lang="ts">
   // Badge (Figma 110:581): one medal per habit (055), drawn as the star medal (100): the habit's icon, ringed by
-  // stars as ranks are reached. Before Starter the slots are all dots and the bar counts days toward it (H38c).
+  // stars as ranks are reached. Before Apprentice the slots are all dots and the bar counts days toward it (H38c).
   import RankMedal from './RankMedal.svelte';
   import ProgressBar from './ProgressBar.svelte';
   import type { IconName } from './icons';
