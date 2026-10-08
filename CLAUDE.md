@@ -268,7 +268,7 @@ Numbers are plain whole numbers, never zero-padded (061): 82%, 18, 10/30. Geist 
 | 08 Settings and habits | 65:3836 | settings, edit habit, icon picker |
 | 09 Calendars and import | 65:3840 | calendars, colours, .ics import, re-import |
 | 10 Notifications and data | 65:3844 | push status and test, backup, restore |
-| **Page 14 Habits First** | 219:7 | the habits-first redesign (097), built in 0.6.0: 00 new components (Stepper, Award star, Week strip, Star medal), 01 Start, 02 Today, 03 Perfect day award (motion spec), 04 Habits and progress, 05 Edit and settings. Where it differs from page 08, page 14 wins |
+| **Page 14 Habits First** | 219:7 | the habits-first redesign (097), built in 0.6.0: 00 new components (Stepper, Award star, Week strip, Star medal), 01 Start, 02 Today, 03 Perfect day award (motion spec), 04 Habits and progress, 05 Edit and settings; add-ons built in 0.7.0: 06 Milestones (107), 07 Comeback (108), 08 Perfect week (109). Where it differs from page 08, page 14 wins |
 
 - Components to build first: Rank medal 76:479, Badge 110:581, Mastery ring 31:41, Habit row 34:213, Event block 36:285, Heat cell 38:441, Year bar 38:462, Top bar 37:270, Section label 36:333, Tab bar 37:410.
 - Edge-case screens: page 10, section 89:5011 (X1 run ends, X2 time zone, X3 long names and many habits).
