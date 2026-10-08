@@ -78,6 +78,12 @@ export interface Settings {
   adjustments?: Adjustment[];
   /** The Monday of the last weekly recap that was opened (H34 banner). */
   recapSeen?: IsoDay;
+  /** 093: the habit day the perfect-day award last played, so it plays once a day. */
+  awardShownOn?: IsoDay;
+  /** H5: rank records (`${eventId}|${rank}`) already revealed. Missing: none revealed yet, and none owed. */
+  ranksSeen?: string[];
+  /** 097: show events from other calendars (Calendar view). Missing: on when there are events outside the habits. */
+  showEvents?: boolean;
 }
 
 /** This phone's identity with the push function (059). Lives in the settings store, under its own key. */

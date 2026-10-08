@@ -2,11 +2,11 @@
 
 This file is the build spec for ATOMIC. Read it before every build session; it outranks memory and habit.
 
-ATOMIC is a calendar and habit tracker in one, installed onto an iPhone Home Screen from any browser that can add web apps (Safari, Chrome, DuckDuckGo). Every event in the HABITS calendar has to be answered by the end of the day: done or skipped. A push arrives when each habit starts, and the owner answers in the app (069); the in-app Evening Recap closes the day. Over months, the app shows which habits held and which didn't.
+ATOMIC is a habit tracker first (097): habits, a nudge when each starts, an answer, a reward. Your own events can be shown beside them, but the calendar is optional. It is installed onto an iPhone Home Screen from any browser that can add web apps (Safari, Chrome, DuckDuckGo). Every event in the HABITS calendar has to be answered by the end of the day: done or skipped. A push arrives when each habit starts, and the owner answers in the app (069); the in-app Evening Recap closes the day. Over months, the app shows which habits held and which didn't.
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. **M5 built (0.5.0, Playground P2–P5 in 0.5.1)**: Stats (week, month, year), habit detail, Badges with ranks, the weekly recap with Kaizen (080). On the phone for UX testing; M6 (polish, edge cases) next. Component gallery at `#gallery`, build test at `#build-test`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. **M5 built (0.5.0, Playground P2–P5 in 0.5.1)**: Stats (week, month, year), habit detail, Badges with ranks, the weekly recap with Kaizen (080). **0.6.0 (8 Oct 2026): habits first**, from Figma page 14: new start flow with a stepper, Today with the week strip and the perfect-day award, the Habits tab (list, week, month), star medals, Stats with perfect days, Settings with an optional Calendar view. On the phone for UX testing; M6 (polish, edge cases) next. Component gallery at `#gallery`, build test at `#build-test`.
 
 ---
 
@@ -118,20 +118,22 @@ The rules live in `/src/domain` as pure functions, each with tests.
 - **Days held (060, proposed)** = calendar days from the run's first done to today, inclusive. Calendar days, not occurrences, so a three-times-a-week habit reaches Starter on the same calendar as a daily one; a weekly habit would otherwise need 7 years for Master.
 - Ranks are reached by days held in a run, per habit:
 
-  | Rank | Days held | Medal shape | Fill / rim tokens |
-  |---|---|---|---|
-  | Starter | 10 | circle | `rank/starter/*` (stone) |
-  | Builder | 30 | rounded square | `rank/builder/*` (bronze) |
-  | Keeper | 90 | pentagon (the shield of 049) | `rank/keeper/*` (silver) |
-  | Artisan | 182 (6 months) | hexagon | `rank/artisan/*` (gold) |
-  | Master | 365 (1 year) | framed hexagon with a crimson gem | `rank/master/*` (platinum) |
+  | Rank | Days held | Stars in the ring (100) |
+  |---|---|---|
+  | Starter | 10 | 1 |
+  | Builder | 30 | 3 |
+  | Keeper | 90 | 6 |
+  | Artisan | 182 (6 months) | 9 |
+  | Master | 365 (1 year) | 12, the full ring |
 
 - **Ranks are never lost.** A lapsed habit keeps its rank, and the current run shows the real state.
-- **One medal per habit (055).** Shape and colour show the rank; the icon inside is the habit's own icon (a dumbbell for Train). Locked medals use `rank/locked/*` in grey.
-- **At Master** the medal keeps the top shape and colour for good, the run keeps counting, and nothing else unlocks (H22b).
-- The mastery ring has 5 segments, one per rank; the fifth is `state/perfect` crimson.
+- **One medal per habit (055), the star medal (100).** The habit's own icon on a disc, ringed by twelve slots like the European flag; stars fill clockwise from the top. Empty slots are dots, so the way to Master is always visible. The gold is under 3:1 on white, so the rank's name always travels with the medal.
+- **At Master** the ring is full for good, the run keeps counting, and nothing else unlocks (H22b).
+- Rows no longer draw the 5-segment mastery ring (101); they name the next rank instead ("Builder in 6 days", 098), with a green bar in the Habits list.
+- A rank reached opens H5 full screen the next time Today loads (`settings.ranksSeen`), never a push (E15).
 - When several habits reach a rank on the same day, one sheet lists them all. Ranks never trigger a push (E15).
-- Perfect Day (every due habit done) is the daily celebration.
+- **Perfect day** (every due habit done) is the daily celebration (093): the award star turns in on a dark stage (`bg/stage`), holds (`motion/duration/hold`, 094), and lands in today's cell of the week strip (096). Once a day (`settings.awardShownOn`), skippable with a tap; reduced motion fades. The ring stays green and holds a small star (option A, owner 8 Oct 2026); `state/perfect` is kept for now (owner).
+- **Never miss twice, made visible (099):** the morning after a miss, Today says "Walk slipped yesterday. Do it today and your 23-day run holds."
 
 ### Calendars
 - Each calendar has a name, a marker colour and a "Track as habits" toggle (off by default).
@@ -196,12 +198,13 @@ Generated into CSS by `scripts/export-tokens`. If a value here and Figma disagre
 - **action:** primary → crimson/600 · primary-pressed → crimson/800 · on-primary → white
 - **state:** done → green/700 · open → ink/500 · running → ink/900 · skipped → ink/500 · perfect → crimson/600
 - **celebrate:** spark → orange/500
+- **award (093):** facet-light → rank/gold-300 · facet-mid → rank/gold-500 · facet-dark → rank/gold-700 · bg/stage → ink/900 at 88%
 - **heat:** 0 white · 1 green/100 · 2 green/200 · 3 green/400 · 4 green/700. Every cell is outlined and labelled (038).
 - **calendar:** marko → calendar/green · work → calendar/crimson · family → calendar/blue · habits → calendar/olive
 - **rank:** {starter, builder, keeper, artisan, master}/fill and /rim · master/frame → ink/900 · master/gem → crimson/600 · locked/fill → ink/50 · locked/rim → ink/500 · illustration → ink/900 · illustration-locked → ink/500
 
 ### Dimension
-- **space:** 4, 8, 12, 16, 20, 24, 32, 40, 48, 64 · `layout/gutter` → space/16
+- **space:** 4, 8, 12, 16, 20, 24, 32, 40, 48, 64 · `layout/gutter` → space/16 · `layout/block-gap` → space/40, between blocks of information (092)
 - **size:** touch 44 · icon 24 · state-icon 32 · control 48
 - **radius:** control 8 · control-inner 6 · chip 6 · event 6 · sheet 16 · round 999
 - **stroke:** hairline 1 · icon 1.5 · ring 8 · illustration 2 · medal 3
@@ -225,13 +228,14 @@ Generated into CSS by `scripts/export-tokens`. If a value here and Figma disagre
 Numbers are plain whole numbers, never zero-padded (061): 82%, 18, 10/30. Geist Mono keeps columns aligned.
 
 ### Motion (053, proposed; Figma page 11 has the specs per interaction)
-- **duration:** instant 100 · fast 150 · base 250 · slow 400 · celebrate 600 · toast-hold 5000 (ms)
+- **duration:** instant 100 · fast 150 · base 250 · slow 400 · celebrate 600 · hold 1200 (094) · toast-hold 5000 (ms)
 - **easing:**
   - standard `cubic-bezier(0.2, 0, 0, 1)`
   - enter `cubic-bezier(0, 0, 0, 1)`
   - exit `cubic-bezier(0.3, 0, 1, 1)`
   - spring `cubic-bezier(0.34, 1.56, 0.64, 1)`
-- Only three things may overshoot (spring): the check-off icon, the perfect-day ring and the rank medal.
+- Only three things may overshoot (spring): the check-off icon, the perfect-day star (it replaces the ring, 093) and the rank medal.
+- Script reads durations with `src/ui/motion.ts`: the build minifies `250ms` to `.25s` (U10).
 - Celebration stays rare so it keeps its meaning.
 - `prefers-reduced-motion: reduce` turns every movement into a 150 ms fade.
 - Animate `transform` and `opacity` only. Tune on a real iPhone, not in the desktop browser (056).
@@ -260,6 +264,7 @@ Numbers are plain whole numbers, never zero-padded (061): 82%, 18, 10/30. Geist 
 | 08 Settings and habits | 65:3836 | settings, edit habit, icon picker |
 | 09 Calendars and import | 65:3840 | calendars, colours, .ics import, re-import |
 | 10 Notifications and data | 65:3844 | push status and test, backup, restore |
+| **Page 14 Habits First** | 219:7 | the habits-first redesign (097), built in 0.6.0: 00 new components (Stepper, Award star, Week strip, Star medal), 01 Start, 02 Today, 03 Perfect day award (motion spec), 04 Habits and progress, 05 Edit and settings. Where it differs from page 08, page 14 wins |
 
 - Components to build first: Rank medal 76:479, Badge 110:581, Mastery ring 31:41, Habit row 34:213, Event block 36:285, Heat cell 38:441, Year bar 38:462, Top bar 37:270, Section label 36:333, Tab bar 37:410.
 - Edge-case screens: page 10, section 89:5011 (X1 run ends, X2 time zone, X3 long names and many habits).
@@ -519,6 +524,16 @@ The riskiest assumptions get tested before any screen is built.
 | 089 | The Calendar views scroll one step at a time (U08): Day's date strip by day, Week by week and Month by month (a pager of full-width pages, seven kept in memory). Day's strip: seven days visible, the middle one is the chosen day, it snaps like a wheel, and each step plays a very quiet synthesized tick (the time wheel too). The web can't use the system wheel sound or haptics; the tick is silent until the first touch and when the mute switch is on | Proposed |
 | 090 | Text fields have no heavy focus ring (U07): when focused, the same 1 px border turns from `border/control` to `border/strong`. Sheets' and buttons' keyboard focus ring stays | Proposed |
 | 091 | Calendar (U09): a "Today" link beside + when the chosen day is not today; the Day strip and the Week and Month pagers take horizontal drags only (`touch-action: pan-x`) and the page no longer rubber-bands, so touching them no longer pulls the whole screen | Proposed |
+| 092 | Blocks of information sit 40 apart (`layout/block-gap`); 16 or less inside a block (Gestalt proximity) | Proposed |
+| 093 | Perfect-day award: a faceted gold star (award/* tokens, `bg/stage`) turns in, holds and lands in today's week-strip cell; once a day, tap skips, reduced motion fades. The ring stays green with a small star inside (option A); success is never crimson | Decided (owner, 8 Oct 2026) |
+| 094 | `motion/duration/hold` = 1200 ms, the award's still moment | Proposed |
+| 095 | A stepper (segment + label + check per step: grey, green when done) replaces "1 of X" on every flow with steps; Back sits above it, the chevron flush left | Decided (owner, 8 Oct 2026) |
+| 096 | Week strip under the Today ring (perfect, partial, missed, open, ahead) and as the header of the Habits week grid | Proposed |
+| 097 | Habits first: tabs Today · Habits · Stats · Settings. Start is welcome → reminders → your habit → when; no import or account on the way in. The Calendar is an optional view (Settings → Show my events: on by default only when other calendars' events are on the phone). Supersedes 015, 022 and 023 as the product's centre; the calendar code stays | Decided (owner, 8 Oct 2026) |
+| 098 | Every habit row names its next rank ("Builder in 6 days"); progress bars are always green | Decided (owner, 8 Oct 2026) |
+| 099 | The morning after a miss, one line on Today says today keeps the run | Proposed |
+| 100 | Star medal: the habit's icon ringed by 12 slots; Starter 1, Builder 3, Keeper 6, Artisan 9, Master 12. Replaces the shapes and colours of 049/055 | Decided (owner, 8 Oct 2026) |
+| 101 | The 5-segment mastery ring leaves the rows (two systems for one idea); "Per week" goals wait for rules on rates and runs (006, 051) | Proposed |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

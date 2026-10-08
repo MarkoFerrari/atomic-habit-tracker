@@ -54,7 +54,7 @@ describe('syncReminders (069)', () => {
     const put = calls.find((c) => c.method === 'PUT');
     expect(put?.url).toBe(`${PUSH}/reminders`);
     const items = put!.body.items as { id: string; fireAt: string; ciphertext: string }[];
-    expect(JSON.stringify(items)).not.toContain('read');
+    expect(JSON.stringify(items)).not.toContain('Sample read'); // the title; a 4-letter word can turn up in random ciphertext by chance
     const first = await mod.unseal(await mod.reminderKey(), items[0]!.ciphertext);
     expect(first.t).toBe('Sample read 15 min');
   });

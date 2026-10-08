@@ -1,10 +1,12 @@
 <script lang="ts">
   // Progress ring (Figma 38:378): done ÷ due for the day, always shown with the number due (006).
-  // Small (72) on Today; Large (160, label inside) on the day result. Perfect: the ring closes in the
-  // accent (H21). Fills with motion; reduced motion: motion.css turns it into a fade.
+  // Small (72) on Today; Large (160, label inside) on the day result. A perfect day stays green, success not
+  // alarm, and holds the award star (093, option A, owner 8 Oct 2026). `star: false` keeps the star out while
+  // the award flies (it fades in when the flight lands). Fills with motion; reduced motion: a fade (motion.css).
   import type { Snippet } from 'svelte';
-  interface Props { done: number; due: number; size?: 'small' | 'large'; perfect?: boolean; children?: Snippet }
-  let { done, due, size = 'small', perfect = false, children }: Props = $props();
+  import AwardStar from './AwardStar.svelte';
+  interface Props { done: number; due: number; size?: 'small' | 'large'; perfect?: boolean; star?: boolean; children?: Snippet }
+  let { done, due, size = 'small', perfect = false, star = true, children }: Props = $props();
 
   const BOX = 72; // drawn on the small ring's grid; the large ring scales it
   const STROKE = 8; // stroke/ring
@@ -16,14 +18,15 @@
 <div class="wrap {size}">
   <svg viewBox="0 0 {BOX} {BOX}" aria-hidden="true">
     <circle class="track" cx={BOX / 2} cy={BOX / 2} {r} />
-    <circle class="fill" class:perfect cx={BOX / 2} cy={BOX / 2} {r}
+    <circle class="fill" cx={BOX / 2} cy={BOX / 2} {r}
       stroke-dasharray={length} stroke-dashoffset={length * (1 - fraction)} transform="rotate(-90 {BOX / 2} {BOX / 2})" />
   </svg>
+  {#if perfect && star}<span class="star" class:above={!!children}><AwardStar size={size === 'large' ? 'icon' : 'ring'} /></span>{/if}
   {#if children}<div class="label">{@render children()}</div>{/if}
 </div>
 
 <style>
-  .wrap { position: relative; flex: none; display: grid; place-items: center; }
+  .wrap { position: relative; flex: none; display: grid; place-items: center; align-content: center; }
   .small { width: calc(var(--space-64) + var(--space-8)); height: calc(var(--space-64) + var(--space-8)); }
   .large { width: calc(var(--space-64) * 2 + var(--space-32)); height: calc(var(--space-64) * 2 + var(--space-32)); }
   svg { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -33,6 +36,8 @@
     stroke: var(--state-done); /* 008: done is green */
     transition: stroke-dashoffset var(--motion-duration-slow) var(--motion-easing-standard), stroke var(--motion-duration-slow) var(--motion-easing-standard);
   }
-  .fill.perfect { stroke: var(--state-perfect); } /* the perfect day closes in the accent (H21) */
+  .star { position: relative; animation: star-fade var(--motion-duration-fast) var(--motion-easing-enter) both; }
+  .star.above { margin-bottom: var(--space-4); }
+  @keyframes star-fade { from { opacity: 0; transform: scale(0.8); } }
   .label { position: relative; display: grid; justify-items: center; text-align: center; }
 </style>

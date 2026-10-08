@@ -3,11 +3,12 @@
   // Motion (page 11, 01 Check-off): enters in 250 ms (enter); reduced motion fades (motion.css).
   interface Props { message: string; actionLabel?: string; onaction?: () => void; ondismiss: () => void }
   let { message, actionLabel = 'Undo', onaction, ondismiss }: Props = $props();
+  import { durationMs } from './motion';
   let el: HTMLElement;
 
   $effect(() => {
     const token = '--motion-duration-toast-hold';
-    const hold = parseFloat(getComputedStyle(el).getPropertyValue(token) || getComputedStyle(document.documentElement).getPropertyValue(token)) || 0;
+    const hold = durationMs(getComputedStyle(el).getPropertyValue(token) || getComputedStyle(document.documentElement).getPropertyValue(token));
     const timer = setTimeout(ondismiss, hold);
     return () => clearTimeout(timer);
   });

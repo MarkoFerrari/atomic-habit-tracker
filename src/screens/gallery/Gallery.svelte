@@ -66,10 +66,10 @@
   {#each states as s (s)}
     <HabitRow name="Sample habit" meta="08:00 · 30 min" status={s} icon="dumbbell" trailing={trailing[s]} showMarkDone={s === 'open' || s === 'running'} />
   {/each}
-  <HabitRow name="A sample habit with a very long name that must truncate on one line" meta="All day" status="open" icon="book-open" level={2} />
+  <HabitRow name="A sample habit with a very long name that must truncate on one line" meta="All day" status="open" icon="book-open" />
 
   <SectionLabel text="Try it: tap Mark as done, or swipe" />
-  <HabitRow name="Sample habit" meta="08:00 · 30 min" status={demo} icon="coffee" level={3} justDone={justDone}
+  <HabitRow name="Sample habit" meta="08:00 · 30 min" status={demo} icon="coffee" justDone={justDone}
     showMarkDone={demo === 'running'} trailing={demo === 'done' ? '08:02' : demo === 'skipped' ? 'No reason given' : undefined}
     ondone={() => { demo = 'done'; justDone = true; toast = 'Sample habit marked done'; }}
     onskip={() => { sheetOpen = true; }} onopen={() => { sheetOpen = true; }} />

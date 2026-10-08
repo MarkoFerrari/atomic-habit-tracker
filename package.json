@@ -1,9 +1,9 @@
 {
   "name": "atomic-habit-tracker",
   "private": true,
-  "version": "0.5.4",
+  "version": "0.6.0",
   "type": "module",
-  "description": "ATOMIC – a private, offline-first calendar and habit tracker PWA",
+  "description": "ATOMIC \u2013 a private, offline-first calendar and habit tracker PWA",
   "scripts": {
     "tokens": "node scripts/export-tokens.mjs",
     "icons": "node scripts/make-icons.mjs",

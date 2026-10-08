@@ -1,6 +1,6 @@
 <script lang="ts">
-  // 07 Badges and ranks (Figma 65:3832): H38 Badges, H38b How ranks work, H38c first days. One medal per habit (055):
-  // shape and colour = rank reached, icon = the habit's own. A rank is held while the habit is never missed twice
+  // 07 Badges and ranks (Figma 65:3832): H38 Badges, H38b How ranks work, H38c first days. One medal per habit (055),
+  // drawn as the star medal (100): the habit's icon ringed by twelve slots, filled with stars rank by rank. A rank is held while the habit is never missed twice
   // in a row (051), and it is never lost (047). The rank-up moment lives in the Recap (H22), never a push (E15).
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
@@ -10,7 +10,7 @@
   import Button from '../../ui/Button.svelte';
   import RankMedal from '../../ui/RankMedal.svelte';
   import type { IconName } from '../../ui/icons';
-  import { RANKS } from '../../domain/ranks';
+  import { RANKS, STARS } from '../../domain/ranks';
   import { addDays } from '../../domain/day';
   import { fullDate, plural, shortName } from '../../domain/format';
   import { nextUp, sortMedals, type Medal } from '../../domain/stats';
@@ -67,13 +67,13 @@
 
 <Sheet open={how} title="How ranks work" onclose={() => (how = false)}>
   <div class="sheet">
-    <p class="t-body-default secondary">Your {sorted.length ? shortName(sorted[0]!.title) : 'habit'} medal at each rank. The shape and colour change; the icon stays yours.</p>
+    <p class="t-body-default secondary">Your {sorted.length ? shortName(sorted[0]!.title) : 'habit'} medal at each rank. The stars fill the ring; the icon stays yours.</p>
     <ul class="ladder">
       {#each RANKS as r (r.id)}
         <li>
           <RankMedal rank={r.id} icon={sample as IconName} label="{r.label} medal" />
           <span class="t-body-strong grow">{r.label}</span>
-          <span class="t-number-small tertiary">{WHEN[r.id]}</span>
+          <span class="t-number-small tertiary">{STARS[r.id]} {STARS[r.id] === 1 ? "star" : "stars"} · {WHEN[r.id]}</span>
         </li>
       {/each}
     </ul>
@@ -90,6 +90,6 @@
   .sheet { display: grid; gap: var(--space-16); padding-bottom: var(--space-40); }
   .ladder li { display: flex; align-items: center; gap: var(--space-12); border-bottom: var(--stroke-hairline) solid var(--border-divider); }
   .ladder li:last-child { border-bottom: none; }
-  .ladder :global(.medal) { width: var(--size-control); height: var(--size-control); }
+  .ladder :global(.medal) { width: calc(var(--size-control) + var(--space-8)); height: calc(var(--size-control) + var(--space-8)); }
   .grow { flex: 1; }
 </style>

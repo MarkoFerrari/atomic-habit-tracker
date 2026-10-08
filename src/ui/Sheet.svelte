@@ -6,6 +6,7 @@
   // state, not keyframes, so iOS never paints the sheet mid-screen first.
   // The handle follows the finger: down moves freely, up stretches with resistance and settles back (the sheet is as tall
   // as its content, so there is nowhere further up to go). Past 30% of the height or faster than 500 px/s closes.
+  import { motionMs } from './motion';
   import type { Snippet } from 'svelte';
   import IconButton from './IconButton.svelte';
 
@@ -36,7 +37,7 @@
     wasOpen = open;
   });
 
-  const ms = () => parseFloat(getComputedStyle(dialog).getPropertyValue('--motion-duration-slow')) || 0;
+  const ms = () => motionMs('slow', dialog); // U10: the built CSS writes .4s, not 400ms
 
   $effect(() => {
     if (open && !dialog.open) show();

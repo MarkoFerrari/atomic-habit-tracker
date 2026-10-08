@@ -36,6 +36,16 @@ export function nextRank(stored: RankId | null, daysHeld: number): { rank: RankI
   return { rank: target.id, daysLeft: Math.max(0, target.days - daysHeld) };
 }
 
+/**
+ * 100: the star medal. Twelve slots around the habit's icon, like the European flag; stars fill clockwise from
+ * the top as ranks are reached, and Master closes the ring. Replaces the shapes of 049/055.
+ */
+export const STAR_SLOTS = 12;
+export const STARS: Record<RankId, number> = { starter: 1, builder: 3, keeper: 6, artisan: 9, master: 12 };
+export function starsFor(rank: RankId | null): number {
+  return rank ? STARS[rank] : 0;
+}
+
 /** Mastery ring (Figma 31:41): filled segments = rank order + 1; the fifth is crimson (state/perfect). */
 export function ringSegments(stored: RankId | null): number {
   return order(stored) + 1;

@@ -74,7 +74,7 @@
   <SectionLabel text="Active · {active.length}" />
   <ul>
     {#each active as e (e.id)}
-      <li><HabitRow name={e.title} meta={meta(e)} status="open" icon={(e.icon ?? 'sprout') as HabitIcon} level={ringSegments(rankOf(e))}
+      <li><HabitRow name={e.title} meta={meta(e)} status="open" icon={(e.icon ?? 'sprout') as HabitIcon}
         swipeable={false} actionLabel="Edit" onaction={() => edit(e)} onopen={() => edit(e)} /></li>
     {/each}
   </ul>
@@ -82,7 +82,7 @@
   {#if archived.length}
     <ul>
       {#each archived as e (e.id)}
-        <li><HabitRow name={e.title} meta={meta(e)} status="open" icon={(e.icon ?? 'sprout') as HabitIcon} level={ringSegments(rankOf(e))}
+        <li><HabitRow name={e.title} meta={meta(e)} status="open" icon={(e.icon ?? 'sprout') as HabitIcon}
           swipeable={false} actionLabel="Edit" onaction={() => edit(e)} onopen={() => edit(e)} /></li>
       {/each}
     </ul>

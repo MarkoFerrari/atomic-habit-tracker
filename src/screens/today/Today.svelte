@@ -1,6 +1,8 @@
 <script lang="ts">
-  // 03 Today (Figma 65:3816), flow F4: the day's habits, check-off with Undo, skip with a reason,
-  // and the habit sheet. H11 morning, H12 midday + Undo, H13 evening, H14 empty, H16 sheet, H17 skip.
+  // 03 Today (Figma 65:3816, redesigned on page 14 section 02, habits first): the ring, the week strip (096), then
+  // Next and Done, 40 apart (092). Check-off with Undo, skip with a reason, the habit sheet. Each row names its next
+  // rank (098); the morning after a miss, one line says today keeps the run (099). The last habit of the day plays
+  // the perfect-day award (093), once a day; a rank reached opens H5 the next time Today loads (E15, never a push).
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
   import TabBar from '../../ui/TabBar.svelte';
@@ -9,6 +11,15 @@
   import HabitRow from '../../ui/HabitRow.svelte';
   import ListRow from '../../ui/ListRow.svelte';
   import ProgressRing from '../../ui/ProgressRing.svelte';
+  import WeekStrip from '../../ui/WeekStrip.svelte';
+  import PerfectDayAward from '../../ui/PerfectDayAward.svelte';
+  import RankReached from './RankReached.svelte';
+  import Icon from '../../ui/Icon.svelte';
+  import { loadStats, medals as loadMedals } from '../../data/stats';
+  import { updateSettings } from '../../data/settings';
+  import { nextRankLine, runAtRisk, runAtRiskLine, weekStrip, type StripDay } from '../../domain/award';
+  import { RANKS } from '../../domain/ranks';
+  import type { Medal } from '../../domain/stats';
   import EmptyState from '../../ui/EmptyState.svelte';
   import Sheet from '../../ui/Sheet.svelte';
   import StateIcon from '../../ui/StateIcon.svelte';
@@ -34,8 +45,8 @@
   import { SKIP_REASONS, type AnswerStatus, type SkipReason } from '../../domain/states';
   import { greeting, runLine, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
 
-  interface Props { onrecap?: () => void; onnewhabit?: () => void; onimport?: () => void; ontab?: (tab: Tab) => void }
-  let { onrecap, onnewhabit, onimport, ontab }: Props = $props();
+  interface Props { onrecap?: () => void; onnewhabit?: () => void; onimport?: () => void; ontab?: (tab: Tab) => void; onbadges?: () => void }
+  let { onrecap, onnewhabit, onimport, ontab, onbadges }: Props = $props();
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let now = $state(new Date());
@@ -45,6 +56,12 @@
   let trackingStart = $state<IsoDay | null>(null);
   let trial = $state<Adjustment | null>(null); // 080: the Kaizen adjustment being tried, if any
   let loaded = $state(false);
+  let strip = $state.raw<StripDay[]>([]);
+  let medalOf = $state.raw<Map<string, Medal>>(new Map());
+  let risk = $state('');
+  let awardShownOn = $state<IsoDay | null>(null);
+  let reveal = $state.raw<Medal[]>([]); // H5: ranks reached since the last visit
+  let seenKeys: string[] = [];
   let backupNote = $state('');
   async function backUpNow() {
     try { await shareBackup(); } catch { /* the banner stays */ }
@@ -78,6 +95,15 @@
       ? `${settings.lastBackupAt ? `Last backup ${backupAge(settings.lastBackupAt, new Date(), '').toLowerCase()}` : 'No backup yet'}. If ATOMIC is removed, everything since is gone.`
       : '';
     habitCalendarName = calendars.find((c) => c.trackAsHabits)?.name ?? '';
+    awardShownOn = settings.awardShownOn ?? null;
+    // 096, 098, 099: the week strip, every habit's medal, and a run at risk. Medals write ranks reached (084).
+    const stats = await loadStats(now);
+    const list = await loadMedals(stats);
+    medalOf = new Map(list.map((m) => [m.eventId, m]));
+    strip = stats.ctx.trackingStart ? weekStrip(stats.ctx) : [];
+    const atRisk = runAtRisk(stats.ctx);
+    risk = atRisk ? runAtRiskLine(atRisk, stats.ctx.today) : '';
+    await findReveals(list, settings.ranksSeen);
     loaded = true;
     // 069: after every load (open, return to the app, answer, undo) the push function gets a fresh queue,
     // so a habit answered early sends no reminder. Offline or failing: the last queue stays.
@@ -92,6 +118,37 @@
     return () => { clearInterval(tick); document.removeEventListener('visibilitychange', onVisible); };
   });
 
+  // --- H5: ranks reached since the last visit (E15: never a push) ----------------------------------------
+  async function findReveals(list: Medal[], seen: string[] | undefined) {
+    const keys = (await (await db()).getAllKeys('ranks')).map(String);
+    seenKeys = keys;
+    if (!seen) { await updateSettings({ ranksSeen: keys }); return; } // the first run with H5 owes nothing
+    const fresh = new Set(keys.filter((k) => !seen.includes(k)).map((k) => k.split('|')[0]));
+    reveal = list.filter((m) => m.rank && fresh.has(m.eventId));
+  }
+  async function closeReveal() { reveal = []; await updateSettings({ ranksSeen: seenKeys }); }
+
+  // --- the perfect-day award (093): once a day, when the last due habit is done here ----------------------
+  let ringEl = $state<HTMLElement>();
+  let award = $state<{ from: DOMRect | null; line: string } | null>(null);
+  let flying = $state(false);
+  const perfect = $derived(view.due > 0 && view.done === view.due);
+  const perfectThisWeek = $derived(strip.filter((d) => d.state === 'perfect').length);
+  function startAward() {
+    flying = true;
+    award = { from: ringEl?.getBoundingClientRect() ?? null, line: `${view.done} of ${view.due} done · ${perfectThisWeek} this week` };
+    awardShownOn = habitDay;
+    updateSettings({ awardShownOn: habitDay }).catch(() => {});
+  }
+  function landed() {
+    flying = false;
+    requestAnimationFrame(() => {
+      const cell = document.querySelector('[data-strip-cell="today"]');
+      cell?.classList.add('bump');
+      cell?.addEventListener('animationend', () => cell.classList.remove('bump'), { once: true });
+    });
+  }
+
   // --- answering, with Undo (H12) ----------------------------------------------------------------
   let toast = $state<{ message: string; undo: () => Promise<void> } | null>(null);
   let problem = $state('');
@@ -99,6 +156,7 @@
   async function set(row: TodayRow, status: AnswerStatus, reason?: SkipReason, small = false) {
     problem = '';
     try {
+      const wasPerfect = perfect;
       const before = await answer(row.eventId, row.occurrence, status, habitDay, reason, small);
       const name = shortName(row.title);
       toast = {
@@ -106,6 +164,7 @@
         undo: async () => { await undoAnswer(row.eventId, row.occurrence, before); await load(); },
       };
       await load();
+      if (status === 'done' && !wasPerfect && perfect && awardShownOn !== habitDay && row.occurrence === habitDay) startAward();
     } catch (e) {
       problem = e instanceof ReadOnlyAnswerError ? e.message : 'Couldn’t save the answer. Try again.';
     }
@@ -165,7 +224,15 @@
 
   // --- labels ----------------------------------------------------------------------------------
   const clock = (wall: string) => wall.slice(11, 16);
-  const meta = (r: TodayRow) => `${r.allDay ? 'All day' : `${clock(r.start)} · ${r.minutes} min`}${r.after ? ` · after ${r.after}` : ''}`; // P3: the cue
+  // 098: the time, the cue (P3) and the next rank; E21 truncates a long line.
+  const meta = (r: TodayRow) => {
+    const rank = medalOf.get(r.eventId);
+    const line = rank ? nextRankLine(rank) : '';
+    return `${r.allDay ? 'All day' : clock(r.start)}${r.after ? ` · after ${r.after}` : ''}${line ? ` · ${line}` : ` · ${r.minutes} min`}`;
+  };
+  const left = $derived(view.due - view.done);
+  const subLine = $derived(perfect ? `Perfect day · ${perfectThisWeek} this week`
+    : view.done === 0 ? `${view.due} due today` : left === 1 ? 'One more for a perfect day' : `${left} more for a perfect day`);
   function trailing(r: TodayRow): string | undefined {
     if (r.state === 'done' && r.answer) {
       if (r.answer.small) return '2-min';
@@ -179,7 +246,7 @@
 
 <div class="page">
   <main class="screen today">
-    <TopBar eyebrow={dateLabel} title={greeting(hour)} />
+    <TopBar eyebrow={dateLabel} title={greeting(hour)} action={onnewhabit ? { icon: 'plus', label: 'New habit' } : undefined} onaction={onnewhabit} />
     {#if backupNote}<Banner message={backupNote} action="Back up now" onaction={backUpNow} />{/if}
 
     {#if !loaded}
@@ -187,34 +254,40 @@
     {:else if events.length === 0}
       <div class="spacer"></div>
       <!-- 079: the first action is a habit, not a calendar; New habit makes the HABITS calendar if there is none -->
-      <EmptyState title="No habits yet" body="A habit is an event you answer every day."
-        action={onnewhabit ? 'New habit' : undefined} onaction={onnewhabit}
-        secondary={onimport ? 'Import from Proton (.ics)' : undefined} onsecondary={onimport} />
+      <EmptyState title="Start with one habit" body="Pick what you want to do and when. Each day you keep them all lights a star."
+        action={onnewhabit ? 'New habit' : undefined} onaction={onnewhabit} />
       <div class="spacer"></div>
     {:else}
       {#if onrecap && showCloseTheDay(hour) && view.open.length}
         <ListRow label="Close the day" value="{view.open.length} left" onclick={onrecap} />
       {/if}
 
-      <div class="progress">
-        <ProgressRing done={view.done} due={view.due} />
-        <div class="numbers">
-          <p class="t-number-large">{view.done} of {view.due}</p>
-          <p class="t-label-small tertiary">{view.due} due today · {percent(view.due ? view.done / view.due : null)}</p>
-          {#if voting}<p class="t-label-small tertiary">Voting for: {voting}</p>{/if}
+      <section class="progress">
+        <div class="ring-row">
+          <span class="ring" bind:this={ringEl}><ProgressRing done={view.done} due={view.due} perfect={perfect} star={!flying} /></span>
+          <div class="numbers">
+            <p class="t-number-large">{view.done} of {view.due}</p>
+            <p class="t-label-small" class:done-line={perfect && !flying} class:secondary={!perfect || flying}>{flying ? `All ${view.due} done` : subLine}</p>
+            {#if voting}<p class="t-label-small tertiary">Voting for: {voting}</p>{/if}
+          </div>
         </div>
-      </div>
-      {#if trial && trialHabit}
-        <!-- 080: the adjustment being tried stays in sight until its review -->
-        <p class="t-body-small secondary trial">Trying until {fullDate(trial.reviewOn)} · {shortName(trialHabit.title)}: {trial.text}</p>
+        {#if strip.length}<WeekStrip days={strip} hideToday={flying} />{/if}
+        {#if trial && trialHabit}
+          <!-- 080: the adjustment being tried stays in sight until its review -->
+          <p class="t-body-small secondary">Trying until {fullDate(trial.reviewOn)} · {shortName(trialHabit.title)}: {trial.text}</p>
+        {/if}
+      </section>
+      {#if risk}
+        <p class="note t-body-small"><Icon name="refresh" />{risk}</p>
       {/if}
 
       {#if view.due === 0}
         <EmptyState title="Nothing due today" body="No habit repeats on this day." />
       {/if}
 
+      <section class="lists">
       {#if view.open.length}
-        <SectionLabel text="Today’s goals" />
+        <SectionLabel text={view.open.length === 1 ? 'Next' : 'Today'} />
         <ul>
           {#each view.open as r (`${r.eventId}|${r.occurrence}`)}
             <li>
@@ -236,6 +309,7 @@
           {/each}
         </ul>
       {/if}
+      </section>
       {#if problem}<p class="t-body-small problem" role="alert">{problem}</p>{/if}
     {/if}
   </main>
@@ -247,6 +321,13 @@
   {/if}
   <TabBar active="today" ready={READY_TABS} onselect={ontab} />
 </div>
+
+{#if award}
+  <PerfectDayAward from={award.from} line={award.line} target={() => document.querySelector('[data-strip-cell="today"]')?.getBoundingClientRect() ?? null}
+    onlanded={landed} onend={() => (award = null)} />
+{:else if reveal.length}
+  <RankReached items={reveal} onclose={closeReveal} onbadges={() => { closeReveal(); onbadges?.(); }} />
+{/if}
 
 <Sheet open={sheetRow !== null} title={sheetRow?.title ?? ''} onclose={() => (sheetRow = null)}>
   {#if sheetRow}
@@ -291,15 +372,19 @@
 <style>
   .page { min-height: 100dvh; display: flex; flex-direction: column; }
   .today {
-    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-8);
-    padding-bottom: var(--space-16);
+    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--layout-block-gap); /* 092 */
+    padding-bottom: var(--space-24);
   }
   .spacer { flex: 1; }
-  .progress { display: flex; align-items: center; gap: var(--space-16); padding: var(--space-8) 0; }
-  .numbers { display: grid; }
+  .progress { display: grid; gap: var(--space-24); }
+  .ring-row { display: flex; align-items: center; gap: var(--space-16); }
+  .ring { display: flex; }
+  .numbers { display: grid; gap: var(--space-4); }
+  .done-line { color: var(--text-done); }
+  .note { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); background: var(--bg-subtle); border-radius: var(--radius-control); color: var(--text-primary); }
+  .lists { display: grid; }
   .tertiary { color: var(--text-tertiary); }
   .secondary { color: var(--text-secondary); }
-  .trial { padding-bottom: var(--space-8); }
   .block { display: block; }
   .problem { color: var(--text-accent); }
   .toast-slot {

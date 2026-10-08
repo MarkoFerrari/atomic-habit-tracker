@@ -1,6 +1,7 @@
 <script lang="ts">
   // Which screen opens. The installed app is the product (058): a browser tab never saves anything (031).
-  // Root tabs (Today, Calendar) show the tab bar; pushed screens (event detail, the editor) hide it (044).
+  // Root tabs (Today, Habits, Stats, Settings; 097 habits first) show the tab bar; pushed screens hide it (044).
+  // The Calendar is a pushed view now, opened from Settings when "Show my events" is on.
   // #gallery and #build-test stay reachable for review and device tests.
   import { onMount } from 'svelte';
   import BuildTest from './screens/build-test/BuildTest.svelte';
@@ -12,6 +13,8 @@
   import EventDetail from './screens/calendar/EventDetail.svelte';
   import EventEditor from './screens/calendar/EventEditor.svelte';
   import Stats from './screens/stats/Stats.svelte';
+  import HabitsTab, { type HabitsMode } from './screens/habits/HabitsTab.svelte';
+  import NewHabit from './screens/habits/NewHabit.svelte';
   import HabitDetail from './screens/stats/HabitDetail.svelte';
   import Badges from './screens/stats/Badges.svelte';
   import WeeklyRecap from './screens/stats/WeeklyRecap.svelte';
@@ -34,11 +37,13 @@
   import type { Calendar as CalendarRecord, CalendarEvent } from './data/schema';
   import { expand, type AgendaItem } from './domain/agenda';
   import { addDays, habitDayOf, type IsoDay } from './domain/day';
-  import { ensureHabitCalendar } from './data/calendars';
+  import { calendars as calendarsOf } from './data/events';
 
   type View = 'loading' | 'gallery' | 'build-test' | 'onboarding' | 'import' | 'app' | 'recap';
   type Pushed =
-    | { kind: 'event'; item: AgendaItem; from: Tab }
+    | { kind: 'event'; item: AgendaItem; from: 'today' | 'calendar' }
+    | { kind: 'calendar' }
+    | { kind: 'new-habit' }
     | { kind: 'new'; day: IsoDay; habit?: boolean }
     | { kind: 'edit'; event: CalendarEvent; item: AgendaItem }
     | { kind: 'duplicate'; event: CalendarEvent; item: AgendaItem }
@@ -57,14 +62,20 @@
   let calDay = $state<IsoDay | undefined>();
   let calMode = $state<CalMode>('day');
   let statsMode = $state<'week' | 'month' | 'year'>('week');
+  let habitsMode = $state<HabitsMode>('list');
   let statsMonth = $state<IsoDay | undefined>();
   const top = $derived(stack.at(-1) ?? null);
   let notice = $state(''); // one line for Calendars after an import
   const push = (p: Pushed) => { stack = [...stack, p]; };
   function restored() { stack = []; view = 'app'; tab = 'today'; }
-  async function newHabit() {
-    await ensureHabitCalendar();
-    stack = [{ kind: 'new', day: habitDayOf(new Date(), zone), habit: true }];
+  function newHabit() { stack = [...stack, { kind: 'new-habit' }]; } // E1: makes the HABITS calendar if missing (079)
+  /** H4 Edit: the full editor (H30) on the habit's next occurrence, so repeats and past answers are handled (E16). */
+  async function editHabit(eventId: string) {
+    const event = await getEvent(eventId);
+    if (!event) return;
+    const today = habitDayOf(new Date(), zone);
+    const item = expand(event, today, addDays(today, 60), zone).sort((a, b) => a.occurrence.localeCompare(b.occurrence))[0];
+    if (item) push({ kind: 'edit', event, item });
   }
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -90,9 +101,10 @@
     if (!event || !occurrence) return;
     const item = expand(event, addDays(occurrence, -1), addDays(occurrence, 2), zone).find((i) => i.occurrence === occurrence);
     if (!item) return;
-    tab = 'calendar';
-    calDay = item.start.slice(0, 10) as IsoDay;
-    stack = [{ kind: 'event', item, from: 'calendar' }];
+    // A habit's push opens Today, where it is answered (069); another event's opens its detail (H29).
+    const cal = (await calendarsOf()).find((c) => c.id === event.calendarId);
+    tab = 'today';
+    stack = cal?.trackAsHabits ? [] : [{ kind: 'event', item, from: 'today' }];
   }
 
   function closeRecap() {
@@ -103,10 +115,9 @@
 
   const pop = () => { stack = stack.slice(0, -1); };
   function saved(day: IsoDay) {
-    // After a save the calendar shows the day the event is on; detail screens above the editor are stale.
+    // After a save the calendar (if it was open) shows the day the event is on; screens above the editor are stale.
     calDay = day;
-    stack = [];
-    tab = 'calendar';
+    stack = stack.some((p) => p.kind === 'calendar') ? [{ kind: 'calendar' }] : [];
   }
 
   onMount(() => {
@@ -128,7 +139,7 @@
   <RestorePreview preview={top.preview} fileName={top.fileName} oncancel={() => (stack = [])} ondone={restored} />
 {:else if view === 'onboarding'}<Onboarding ondone={() => { view = 'app'; tab = 'today'; }}
   onrestore={(preview, fileName) => (stack = [{ kind: 'restore', preview, fileName, from: 'onboarding' }])} />
-{:else if view === 'import'}<Onboarding from="bring" ondone={() => { view = 'app'; tab = 'today'; }} />
+{:else if view === 'import'}<Onboarding from="bring" onback={() => (view = 'app')} ondone={() => { view = 'app'; tab = 'today'; }} />
 {:else if view === 'recap'}<Recap onclose={closeRecap} />
 {:else if view === 'app'}
   {#if top?.kind === 'event'}
@@ -139,11 +150,18 @@
         onchanged={() => { stack = []; }} />
     {/key}
   {:else if top?.kind === 'habit'}
-    {#key top}<HabitDetail eventId={top.eventId} backLabel={top.from} onback={pop} />{/key}
+    {#key top}<HabitDetail eventId={top.eventId} backLabel={top.from} onback={pop} onedit={editHabit} />{/key}
   {:else if top?.kind === 'badges'}
     <Badges onback={pop} onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Badges' })} />
   {:else if top?.kind === 'week-recap'}
     <WeeklyRecap weekStart={top.weekStart} onback={pop} onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Recap' })} />
+  {:else if top?.kind === 'new-habit'}
+    <NewHabit oncancel={pop} onsaved={() => { stack = []; }} />
+  {:else if top?.kind === 'calendar'}
+    <Calendar initialDay={calDay} initialMode={calMode} onback={pop}
+      onview={(d, m) => { calDay = d; calMode = m; }}
+      onopen={(item) => push({ kind: 'event', item, from: 'calendar' })}
+      onnew={(day) => push({ kind: 'new', day })} />
   {:else if top?.kind === 'new'}
     <EventEditor mode={{ kind: 'new', day: top.day, habit: top.habit }} oncancel={pop} onsaved={saved} />
   {:else if top?.kind === 'duplicate'}
@@ -166,19 +184,18 @@
   {:else if top?.kind === 'restore'}
     <RestorePreview preview={top.preview} fileName={top.fileName} oncancel={pop} ondone={restored} />
   {:else if tab === 'settings'}
-    <Settings ontab={(t) => (tab = t)} onopen={(screen) => push({ kind: 'settings', screen })} />
+    <Settings ontab={(t) => (tab = t)} onopen={(screen) => push(screen === 'calendar' ? { kind: 'calendar' } : { kind: 'settings', screen })} />
   {:else if tab === 'stats'}
     <Stats ontab={(t) => (tab = t)} initialMode={statsMode} initialMonth={statsMonth}
       onview={(m, month) => { statsMode = m; statsMonth = month; }}
       onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Stats' })}
       onbadges={() => push({ kind: 'badges' })}
       onrecap={(weekStart) => push({ kind: 'week-recap', weekStart })} />
-  {:else if tab === 'calendar'}
-    <Calendar initialDay={calDay} initialMode={calMode} ontab={(t) => (tab = t)}
-      onview={(d, m) => { calDay = d; calMode = m; }}
-      onopen={(item) => (stack = [{ kind: 'event', item, from: 'calendar' }])}
-      onnew={(day) => (stack = [{ kind: 'new', day }])} />
+  {:else if tab === 'habits'}
+    <HabitsTab ontab={(t) => (tab = t)} initialMode={habitsMode} onview={(m) => (habitsMode = m)}
+      onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Habits' })} onnew={newHabit} />
   {:else}
-    <Today ontab={(t) => (tab = t)} onnewhabit={newHabit} onimport={() => (view = 'import')} onrecap={() => (view = 'recap')} />
+    <Today ontab={(t) => (tab = t)} onnewhabit={newHabit} onimport={() => (view = 'import')} onrecap={() => (view = 'recap')}
+      onbadges={() => push({ kind: 'badges' })} />
   {/if}
 {/if}

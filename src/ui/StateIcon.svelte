@@ -1,18 +1,17 @@
 <script lang="ts">
-  // State icon (Figma 31:117): the habit's own icon inside its state, wrapped by its mastery ring.
-  import MasteryRing from './MasteryRing.svelte';
+  // State icon (Figma 31:117): the habit's own icon inside its state. The mastery ring around it is gone (101): the
+  // star medal counts ranks now, and two systems for one idea would confuse; the row says the next rank in words.
   import Icon from './Icon.svelte';
   import { STATE_ICON } from './geometry';
   import type { IconName } from './icons';
   import type { HabitState } from '../domain/states';
 
-  let { status, icon, level = 0, animate = false }: { status: HabitState; icon: IconName; level?: number; animate?: boolean } = $props();
+  let { status, icon, animate = false }: { status: HabitState; icon: IconName; animate?: boolean } = $props();
   const { base, slash } = STATE_ICON;
   const crossed = $derived(status === 'skipped' || status === 'missed');
 </script>
 
 <span class="state-icon {status}" class:animate>
-  <MasteryRing {level} />
   <svg class="base" viewBox="0 0 44 44" aria-hidden="true">
     <circle cx={base.cx} cy={base.cy} r={base.r} stroke-dasharray={status === 'missed' ? STATE_ICON.missedDash : undefined} />
     {#if crossed}<line x1={slash.x1} y1={slash.y1} x2={slash.x2} y2={slash.y2} />{/if}

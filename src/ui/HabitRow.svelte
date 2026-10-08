@@ -10,7 +10,6 @@
     meta: string; // "08:00 · 30 min"
     status: HabitState;
     icon: IconName;
-    level?: number; // mastery ring 0–5
     trailing?: string; // answer time, reason or "Missed"; overrides the default
     showMarkDone?: boolean;
     /** A text action in place of "Mark as done", e.g. "Change icon" on the Habits found list (H09). */
@@ -23,7 +22,7 @@
     ondone?: () => void;
     onskip?: () => void;
   }
-  let { name, meta, status, icon, level = 0, trailing, showMarkDone = false, actionLabel, onaction, swipeable = true, justDone = false, onopen, ondone, onskip }: Props = $props();
+  let { name, meta, status, icon, trailing, showMarkDone = false, actionLabel, onaction, swipeable = true, justDone = false, onopen, ondone, onskip }: Props = $props();
 
   const answered = $derived(status === 'done' || status === 'skipped' || status === 'missed');
   const stateLabel = $derived({ open: 'upcoming', running: 'running now', done: 'done', skipped: 'skipped', missed: 'missed' }[status]);
@@ -63,7 +62,7 @@
 <div class="row" role="group" aria-label={name} class:dragging style:transform={dx ? `translateX(${dx}px)` : undefined}
   bind:this={el} onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up}>
   <button class="main" onclick={click} aria-label="{name}, {meta}, {stateLabel}">
-    <StateIcon {status} {icon} {level} animate={justDone} />
+    <StateIcon {status} {icon} animate={justDone} />
     <span class="text">
       <span class="name t-body-strong" class:muted={status === 'skipped' || status === 'missed'}>{name}</span>
       <span class="meta t-label-small">{meta}</span>

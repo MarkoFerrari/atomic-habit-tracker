@@ -6,8 +6,7 @@
   // H33: a day with nothing on it. Swipe sideways to move by a day, a week or a month.
   import { onMount, tick } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
-  import TabBar from '../../ui/TabBar.svelte';
-  import type { Tab } from '../../ui/tabs';
+  import BackLink from '../../ui/BackLink.svelte';
   import SegmentedControl from '../../ui/SegmentedControl.svelte';
   import DatePill from '../../ui/DatePill.svelte';
   import Chip from '../../ui/Chip.svelte';
@@ -17,7 +16,6 @@
   import { swipe } from '../../ui/swipe';
   import DayStrip from '../../ui/DayStrip.svelte';
   import Pager from '../../ui/Pager.svelte';
-  import { READY_TABS } from '../../ui/tabs';
   import { db } from '../../data/db';
   import { allEvents, calendars as loadCalendars } from '../../data/events';
   import { getSettings } from '../../data/settings';
@@ -35,12 +33,12 @@
   interface Props {
     initialDay?: IsoDay;
     initialMode?: Mode;
-    ontab?: (tab: Tab) => void;
+    onback?: () => void; // 097: the Calendar is a view opened from Settings, not a tab
     onopen?: (item: AgendaItem) => void;
     onnew?: (day: IsoDay) => void;
     onview?: (day: IsoDay, mode: Mode) => void; // the app keeps the place while a detail screen is open
   }
-  let { initialDay, initialMode = 'day', ontab, onopen, onnew, onview }: Props = $props();
+  let { initialDay, initialMode = 'day', onback, onopen, onnew, onview }: Props = $props();
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -163,6 +161,7 @@
 
 <div class="page">
   <main class="screen calendar">
+    {#if onback}<BackLink label="Settings" onclick={onback} />{/if}
     <TopBar {eyebrow} {title} quick={selected !== today ? { label: 'Today', onclick: () => (selected = today) } : undefined} action={{ icon: 'plus', label: 'New event' }} onaction={() => onnew?.(selected)} />
     <SegmentedControl label="Calendar view" selected={mode}
       options={[{ id: 'day', label: 'Day' }, { id: 'week', label: 'Week' }, { id: 'month', label: 'Month' }]}
@@ -293,7 +292,6 @@
       {/if}
     {/if}
   </main>
-  <TabBar active="calendar" ready={READY_TABS} onselect={ontab} />
 </div>
 
 <style>

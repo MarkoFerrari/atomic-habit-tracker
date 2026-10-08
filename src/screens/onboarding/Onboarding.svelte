@@ -1,12 +1,21 @@
 <script lang="ts">
-  // 02 Onboarding (Figma 65:3812), flow F1: Welcome (H01) → notifications (H04/H05) → bring your
-  // calendars (H06) → files read (H07, or H07b) → review (H08) → habits found (H09) → your data (H10).
+  // 01 Start (Figma page 14, habits first, 097): Welcome (S1) → Reminders (S2, H05 when off) → Your habit (S3) →
+  // When (S4) → Today. No account and no import on the way in; the stepper (095) shows where you are, every block
+  // sits 40 apart (092). The .ics import keeps its own flow (`from="bring"`), opened from Settings → Calendars:
+  // bring your calendars (H06) → files read (H07, or H07b) → review (H08) → habits found (H09) → your data (H10).
   // The import is a plan until H09's Continue: nothing is saved before the person has reviewed it.
   import { untrack } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
   import Button from '../../ui/Button.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import StepRow from '../../ui/StepRow.svelte';
+  import Stepper from '../../ui/Stepper.svelte';
+  import BackLink from '../../ui/BackLink.svelte';
+  import AwardStar from '../../ui/AwardStar.svelte';
+  import HabitWhat from '../habits/HabitWhat.svelte';
+  import HabitWhen from '../habits/HabitWhen.svelte';
+  import { blankHabit, canSave, createHabit, type HabitDraft } from '../../data/newHabit';
+  import { syncReminders } from '../../push/reminders';
   import Icon from '../../ui/Icon.svelte';
   import Banner from '../../ui/Banner.svelte';
   import TextField from '../../ui/TextField.svelte';
@@ -20,7 +29,7 @@
   import { IcsError, parseIcs } from '../../data/ics';
   import { commitImport, habitsFound, planImport, storedUids, toggleHabits, type ImportPlan, type PlannedCalendar } from '../../data/import';
   import { backupFileName, shareBackup } from '../../data/backup';
-  import { updateSettings } from '../../data/settings';
+  import { getSettings, updateSettings } from '../../data/settings';
   import { habitDayOf, type IsoDay } from '../../domain/day';
   import { clockLabel, repeatLabel } from '../../domain/format';
   import { parseRRule } from '../../domain/recurrence';
@@ -28,10 +37,12 @@
   import appIcon from '../../../design/app-icon.svg';
   import { readBackup, BackupError, type BackupPreview } from '../../data/restore';
 
-  type Step = 'welcome' | 'notifications' | 'notifications-off' | 'bring' | 'unreadable' | 'found' | 'review' | 'habits' | 'data';
+  type Step = 'welcome' | 'notifications' | 'notifications-off' | 'habit' | 'when' | 'bring' | 'unreadable' | 'found' | 'review' | 'habits' | 'data';
+  const START = ['Reminders', 'Your habit', 'When'];
+  const IMPORT = ['Files', 'Review', 'Habits', 'Backup'];
   // `from`: Today's empty state reopens the import at "Bring your calendars" (H14 → H06).
-  interface Props { ondone: () => void; from?: Step; onrestore?: (preview: BackupPreview, fileName: string) => void }
-  let { ondone, from = 'welcome', onrestore }: Props = $props();
+  interface Props { ondone: () => void; from?: Step; onrestore?: (preview: BackupPreview, fileName: string) => void; onback?: () => void }
+  let { ondone, from = 'welcome', onrestore, onback }: Props = $props();
 
   // E2, E3: a new or wiped phone starts here; a backup brings everything back (H48 previews it first).
   let restoreInput = $state<HTMLInputElement>();
@@ -61,7 +72,7 @@
     const perm = permission();
     if (perm === 'granted' && device.subscribedAt) {
       turnOnPush('').catch(() => {}); // renew the address and time zone quietly (E1, E6)
-      step = 'bring';
+      step = 'habit';
     } else step = perm === 'denied' ? 'notifications-off' : 'notifications';
   }
 
@@ -71,9 +82,25 @@
       const perm = permission() === 'granted' ? 'granted' : await askPermission();
       if (perm !== 'granted') { step = 'notifications-off'; return; }
       if (pushSupported() && PUSH_URL) await turnOnPush(invite);
-      step = 'bring';
+      step = 'habit';
     } catch (e) {
       problem = (e as Error).message;
+    } finally {
+      busy = false;
+    }
+  }
+
+  // --- S3 / S4 · the first habit ------------------------------------------------------------------
+  let habit = $state<HabitDraft>(blankHabit());
+  async function createFirst() {
+    if (!canSave(habit)) return;
+    busy = true; problem = '';
+    try {
+      await createHabit($state.snapshot(habit) as HabitDraft, habitDayOf(new Date(), zone), zone);
+      await finish();
+      syncReminders().catch(() => {});
+    } catch {
+      problem = 'Couldn’t save the habit on this phone. Try again.';
     } finally {
       busy = false;
     }
@@ -178,12 +205,20 @@
     }
   }
   async function finish() {
-    await updateSettings({ onboardingDone: true, timezone: zone, trackingStart: habitDayOf(new Date(), zone) });
+    const before = await getSettings(); // the import can also run later (Settings → Calendars): keep the start
+    await updateSettings({ onboardingDone: true, timezone: zone, trackingStart: before.trackingStart ?? habitDayOf(new Date(), zone) });
     ondone();
   }
 </script>
 
 <input bind:this={fileInput} class="hidden" type="file" accept=".ics,text/calendar" multiple onchange={(e) => read(e.currentTarget.files)} />
+
+{#snippet head(n: number, back: () => void)}
+  <div class="block tight progress"><BackLink onclick={back} /><Stepper steps={START} current={n} /></div>
+{/snippet}
+{#snippet importHead(n: number)}
+  <div class="block tight progress">{#if onback}<BackLink label="Settings" onclick={onback} />{/if}<Stepper steps={IMPORT} current={n} /></div>
+{/snippet}
 
 {#snippet error()}
   {#if problem}<p class="t-body-small error" role="alert">{problem}</p>{/if}
@@ -192,59 +227,96 @@
 <main class="screen flow">
   {#if step === 'welcome'}
     <div class="spacer"></div>
-    <img class="wordmark" src={wordmark} alt="ATOMIC" />
-    <h1 class="t-heading-medium">Every habit ends with an answer.</h1>
-    <p class="t-body-default secondary">A calendar for your days and your habits. Each evening, every habit gets a done or a skip, so a miss always leaves a trace.</p>
+    <div class="block">
+      <img class="wordmark" src={wordmark} alt="ATOMIC" />
+      <h1 class="t-heading-large">Small habits, kept.</h1>
+      <p class="t-body-default secondary">Pick a habit and a time. ATOMIC nudges you when it starts, and every day you keep them all lights a star.</p>
+    </div>
+    <ul class="block promises">
+      <li><Icon name="bell" /><span class="t-body-default">A nudge when each habit starts</span></li>
+      <li><span class="star"><AwardStar size="tiny" /></span><span class="t-body-default">A star for every perfect day, a medal for every run</span></li>
+      <li><Icon name="lock" /><span class="t-body-default">Everything stays on this phone</span></li>
+    </ul>
     <div class="spacer"></div>
+    <div class="actions">
     <Button onclick={start}>Get started</Button>
     {#if onrestore}
       <Button variant="tertiary" icon="download" onclick={() => restoreInput?.click()}>Restore from a backup</Button>
       <input bind:this={restoreInput} type="file" accept=".json,application/json" hidden onchange={pickBackup} />
       {#if restoreProblem}<p class="t-body-small error" role="alert">{restoreProblem}</p>{/if}
     {/if}
+    </div>
 
   {:else if step === 'notifications'}
-    <TopBar eyebrow="1 of 4" title="A push when it starts" />
-    <p class="t-body-default secondary">When a habit starts, ATOMIC reminds you, and you answer in the app. Events remind you as their reminders say.</p>
-    <SectionLabel text="What arrives" />
-    <div class="feature">
-      <Icon name="bell" />
-      <span><span class="t-body-strong block">Habits · at their start</span><span class="t-body-small secondary">Its name and time. Answer it on Today.</span></span>
+    {@render head(1, () => (step = 'welcome'))}
+    <div class="block tight">
+      <h1 class="t-heading-medium">A nudge when each habit starts</h1>
+      <p class="t-body-default secondary">One push at the time you choose, nothing else. The habit name is encrypted on this phone before it leaves.</p>
     </div>
-    <div class="feature">
-      <Icon name="clock" />
-      <span><span class="t-body-strong block">Event reminders</span><span class="t-body-small secondary">Title and time, encrypted on this phone.</span></span>
-    </div>
-    <SectionLabel text="How it looks" />
-    <div class="preview" aria-hidden="true">
-      <img src={appIcon} alt="" />
-      <span class="preview-text">
-        <span class="preview-head t-label-small"><span>Sample read - 20 min</span><span class="tertiary">22:00</span></span>
-        <span class="t-body-small">22:00 · 20 min</span>
-      </span>
+    <div class="block tight">
+      <SectionLabel text="What arrives" />
+      <div class="preview" aria-hidden="true">
+        <img src={appIcon} alt="" />
+        <span class="preview-text">
+          <span class="preview-head t-label-small"><span>Atomic</span><span class="tertiary">07:30</span></span>
+          <span class="t-body-small">Read 20 min · time to start</span>
+        </span>
+      </div>
     </div>
     {#if needsInvite && PUSH_URL}
       <TextField bind:value={invite} label="Invite code" placeholder="The phrase you were given" />
     {/if}
     {@render error()}
     <div class="spacer"></div>
-    <Button onclick={allow} disabled={busy || (needsInvite && !!PUSH_URL && !invite.trim())}>Allow notifications</Button>
-    <Button variant="tertiary" onclick={() => (step = 'bring')}>Not now</Button>
+    <div class="actions">
+      <Button onclick={allow} disabled={busy || (needsInvite && !!PUSH_URL && !invite.trim())}>Allow notifications</Button>
+      <Button variant="tertiary" onclick={() => (step = 'habit')}>Not now</Button>
+    </div>
 
   {:else if step === 'notifications-off'}
-    <TopBar eyebrow="1 of 4" title="Notifications are off" />
-    <p class="t-body-default secondary">ATOMIC still works, but the 22:30 recap and your event reminders won’t arrive.</p>
-    <SectionLabel text="To turn them on" />
-    <ol>
-      <StepRow n={1} text="Open iPhone Settings" />
-      <StepRow n={2} text="Notifications, then Atomic" />
-      <StepRow n={3} text="Turn on Allow Notifications" />
-    </ol>
+    {@render head(1, () => (step = 'welcome'))}
+    <div class="block tight">
+      <h1 class="t-heading-medium">Notifications are off</h1>
+      <p class="t-body-default secondary">ATOMIC still works, but no nudge will arrive when a habit starts.</p>
+    </div>
+    <div class="block tight">
+      <SectionLabel text="To turn them on" />
+      <ol>
+        <StepRow n={1} text="Open iPhone Settings" />
+        <StepRow n={2} text="Notifications, then Atomic" />
+        <StepRow n={3} text="Turn on Allow Notifications" />
+      </ol>
+    </div>
     <div class="spacer"></div>
-    <Button onclick={() => (step = 'bring')}>Continue</Button>
+    <Button onclick={() => (step = 'habit')}>Continue</Button>
+
+  {:else if step === 'habit'}
+    {@render head(2, () => (step = 'notifications'))}
+    <div class="block tight">
+      <h1 class="t-heading-medium">What do you want to do?</h1>
+      <p class="t-body-default secondary">Give it an end, like “Read 20 min”. Small is fine: small is what lasts.</p>
+    </div>
+    <HabitWhat bind:draft={habit} />
+    <div class="spacer"></div>
+    <Button onclick={() => (step = 'when')} disabled={!habit.title.trim()}>Next</Button>
+
+  {:else if step === 'when'}
+    {@render head(3, () => (step = 'habit'))}
+    <div class="block tight">
+      <h1 class="t-heading-medium">When does it happen?</h1>
+      <p class="t-body-default secondary">Habits keep clock time: {habit.start} stays {habit.start} wherever you are.</p>
+    </div>
+    <HabitWhen bind:draft={habit} />
+    {@render error()}
+    <div class="spacer"></div>
+    <div class="actions">
+      <Button onclick={createFirst} disabled={busy || !canSave(habit)}>Create habit</Button>
+      <p class="t-label-small tertiary center">You can change any of this later.</p>
+    </div>
 
   {:else if step === 'bring'}
-    <TopBar eyebrow="2 of 4" title="Bring your calendars" />
+    {@render importHead(1)}
+    <h1 class="t-heading-medium">Bring your calendars</h1>
     <p class="t-body-default secondary">Export each calendar from Proton as an .ics file, then choose the files here. They are read on this phone and never uploaded.</p>
     <SectionLabel text="From Proton" />
     <ol>
@@ -258,14 +330,16 @@
     <Button variant="secondary" onclick={() => { plan = null; step = 'data'; }}>Start empty</Button>
 
   {:else if step === 'unreadable'}
-    <TopBar eyebrow="2 of 4" title="Can’t read this file" />
+    {@render importHead(1)}
+    <h1 class="t-heading-medium">Can’t read this file</h1>
     <TextField value={badFile} readonly error="Calendar files end in .ics" />
     <Banner tone="info" message={problem} />
     <div class="spacer"></div>
     <Button icon="upload" onclick={() => fileInput.click()} disabled={busy}>Choose another file</Button>
 
   {:else if step === 'found' && plan}
-    <TopBar eyebrow="2 of 4" title="{plan.calendars.length} {plan.calendars.length === 1 ? 'calendar' : 'calendars'} found" />
+    {@render importHead(1)}
+    <h1 class="t-heading-medium">{plan.calendars.length} {plan.calendars.length === 1 ? 'calendar' : 'calendars'} found</h1>
     <ul class="list">
       {#each plan.calendars as c (c.key)}
         <li><CalendarRow name={c.name} detail={counts(c)} color={c.color} /></li>
@@ -281,7 +355,8 @@
     <Button onclick={() => (step = 'review')}>Continue</Button>
 
   {:else if step === 'review' && plan}
-    <TopBar eyebrow="2 of 4" title="Review your calendars" />
+    {@render importHead(2)}
+    <h1 class="t-heading-medium">Review your calendars</h1>
     <p class="t-body-default secondary">Turn on Habits for the calendar whose events become habits. Turn it on for a second calendar to merge it in.</p>
     <ul class="list">
       {#each plan.calendars as c (c.key)}
@@ -300,7 +375,8 @@
     <Button onclick={afterReview} disabled={busy}>Continue</Button>
 
   {:else if step === 'habits'}
-    <TopBar eyebrow="3 of 4" title="{found.length} {found.length === 1 ? 'habit' : 'habits'} in {habitCalendar?.name ?? 'your habits'}" />
+    {@render importHead(3)}
+    <h1 class="t-heading-medium">{found.length} {found.length === 1 ? 'habit' : 'habits'} in {habitCalendar?.name ?? 'your habits'}</h1>
     <p class="t-body-default secondary">One habit per repeating event. Pick an icon for each; names stay as written in the calendar.</p>
     <ul>
       {#each found as h (h.uid)}
@@ -315,7 +391,8 @@
     <Button onclick={save} disabled={busy}>Continue</Button>
 
   {:else if step === 'data'}
-    <TopBar eyebrow="4 of 4" title="Your data lives on this phone" />
+    {@render importHead(4)}
+    <h1 class="t-heading-medium">Your data lives on this phone</h1>
     <ol>
       <StepRow n={1} text="No account, no cloud: everything stays on this phone." />
       <StepRow n={2} text="Removing ATOMIC from the Home Screen deletes it." />
@@ -343,15 +420,22 @@
 </Sheet>
 
 <style>
-  .flow { display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
+  .flow { display: flex; flex-direction: column; gap: var(--layout-block-gap); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-24)); } /* 092 */
+  .block { display: grid; gap: var(--space-16); }
+  .block.tight { gap: var(--space-8); }
+  .progress { gap: var(--space-8); }
+  .actions { display: grid; gap: var(--space-8); }
+  .promises { gap: var(--space-16); }
+  .promises li { display: flex; align-items: center; gap: var(--space-12); }
+  .star { width: var(--size-icon); display: grid; place-items: center; }
+  .center { text-align: center; }
   .spacer { flex: 1; }
   .hidden { display: none; }
-  .wordmark { width: calc(var(--space-48) * 5); height: auto; align-self: flex-start; }
+  .wordmark { width: calc(var(--space-48) * 5 * 0.85); height: auto; align-self: flex-start; } /* 15% smaller (owner, 8 Oct 2026) */
   .secondary { color: var(--text-secondary); }
   .tertiary { color: var(--text-tertiary); }
   .block { display: block; }
   .error { color: var(--text-accent); }
-  .feature { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-8) 0; }
   .preview, .file {
     display: flex; align-items: center; gap: var(--space-12);
     padding: var(--space-12) var(--space-16) var(--space-12) var(--space-12); background: var(--bg-subtle);

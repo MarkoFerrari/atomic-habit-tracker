@@ -46,24 +46,24 @@ const noop = () => {};
 const props = { onhabit: noop, onbadges: noop, onrecap: noop };
 
 describe('Stats (F6)', () => {
-  it('week: the rate with its due count, ISO week number, a row per habit, and the legend (H34, 006, 038)', async () => {
+  it('week: perfect days with the strip, the rate with its due count, and each habit as done of due (H6, 006, 093)', async () => {
     render(Stats, props);
     expect(await screen.findByText('Sample breakfast 30 min')).toBeTruthy();
     expect(screen.getByText(/Week 47 so far/)).toBeTruthy();
-    expect(screen.getByText('Blank: not scheduled')).toBeTruthy();
-    expect(screen.getAllByRole('img', { name: /Done$/ }).length).toBeGreaterThan(0);
+    expect(screen.getByText('1 perfect day')).toBeTruthy(); // Monday 22: both done
+    expect(screen.getByRole('list', { name: 'This week' })).toBeTruthy();
+    expect(screen.getByText('By habit · done of due')).toBeTruthy();
     expect(screen.getByText('Badges')).toBeTruthy();
   });
 
-  it('month and year: heatmap labelled by day, best and low in words, a month opens from the year (H35, H36)', async () => {
+  it('month and year: perfect days and rates; a month opens from the year (H6, H36)', async () => {
     render(Stats, props);
     await screen.findByText('Sample breakfast 30 min');
     await fireEvent.click(screen.getByRole('radio', { name: 'Month' }));
     expect(await screen.findByText(/November so far/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Thursday 25 November: today|Thursday 25 November/ })).toBeTruthy();
-    expect(screen.getByText('Dotted: days ahead')).toBeTruthy();
+    expect(screen.getByText('In November 2027 so far')).toBeTruthy();
     await fireEvent.click(screen.getByRole('radio', { name: 'Year' }));
-    expect(await screen.findByText(/2027 so far/)).toBeTruthy();
+    expect((await screen.findAllByText(/2027 so far/)).length).toBe(2); // perfect days and the rate
     expect(screen.getByRole('button', { name: /^December: ahead/ })).toBeTruthy();
   });
 

@@ -42,3 +42,37 @@ export const MEDAL = {
     gem: { x: 28, y: 0.5, d: 'M4 0L8 4L4 8L0 4Z' },
   },
 } as const;
+
+/** Award star (Figma 219:52, 093): a 160 box, five points (outer radius 74, inner 35, centre 80/82), cut into ten
+ *  facets lit from the top left so it reads as 3D with flat fills. Tones map to award/facet-light, -mid and -dark. */
+export const STAR = (() => {
+  const cx = 80, cy = 82, R = 74, r = 35;
+  const P = Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const d = i % 2 ? r : R;
+    return [cx + d * Math.cos(a), cy + d * Math.sin(a)] as const;
+  });
+  const light = [-0.62, -0.78]; // unit vector toward the light
+  const f = (n: number) => n.toFixed(2);
+  const facets = P.map((a, i) => {
+    const b = P[(i + 1) % 10]!;
+    let nx = b[1] - a[1], ny = -(b[0] - a[0]);
+    if (nx * ((a[0] + b[0]) / 2 - cx) + ny * ((a[1] + b[1]) / 2 - cy) < 0) { nx = -nx; ny = -ny; }
+    const len = Math.hypot(nx, ny);
+    const lit = (nx / len) * light[0]! + (ny / len) * light[1]!;
+    const tone = lit > 0.45 ? 'light' : lit > -0.6 ? 'mid' : 'dark';
+    return { d: `M${cx} ${cy}L${f(a[0])} ${f(a[1])}L${f(b[0])} ${f(b[1])}Z`, tone };
+  });
+  return { size: 160, facets, outline: `M${P.map((p) => `${f(p[0])} ${f(p[1])}`).join('L')}Z` };
+})();
+
+/** Star medal (Figma 228:3338, 100): a 96 box; the disc (56) holds the habit icon (28); twelve slots on a radius of
+ *  40, clockwise from the top: a 14 star when earned, a 3 dot when still to come. */
+export const STAR_MEDAL = (() => {
+  const size = 96, c = 48, ring = 40;
+  const slots = Array.from({ length: 12 }, (_, k) => {
+    const a = -Math.PI / 2 + (k * Math.PI) / 6;
+    return { x: c + ring * Math.cos(a), y: c + ring * Math.sin(a) };
+  });
+  return { size, c, disc: 56, glyph: 28, star: 14, dot: 3, slots };
+})();

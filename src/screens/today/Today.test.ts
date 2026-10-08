@@ -44,7 +44,9 @@ describe('Today (F4)', () => {
     expect(await screen.findByText('Good morning')).toBeTruthy();
     expect(screen.getByText('Tuesday 6 October')).toBeTruthy();
     expect(await screen.findByText('0 of 3')).toBeTruthy();
-    expect(screen.getByText('3 due today · 0%')).toBeTruthy();
+    expect(screen.getByText('3 due today')).toBeTruthy();
+    expect(screen.getByRole('list', { name: 'This week' })).toBeTruthy(); // the week strip (096)
+    expect(screen.getByText(/08:00 · Starter in 10 days/)).toBeTruthy(); // the next rank on the row (098)
     expect(within(row('Sample breakfast 30 min')).getByRole('button', { name: 'Mark as done' })).toBeTruthy();
     expect(within(row('Sample read 30 min')).queryByRole('button', { name: 'Mark as done' })).toBeNull();
   });
@@ -78,7 +80,7 @@ describe('Today (F4)', () => {
     const read = (await database.get('events', 'read'))!;
     await database.put('events', { ...read, after: 'Sample breakfast 30 min', smallest: 'Read one page', identity: 'A reader' });
     render(Today, {});
-    expect(await screen.findByText(/08:30 · 30 min · after Sample breakfast 30 min/)).toBeTruthy();
+    expect(await screen.findByText(/08:30 · after Sample breakfast 30 min/)).toBeTruthy();
     expect(screen.getByText('Voting for: A reader')).toBeTruthy();
     await fireEvent.click(within(await screen.findByRole('group', { name: 'Sample read 30 min' })).getByRole('button', { name: /Sample read 30 min, 08:30/ }));
     await fireEvent.click(await screen.findByRole('button', { name: 'Did the 2-min version' }));
@@ -99,7 +101,7 @@ describe('Today (F4)', () => {
     const database = await db();
     expect((await database.get('events', 'read'))!.overrides).toEqual({ '2026-10-06': { start: '2026-10-06T18:30', end: '2026-10-06T19:00' } });
     expect(await database.getAll('answers')).toEqual([]); // moved, not answered: nothing counts as a miss
-    expect(await screen.findByText(/18:30 · 30 min/)).toBeTruthy();
+    expect(await screen.findByText(/^18:30 · /)).toBeTruthy();
     await fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await vi.waitFor(async () => expect((await database.get('events', 'read'))!.overrides).toBeUndefined());
   });
@@ -114,8 +116,32 @@ describe('Today (F4)', () => {
     const database = await db();
     await database.clear('events');
     render(Today, { onnewhabit: () => {}, onimport: () => {} });
-    expect(await screen.findByText('No habits yet')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'New habit' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Import from Proton (.ics)' })).toBeTruthy();
+    expect(await screen.findByText('Start with one habit')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'New habit' }).length).toBeGreaterThan(0); // the top bar's + and the big button (079)
+    expect(screen.queryByRole('button', { name: 'Import from Proton (.ics)' })).toBeNull(); // habits first (097)
+  });
+
+  it('the last habit of the day plays the award once; the ring stays green with the star (093)', async () => {
+    const database = await db();
+    await database.delete('events', 'train');
+    for (const id of ['breakfast']) await database.put('answers', { key: `${id}|2026-10-06`, eventId: id, occurrence: '2026-10-06', status: 'done', answeredAt: '2026-10-06T04:50:00Z', history: [] });
+    render(Today, {});
+    expect(await screen.findByText('1 of 2')).toBeTruthy();
+    expect(screen.getByText('One more for a perfect day')).toBeTruthy();
+    await fireEvent.click(await within(row('Sample read 30 min')).findByRole('button', { name: 'Mark as done' }));
+    expect(await screen.findByText('2 of 2')).toBeTruthy();
+    expect(await screen.findByRole('status')).toBeTruthy(); // the award announces "Perfect day. 2 of 2 done…"
+    const { getSettings } = await import('../../data/settings');
+    await vi.waitFor(async () => expect((await getSettings()).awardShownOn).toBe('2026-10-06')); // once a day
+  });
+
+  it('the morning after a miss, one line says today keeps the run (099)', async () => {
+    const database = await db();
+    // Breakfast held 3 days (2–4 Oct), then slipped on 5 Oct: one miss is forgiven, today decides.
+    await updateSettings({ trackingStart: '2026-10-02' });
+    await database.put('events', habit('breakfast', 'Sample breakfast 30 min', '2026-10-02T08:00', '2026-10-02T08:30', 'FREQ=DAILY', 'coffee'));
+    for (const d of ['2026-10-02', '2026-10-03', '2026-10-04']) await database.put('answers', { key: `breakfast|${d}`, eventId: 'breakfast', occurrence: d as `${number}-${number}-${number}`, status: 'done', answeredAt: `${d}T05:10:00Z`, history: [] });
+    render(Today, {});
+    expect(await screen.findByText('Sample breakfast slipped yesterday. Do it today and your 5-day run holds.')).toBeTruthy();
   });
 });
