@@ -1,6 +1,7 @@
 <script lang="ts">
   // H6 Stats (Figma page 14, section 04; was H34–H36, H40). New on top: perfect days, counted with stars (093). Then
-  // the rate, always done of due with the count beside it (006), and each habit as a green bar. The week grid and
+  // each habit as a green bar with done of due beside it (006); the big rate line left (102: a number without a picture
+  // didn't help). The week grid and
   // the month grid moved to the Habits tab (097), so the app has one of each. Year keeps its bars. Days before
   // tracking and days ahead are never drawn as zero (033). Real data only, no sample numbers.
   import { onMount } from 'svelte';
@@ -126,7 +127,6 @@
           </div>
           <WeekStrip days={strip} />
         </section>
-        <Stat value={pct(week.rate.rate)} caption="{week.rate.done} of {week.rate.due} due · Week {week.number} so far" />
         {#if week.rate.due === 0}
           <p class="t-body-small tertiary">Nothing has been decided yet this week. Days before the start stay empty, never missed (033).</p>
         {/if}
@@ -139,7 +139,6 @@
             <span class="t-body-small secondary">In {monthLabel(monthly.first)} so far</span></span>
           </div>
         </section>
-        <Stat value={pct(monthly.rate.rate)} caption="{monthly.rate.done} of {monthly.rate.due} due · {monthly.label} so far" />
         {@render byHabit(monthly.byHabit)}
         <ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} />
       {:else if mode === 'year' && yearly}
@@ -149,7 +148,6 @@
             <span class="t-body-small secondary">In {yearly.year} so far</span></span>
           </div>
         </section>
-        <Stat value={pct(yearly.rate.rate)} caption="{yearly.rate.done} of {yearly.rate.due} due · {yearly.year} so far" />
         <div class="year" role="group" aria-label="Year {yearly.year}">
           {#each yearly.bars as b (b.month)}
             <YearBar letter={b.letter} rate={b.rate.rate} due={b.rate.due} ahead={b.ahead}

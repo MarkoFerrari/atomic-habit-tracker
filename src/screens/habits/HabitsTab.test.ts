@@ -52,10 +52,10 @@ describe('Habits tab (097)', () => {
     expect(await screen.findByText('This week')).toBeTruthy();
     expect(screen.getByRole('list', { name: 'This week' })).toBeTruthy();
     expect(screen.getAllByRole('img', { name: /: done$/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByText('perfect days so far')).toBeNull(); // no summary under the grid (owner, 8 Oct 2026)
     await fireEvent.click(screen.getByRole('radio', { name: 'Month' }));
     expect(await screen.findByText('This month')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Monday 22 November: 100%, 2 of 2 done, perfect day/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Tuesday 23 November: 50%/ })).toBeTruthy();
-    expect(screen.getByText('perfect days in November')).toBeTruthy();
   });
 });

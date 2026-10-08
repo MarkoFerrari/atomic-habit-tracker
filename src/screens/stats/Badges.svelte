@@ -46,7 +46,7 @@
 
 <main class="screen badges">
   <TopBar type="navigation" title="Badges" leftLabel="Stats" rightLabel="How it works" onleft={onback} onright={() => (how = true)} />
-  <p class="t-body-small intro">Each habit has its own medal. Its shape and colour show the rank; the icon is the one you picked. A rank is held while you never miss twice in a row, and it is never lost.</p>
+  <p class="t-body-small intro">Each habit has its own medal: your icon, ringed by stars. Each rank adds stars, and Master closes the ring. A rank is held while you never miss twice in a row, and it is never lost.</p>
   {#if sorted.length}
     <SectionLabel text="Your medals · {sorted.length}" />
     <ul>
@@ -88,7 +88,7 @@
   .tertiary { color: var(--text-tertiary); }
   .next { display: grid; gap: var(--space-4); margin-top: var(--space-16); padding: var(--space-12) var(--space-16); background: var(--bg-subtle); border-radius: var(--radius-control); }
   .sheet { display: grid; gap: var(--space-16); padding-bottom: var(--space-40); }
-  .ladder li { display: flex; align-items: center; gap: var(--space-12); border-bottom: var(--stroke-hairline) solid var(--border-divider); }
+  .ladder li { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-8) 0; border-bottom: var(--stroke-hairline) solid var(--border-divider); }
   .ladder li:last-child { border-bottom: none; }
   .ladder :global(.medal) { width: calc(var(--size-control) + var(--space-8)); height: calc(var(--size-control) + var(--space-8)); }
   .grow { flex: 1; }

@@ -18,5 +18,5 @@
     background: var(--bg-subtle); border-radius: var(--radius-control);
   }
   button { flex: 1; border-radius: var(--radius-control-inner); color: var(--text-tertiary); }
-  .on { background: var(--bg-default); color: var(--text-accent); box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-control); }
+  .on { background: var(--action-primary); color: var(--action-on-primary); } /* 103: filled, no border (owner, 8 Oct 2026) */
 </style>

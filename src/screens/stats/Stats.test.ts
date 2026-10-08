@@ -49,7 +49,7 @@ describe('Stats (F6)', () => {
   it('week: perfect days with the strip, the rate with its due count, and each habit as done of due (H6, 006, 093)', async () => {
     render(Stats, props);
     expect(await screen.findByText('Sample breakfast 30 min')).toBeTruthy();
-    expect(screen.getByText(/Week 47 so far/)).toBeTruthy();
+    expect(screen.queryByText(/Week 47 so far/)).toBeNull(); // the rate line left (102): the bars carry it
     expect(screen.getByText('1 perfect day')).toBeTruthy(); // Monday 22: both done
     expect(screen.getByRole('list', { name: 'This week' })).toBeTruthy();
     expect(screen.getByText('By habit · done of due')).toBeTruthy();
@@ -60,10 +60,9 @@ describe('Stats (F6)', () => {
     render(Stats, props);
     await screen.findByText('Sample breakfast 30 min');
     await fireEvent.click(screen.getByRole('radio', { name: 'Month' }));
-    expect(await screen.findByText(/November so far/)).toBeTruthy();
     expect(screen.getByText('In November 2027 so far')).toBeTruthy();
     await fireEvent.click(screen.getByRole('radio', { name: 'Year' }));
-    expect((await screen.findAllByText(/2027 so far/)).length).toBe(2); // perfect days and the rate
+    expect(await screen.findByText('In 2027 so far')).toBeTruthy();
     expect(screen.getByRole('button', { name: /^December: ahead/ })).toBeTruthy();
   });
 

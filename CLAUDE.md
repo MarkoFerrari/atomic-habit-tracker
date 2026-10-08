@@ -204,7 +204,7 @@ Generated into CSS by `scripts/export-tokens`. If a value here and Figma disagre
 - **rank:** {starter, builder, keeper, artisan, master}/fill and /rim · master/frame → ink/900 · master/gem → crimson/600 · locked/fill → ink/50 · locked/rim → ink/500 · illustration → ink/900 · illustration-locked → ink/500
 
 ### Dimension
-- **space:** 4, 8, 12, 16, 20, 24, 32, 40, 48, 64 · `layout/gutter` → space/16 · `layout/block-gap` → space/40, between blocks of information (092)
+- **space:** 4, 8, 12, 16, 20, 24, 32, 40, 48, 64 · `layout/gutter` → space/16 · `layout/block-gap` → space/32, between blocks of information (092, 40 until 0.6.1)
 - **size:** touch 44 · icon 24 · state-icon 32 · control 48
 - **radius:** control 8 · control-inner 6 · chip 6 · event 6 · sheet 16 · round 999
 - **stroke:** hairline 1 · icon 1.5 · ring 8 · illustration 2 · medal 3
@@ -524,7 +524,7 @@ The riskiest assumptions get tested before any screen is built.
 | 089 | The Calendar views scroll one step at a time (U08): Day's date strip by day, Week by week and Month by month (a pager of full-width pages, seven kept in memory). Day's strip: seven days visible, the middle one is the chosen day, it snaps like a wheel, and each step plays a very quiet synthesized tick (the time wheel too). The web can't use the system wheel sound or haptics; the tick is silent until the first touch and when the mute switch is on | Proposed |
 | 090 | Text fields have no heavy focus ring (U07): when focused, the same 1 px border turns from `border/control` to `border/strong`. Sheets' and buttons' keyboard focus ring stays | Proposed |
 | 091 | Calendar (U09): a "Today" link beside + when the chosen day is not today; the Day strip and the Week and Month pagers take horizontal drags only (`touch-action: pan-x`) and the page no longer rubber-bands, so touching them no longer pulls the whole screen | Proposed |
-| 092 | Blocks of information sit 40 apart (`layout/block-gap`); 16 or less inside a block (Gestalt proximity) | Proposed |
+| 092 | Blocks of information sit 32 apart (`layout/block-gap`, was 40); 16 or less inside a block (Gestalt proximity) | Decided (owner, 8 Oct 2026) |
 | 093 | Perfect-day award: a faceted gold star (award/* tokens, `bg/stage`) turns in, holds and lands in today's week-strip cell; once a day, tap skips, reduced motion fades. The ring stays green with a small star inside (option A); success is never crimson | Decided (owner, 8 Oct 2026) |
 | 094 | `motion/duration/hold` = 1200 ms, the award's still moment | Proposed |
 | 095 | A stepper (segment + label + check per step: grey, green when done) replaces "1 of X" on every flow with steps; Back sits above it, the chevron flush left | Decided (owner, 8 Oct 2026) |
@@ -534,6 +534,8 @@ The riskiest assumptions get tested before any screen is built.
 | 099 | The morning after a miss, one line on Today says today keeps the run | Proposed |
 | 100 | Star medal: the habit's icon ringed by 12 slots; Starter 1, Builder 3, Keeper 6, Artisan 9, Master 12. Replaces the shapes and colours of 049/055 | Decided (owner, 8 Oct 2026) |
 | 101 | The 5-segment mastery ring leaves the rows (two systems for one idea); "Per week" goals wait for rules on rates and runs (006, 051) | Proposed |
+| 102 | No number without a picture: Stats drops the big rate line, and the Habits week and month drop their summaries; the strip, stars and green bars carry it. Habits week rows are divided. Today's heat cell loses the strong outline once it is coloured. Star medal stars sit like a watch: star n at n o'clock, so the 6th is opposite the 12th and the 9th opposite the 3rd | Decided (owner, 8 Oct 2026) |
+| 103 | The selected segment of every segmented control is filled with `action/primary`, no border, label in `action/on-primary` | Decided (owner, 8 Oct 2026) |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 

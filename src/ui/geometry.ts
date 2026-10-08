@@ -67,11 +67,12 @@ export const STAR = (() => {
 })();
 
 /** Star medal (Figma 228:3338, 100): a 96 box; the disc (56) holds the habit icon (28); twelve slots on a radius of
- *  40, clockwise from the top: a 14 star when earned, a 3 dot when still to come. */
+ *  40, placed like a watch: star n sits at n o'clock, so the 6th is opposite the 12th and the 9th opposite the 3rd
+ *  (owner, 8 Oct 2026). A 14 star when earned, a 3 dot when still to come. */
 export const STAR_MEDAL = (() => {
   const size = 96, c = 48, ring = 40;
   const slots = Array.from({ length: 12 }, (_, k) => {
-    const a = -Math.PI / 2 + (k * Math.PI) / 6;
+    const a = -Math.PI / 2 + ((k + 1) * Math.PI) / 6; // slot k is hour k + 1
     return { x: c + ring * Math.cos(a), y: c + ring * Math.sin(a) };
   });
   return { size, c, disc: 56, glyph: 28, star: 14, dot: 3, slots };

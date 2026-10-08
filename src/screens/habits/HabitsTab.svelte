@@ -13,7 +13,6 @@
   import WeekCell from '../../ui/WeekCell.svelte';
   import HeatCell from '../../ui/HeatCell.svelte';
   import AwardStar from '../../ui/AwardStar.svelte';
-  import Stat from '../../ui/Stat.svelte';
   import Icon from '../../ui/Icon.svelte';
   import EmptyState from '../../ui/EmptyState.svelte';
   import type { IconName } from '../../ui/icons';
@@ -54,7 +53,6 @@
   const strip = $derived(ctx && tracked ? weekStrip(ctx) : []);
   const month = $derived(ctx && tracked ? monthView(ctx, ctx.today) : null);
   const monthStars = $derived(ctx && month ? new Set(perfectDays(ctx, month.first, addDays(month.first, month.cells.length - 1))) : new Set<string>());
-  const weekStars = $derived(strip.filter((d) => d.state === 'perfect').length);
 
   const OPTIONS: { id: HabitsMode; label: string }[] = [{ id: 'list', label: 'List' }, { id: 'week', label: 'Week' }, { id: 'month', label: 'Month' }];
   const title = $derived(mode === 'list' ? 'Habits' : mode === 'week' ? 'This week' : 'This month');
@@ -112,10 +110,6 @@
             </div>
           {/each}
         </div>
-        <div class="summary">
-          <Stat value={String(weekStars)} caption={weekStars === 1 ? 'perfect day so far' : 'perfect days so far'} />
-          <Stat value={percent(week.rate.rate)} caption="{week.rate.done} of {week.rate.due} due" />
-        </div>
 
       {:else if mode === 'month' && month}
         <div class="month" role="group" aria-label="{monthName(month.first)} {month.first.slice(0, 4)}">
@@ -128,10 +122,6 @@
               {#if monthStars.has(c.day)}<span class="star"><AwardStar size="tiny" /></span>{/if}
             </span>
           {/each}
-        </div>
-        <div class="summary">
-          <Stat value={String(monthStars.size)} caption="perfect {monthStars.size === 1 ? 'day' : 'days'} in {monthName(month.first)}" />
-          <Stat value={percent(month.rate.rate)} caption="{month.rate.done} of {month.rate.due} due" />
         </div>
       {/if}
     {/if}
@@ -152,12 +142,13 @@
   .text :global(.row) { padding-top: var(--space-4); }
   .chev { color: var(--icon-muted); display: flex; }
 
-  .grid { display: grid; gap: var(--space-16); }
+  .grid { display: grid; }
+  .head { padding-bottom: var(--space-8); }
+  .row { border-top: var(--stroke-hairline) solid var(--border-divider); padding: var(--space-4) 0; } /* a divider between habits (owner, 8 Oct 2026) */
   .head, .row { display: grid; grid-template-columns: calc(var(--space-64) + var(--space-16)) 1fr; align-items: center; }
   .rowname { text-align: left; color: var(--text-primary); min-height: var(--size-touch); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; padding-right: var(--space-4); }
   .cells { display: flex; justify-content: space-between; }
   .cell { width: var(--space-40); height: var(--space-32); display: grid; place-items: center; }
-  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-16); }
 
   .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-8); }
   .wd { text-align: center; color: var(--text-tertiary); }

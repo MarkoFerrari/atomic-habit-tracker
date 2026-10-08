@@ -127,7 +127,7 @@
   --stroke-ring: 8px;
   --stroke-illustration: 2px;
   --stroke-medal: 3px;
-  --layout-block-gap: var(--space-40);
+  --layout-block-gap: var(--space-32);
   /* Motion */
   --motion-duration-instant: 100ms;
   --motion-duration-fast: 150ms;

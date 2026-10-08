@@ -15,7 +15,8 @@
 {#if size === 'small'}
   <span class="cell small l{level ?? 0}" role="img" aria-label={label}></span>
 {:else}
-  <button class="cell {kind} l{level ?? 'none'}" aria-label={label} {onclick}>
+  <!-- Today keeps the strong outline only while it has no colour yet: green already says "today has answers". -->
+  <button class="cell {kind === 'today' && (level ?? 0) > 0 ? 'rate' : kind} l{level ?? 'none'}" aria-label={label} {onclick}>
     <span class="t-number-small">{day}</span>
   </button>
 {/if}
