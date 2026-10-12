@@ -41,6 +41,7 @@
   import { getSettings } from '../../data/settings';
   import { db } from '../../data/db';
   import { syncReminders } from '../../push/reminders';
+  import { permission, pushDevice, pushSupported, PUSH_URL } from '../../push/notifications';
   import { READY_TABS } from '../../ui/tabs';
   import Banner from '../../ui/Banner.svelte';
   import { shareBackup } from '../../data/backup';
@@ -53,8 +54,8 @@
   import { SKIP_REASONS, type AnswerStatus, type SkipReason } from '../../domain/states';
   import { greeting, runLine, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
 
-  interface Props { onrecap?: () => void; onnewhabit?: () => void; ontab?: (tab: Tab) => void; onbadges?: () => void }
-  let { onrecap, onnewhabit, ontab, onbadges }: Props = $props();
+  interface Props { onrecap?: () => void; onnewhabit?: () => void; ontab?: (tab: Tab) => void; onbadges?: () => void; onnotifications?: () => void }
+  let { onrecap, onnewhabit, ontab, onbadges, onnotifications }: Props = $props();
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let now = $state(new Date());
@@ -73,6 +74,9 @@
   let reveal = $state.raw<Medal[]>([]); // H5: ranks reached since the last visit
   let seenKeys: string[] = [];
   let backupNote = $state('');
+  // 114: the start no longer asks for reminders; once a habit exists, Today offers them until they are on.
+  // Not when the iPhone has refused them: Settings → Notifications keeps that warning (R3).
+  let remindersOff = $state(false);
   async function backUpNow() {
     try { await shareBackup(); } catch { /* the banner stays */ }
     await load();
@@ -105,6 +109,8 @@
       ? `${settings.lastBackupAt ? `Last backup ${backupAge(settings.lastBackupAt, new Date(), '').toLowerCase()}` : 'No backup yet'}. If ATOMIC is removed, everything since is gone.`
       : '';
     habitCalendarName = calendars.find((c) => c.trackAsHabits)?.name ?? '';
+    const perm = permission();
+    remindersOff = !!PUSH_URL && pushSupported() && evs.length > 0 && perm !== 'denied' && !(perm === 'granted' && (await pushDevice()).subscribedAt);
     awardShown = settings.awardShown ?? null;
     // 096, 098, 099: the week strip, every habit's medal, and a run at risk. Medals write ranks reached (084).
     const stats = await loadStats(now);
@@ -279,6 +285,7 @@
 <div class="page">
   <main class="screen today">
     <TopBar eyebrow={dateLabel} title={greeting(hour)} action={onnewhabit ? { icon: 'plus', label: 'New habit' } : undefined} onaction={onnewhabit} />
+    {#if remindersOff && onnotifications}<Banner tone="info" message="Turn on reminders and ATOMIC nudges you when each habit starts." action="Turn on reminders" onaction={onnotifications} />{/if}
     {#if backupNote}<Banner message={backupNote} action="Back up now" onaction={backUpNow} />{/if}
 
     {#if !loaded}
@@ -286,7 +293,7 @@
     {:else if events.length === 0}
       <div class="spacer"></div>
       <!-- 079: the first action is a habit, not a calendar; New habit makes the HABITS calendar if there is none -->
-      <EmptyState title="Start with one habit" body="Pick what you want to do and when. Each day you keep them all lights a star."
+      <EmptyState title="Start with one habit" body="Give it an end and a time, like “Read 20 min” at 21:30. One is enough to begin."
         action={onnewhabit ? 'New habit' : undefined} onaction={onnewhabit} />
       <div class="spacer"></div>
     {:else}

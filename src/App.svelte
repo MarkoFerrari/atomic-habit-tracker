@@ -159,7 +159,7 @@
       onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Habits' })} onnew={newHabit} />
   {:else}
     <Today ontab={(t) => (tab = t)} onnewhabit={newHabit} onrecap={() => (view = 'recap')}
-      onbadges={() => push({ kind: 'badges' })} />
+      onbadges={() => push({ kind: 'badges' })} onnotifications={() => push({ kind: 'settings', screen: 'notifications' })} />
   {/if}
   {/key}
   {#if deleted}

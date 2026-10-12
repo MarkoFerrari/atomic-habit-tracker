@@ -1,21 +1,16 @@
 <script lang="ts">
-  // 01 Start (Figma page 14, habits first, 097): Welcome (S1) → Reminders (S2, H05 when off) → Your habit (S3) →
-  // When (S4) → Today. No account and no import on the way in; the stepper (095) shows where you are, every block
-  // sits 40 apart (092). The .ics import keeps its own flow (`from="bring"`), opened from Settings → Calendars:
+  // 01 Start (Figma page 14, habits first, 097; 114): Welcome (S1) → Get started → the empty Today, which asks for
+  // the first habit (E17, 079). No reminders step and no invite code on the way in: Today offers reminders once a
+  // habit exists (114), and the invite code is asked only there, when the phone first subscribes (067). The .ics import keeps its own flow (`from="bring"`), opened from Settings → Calendars:
   // bring your calendars (H06) → files read (H07, or H07b) → review (H08) → habits found (H09) → your data (H10).
   // The import is a plan until H09's Continue: nothing is saved before the person has reviewed it.
   import { untrack } from 'svelte';
-  import TopBar from '../../ui/TopBar.svelte';
   import Button from '../../ui/Button.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import StepRow from '../../ui/StepRow.svelte';
   import Stepper from '../../ui/Stepper.svelte';
   import BackLink from '../../ui/BackLink.svelte';
   import AwardStar from '../../ui/AwardStar.svelte';
-  import HabitWhat from '../habits/HabitWhat.svelte';
-  import HabitWhen from '../habits/HabitWhen.svelte';
-  import { blankHabit, canSave, createHabit, type HabitDraft } from '../../data/newHabit';
-  import { syncReminders } from '../../push/reminders';
   import Icon from '../../ui/Icon.svelte';
   import Banner from '../../ui/Banner.svelte';
   import TextField from '../../ui/TextField.svelte';
@@ -25,7 +20,6 @@
   import IconPicker from '../../ui/IconPicker.svelte';
   import { guessHabitIcon } from '../../ui/habit-icon-guess';
   import type { HabitIcon } from '../../ui/icons';
-  import { askPermission, permission, pushDevice, pushSupported, PUSH_URL, turnOnPush } from '../../push/notifications';
   import { IcsError, parseIcs } from '../../data/ics';
   import { commitImport, habitsFound, planImport, storedUids, toggleHabits, type ImportPlan, type PlannedCalendar } from '../../data/import';
   import { backupFileName, shareBackup } from '../../data/backup';
@@ -34,11 +28,9 @@
   import { clockLabel, repeatLabel } from '../../domain/format';
   import { parseRRule } from '../../domain/recurrence';
   import wordmark from '../../../design/logo-wordmark.svg';
-  import appIcon from '../../../design/app-icon.svg';
   import { readBackup, BackupError, type BackupPreview } from '../../data/restore';
 
-  type Step = 'welcome' | 'notifications' | 'notifications-off' | 'habit' | 'when' | 'bring' | 'unreadable' | 'found' | 'review' | 'habits' | 'data';
-  const START = ['Reminders', 'Your habit', 'When'];
+  type Step = 'welcome' | 'bring' | 'unreadable' | 'found' | 'review' | 'habits' | 'data';
   const IMPORT = ['Files', 'Review', 'Habits', 'Backup'];
   // `from`: Today's empty state reopens the import at "Bring your calendars" (H14 → H06).
   interface Props { ondone: () => void; from?: Step; onrestore?: (preview: BackupPreview, fileName: string) => void; onback?: () => void }
@@ -61,50 +53,6 @@
   let problem = $state('');
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-  // --- H04 / H05 · notifications -------------------------------------------------------------
-  let needsInvite = $state(false);
-  let invite = $state('');
-
-  async function start() {
-    const device = await pushDevice();
-    needsInvite = !device.subscribedAt; // 067: a phone the push function doesn't know yet needs the code
-    const perm = permission();
-    if (perm === 'granted' && device.subscribedAt) {
-      turnOnPush('').catch(() => {}); // renew the address and time zone quietly (E1, E6)
-      step = 'habit';
-    } else step = perm === 'denied' ? 'notifications-off' : 'notifications';
-  }
-
-  async function allow() {
-    busy = true; problem = '';
-    try {
-      const perm = permission() === 'granted' ? 'granted' : await askPermission();
-      if (perm !== 'granted') { step = 'notifications-off'; return; }
-      if (pushSupported() && PUSH_URL) await turnOnPush(invite);
-      step = 'habit';
-    } catch (e) {
-      problem = (e as Error).message;
-    } finally {
-      busy = false;
-    }
-  }
-
-  // --- S3 / S4 · the first habit ------------------------------------------------------------------
-  let habit = $state<HabitDraft>(blankHabit());
-  async function createFirst() {
-    if (!canSave(habit)) return;
-    busy = true; problem = '';
-    try {
-      await createHabit($state.snapshot(habit) as HabitDraft, habitDayOf(new Date(), zone), zone);
-      await finish();
-      syncReminders().catch(() => {});
-    } catch {
-      problem = 'Couldn’t save the habit on this phone. Try again.';
-    } finally {
-      busy = false;
-    }
-  }
 
   // --- H06 / H07 / H07b · files ---------------------------------------------------------------
   let fileInput: HTMLInputElement;
@@ -213,9 +161,6 @@
 
 <input bind:this={fileInput} class="hidden" type="file" accept=".ics,text/calendar" multiple onchange={(e) => read(e.currentTarget.files)} />
 
-{#snippet head(n: number, back: () => void)}
-  <div class="block tight progress"><BackLink onclick={back} /><Stepper steps={START} current={n} /></div>
-{/snippet}
 {#snippet importHead(n: number)}
   <div class="block tight progress">{#if onback}<BackLink label="Settings" onclick={onback} />{/if}<Stepper steps={IMPORT} current={n} /></div>
 {/snippet}
@@ -227,91 +172,24 @@
 <main class="screen flow">
   {#if step === 'welcome'}
     <div class="spacer"></div>
-    <div class="block">
-      <img class="wordmark" src={wordmark} alt="ATOMIC" />
+    <img class="wordmark" src={wordmark} alt="ATOMIC" />
+    <div class="intro">
       <h1 class="t-heading-large">Small habits, kept.</h1>
       <p class="t-body-default secondary">Pick a habit and a time. ATOMIC nudges you when it starts, and every day you keep them all lights a star.</p>
     </div>
-    <ul class="block promises">
-      <li><Icon name="bell" /><span class="t-body-default">A nudge when each habit starts</span></li>
-      <li><span class="star"><AwardStar size="tiny" /></span><span class="t-body-default">A star for every perfect day, a medal for every run</span></li>
-      <li><Icon name="lock" /><span class="t-body-default">Everything stays on this phone</span></li>
+    <ul class="promises">
+      <li><span class="mark"><Icon name="bell" /></span><span class="t-body-small">A nudge when each habit starts</span></li>
+      <li><span class="mark"><AwardStar size="tiny" /></span><span class="t-body-small">A star for every perfect day, a medal for every run</span></li>
+      <li><span class="mark"><Icon name="lock" /></span><span class="t-body-small">Everything stays on this phone</span></li>
     </ul>
     <div class="spacer"></div>
     <div class="actions">
-    <Button onclick={start}>Get started</Button>
+    <Button onclick={finish}>Get started</Button>
     {#if onrestore}
       <Button variant="tertiary" icon="download" onclick={() => restoreInput?.click()}>Restore from a backup</Button>
       <input bind:this={restoreInput} type="file" accept=".json,application/json" hidden onchange={pickBackup} />
       {#if restoreProblem}<p class="t-body-small error" role="alert">{restoreProblem}</p>{/if}
     {/if}
-    </div>
-
-  {:else if step === 'notifications'}
-    {@render head(1, () => (step = 'welcome'))}
-    <div class="block tight">
-      <h1 class="t-heading-medium">A nudge when each habit starts</h1>
-      <p class="t-body-default secondary">One push at the time you choose, nothing else. The habit name is encrypted on this phone before it leaves.</p>
-    </div>
-    <div class="block tight">
-      <SectionLabel text="What arrives" />
-      <div class="preview" aria-hidden="true">
-        <img src={appIcon} alt="" />
-        <span class="preview-text">
-          <span class="preview-head t-label-small"><span>Atomic</span><span class="tertiary">07:30</span></span>
-          <span class="t-body-small">Read 20 min · time to start</span>
-        </span>
-      </div>
-    </div>
-    {#if needsInvite && PUSH_URL}
-      <TextField bind:value={invite} label="Invite code" placeholder="The phrase you were given" />
-    {/if}
-    {@render error()}
-    <div class="spacer"></div>
-    <div class="actions">
-      <Button onclick={allow} disabled={busy || (needsInvite && !!PUSH_URL && !invite.trim())}>Allow notifications</Button>
-      <Button variant="tertiary" onclick={() => (step = 'habit')}>Not now</Button>
-    </div>
-
-  {:else if step === 'notifications-off'}
-    {@render head(1, () => (step = 'welcome'))}
-    <div class="block tight">
-      <h1 class="t-heading-medium">Notifications are off</h1>
-      <p class="t-body-default secondary">ATOMIC still works, but no nudge will arrive when a habit starts.</p>
-    </div>
-    <div class="block tight">
-      <SectionLabel text="To turn them on" />
-      <ol>
-        <StepRow n={1} text="Open iPhone Settings" />
-        <StepRow n={2} text="Notifications, then Atomic" />
-        <StepRow n={3} text="Turn on Allow Notifications" />
-      </ol>
-    </div>
-    <div class="spacer"></div>
-    <Button onclick={() => (step = 'habit')}>Continue</Button>
-
-  {:else if step === 'habit'}
-    {@render head(2, () => (step = 'notifications'))}
-    <div class="block tight">
-      <h1 class="t-heading-medium">What do you want to do?</h1>
-      <p class="t-body-default secondary">Give it an end, like “Read 20 min”. Small is fine: small is what lasts.</p>
-    </div>
-    <HabitWhat bind:draft={habit} />
-    <div class="spacer"></div>
-    <Button onclick={() => (step = 'when')} disabled={!habit.title.trim()}>Next</Button>
-
-  {:else if step === 'when'}
-    {@render head(3, () => (step = 'habit'))}
-    <div class="block tight">
-      <h1 class="t-heading-medium">When does it happen?</h1>
-      <p class="t-body-default secondary">Habits keep clock time: {habit.start} stays {habit.start} wherever you are.</p>
-    </div>
-    <HabitWhen bind:draft={habit} />
-    {@render error()}
-    <div class="spacer"></div>
-    <div class="actions">
-      <Button onclick={createFirst} disabled={busy || !canSave(habit)}>Create habit</Button>
-      <p class="t-label-small tertiary center">You can change any of this later.</p>
     </div>
 
   {:else if step === 'bring'}
@@ -425,26 +303,23 @@
   .block.tight { gap: var(--space-8); }
   .progress { gap: var(--space-8); }
   .actions { display: grid; gap: var(--space-8); }
-  .promises { gap: var(--space-16); }
-  .promises li { display: flex; align-items: center; gap: var(--space-12); }
-  .star { width: var(--size-icon); display: grid; place-items: center; }
-  .center { text-align: center; }
+  /* U13: the welcome reads as three groups: the mark, what ATOMIC is, what you get */
+  .intro { display: grid; gap: var(--space-12); }
+  .promises { display: grid; gap: var(--space-12); }
+  .promises li { display: grid; grid-template-columns: var(--size-icon) 1fr; column-gap: var(--space-12); align-items: start; }
+  .mark { height: var(--space-20); display: grid; place-items: center; color: var(--icon-default); } /* one text line (14/20): the icon centres on the first line */
   .spacer { flex: 1; }
   .hidden { display: none; }
-  .wordmark { width: calc(var(--space-48) * 5 * 0.85); height: auto; align-self: flex-start; } /* 15% smaller (owner, 8 Oct 2026) */
+  .wordmark { width: calc(var(--space-64) * 2); height: auto; align-self: flex-start; margin-bottom: var(--space-8); } /* U13: a signature, not a headline */
   .secondary { color: var(--text-secondary); }
   .tertiary { color: var(--text-tertiary); }
-  .block { display: block; }
   .error { color: var(--text-accent); }
-  .preview, .file {
+  .file {
     display: flex; align-items: center; gap: var(--space-12);
     padding: var(--space-12) var(--space-16) var(--space-12) var(--space-12); background: var(--bg-subtle);
   }
-  .preview { border-radius: var(--radius-sheet); }
   .file { border-radius: var(--radius-control); }
-  .preview img { width: var(--space-40); height: var(--space-40); }
-  .preview-text, .file > span { flex: 1; min-width: 0; display: grid; }
-  .preview-head { display: flex; justify-content: space-between; }
+  .file > span { flex: 1; min-width: 0; display: grid; }
   .list > li + li { border-top: var(--stroke-hairline) solid var(--border-divider); }
   .notes { display: grid; gap: var(--space-4); }
   .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-16); }
