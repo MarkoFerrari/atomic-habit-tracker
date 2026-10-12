@@ -67,6 +67,7 @@
     <HabitRow name="Sample habit" meta="08:00 · 30 min" status={s} icon="dumbbell" trailing={trailing[s]} showMarkDone={s === 'open' || s === 'running'} />
   {/each}
   <HabitRow name="A sample habit with a very long name that must truncate on one line" meta="All day" status="open" icon="book-open" />
+  <HabitRow name="Sample habit" meta="08:40 · after Another habit · Apprentice in 5 days" status="running" icon="coffee" showMarkDone />
 
   <SectionLabel text="Try it: tap Mark as done, or swipe" />
   <HabitRow name="Sample habit" meta="08:00 · 30 min" status={demo} icon="coffee" justDone={justDone}

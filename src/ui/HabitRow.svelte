@@ -85,10 +85,10 @@
   }
   .row.dragging { transition: none; }
   .main { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-12); text-align: left; }
-  .text { flex: 1; min-width: 0; display: grid; }
+  .text { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
   .name { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* E21 */
   .name.muted { color: var(--text-secondary); }
-  .meta { color: var(--text-tertiary); white-space: nowrap; }
-  .trailing { color: var(--text-tertiary); white-space: nowrap; }
-  .mark { min-height: var(--size-touch); padding: 0 var(--space-8); color: var(--text-accent); white-space: nowrap; }
+  .meta { color: var(--text-tertiary); overflow-wrap: anywhere; } /* wraps, so the next rank (098) is never cut and Mark as done stays on screen (U12) */
+  .trailing { flex-shrink: 0; color: var(--text-tertiary); white-space: nowrap; }
+  .mark { flex-shrink: 0; min-height: var(--size-touch); padding: 0 var(--space-8); color: var(--text-accent); white-space: nowrap; }
 </style>
