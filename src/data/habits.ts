@@ -2,7 +2,7 @@
 // Active: still repeating and not archived. Archived (E9): stopped, history and ranks kept.
 // Series that simply ended (Proton splits a series at every edit) are history, not habits.
 import { db } from './db';
-import type { CalendarEvent } from './schema';
+import type { Answer, CalendarEvent, RankRecord, Settings } from './schema';
 import type { IsoDay } from '../domain/day';
 import { wallOf } from '../domain/zone';
 
@@ -29,4 +29,49 @@ export async function unarchiveHabit(e: CalendarEvent): Promise<void> {
   const next = { ...e };
   delete next.archivedOn;
   await (await db()).put('events', next);
+}
+
+/** What a delete removed, kept in memory so Undo can put it back (112, option B). Never written anywhere. */
+export interface DeletedHabit {
+  event: CalendarEvent;
+  answers: Answer[];
+  ranks: RankRecord[];
+  adjustments: Settings['adjustments'];
+}
+
+/**
+ * 112: delete a habit for good: the series, its answers and its rank records (the one exception to 084).
+ * An active Kaizen trial on it ends as dropped, so nothing is ever erased from the trial history (083).
+ * Perfect days and weeks already celebrated stay as earned. A backup made before still holds it (026).
+ */
+export async function deleteHabit(e: CalendarEvent, today: IsoDay): Promise<DeletedHabit> {
+  const database = await db();
+  const tx = database.transaction(['events', 'answers', 'ranks', 'settings'], 'readwrite');
+  const answers = await tx.objectStore('answers').index('eventId').getAll(e.id);
+  const ranks = await tx.objectStore('ranks').index('seriesId').getAll(e.id);
+  const settings = (await tx.objectStore('settings').get('settings')) as Settings | undefined;
+  const adjustments = settings?.adjustments;
+  await Promise.all([
+    tx.objectStore('events').delete(e.id),
+    ...answers.map((a) => tx.objectStore('answers').delete(a.key)),
+    ...ranks.map((r) => tx.objectStore('ranks').delete(r.key)),
+  ]);
+  if (settings && adjustments?.some((a) => a.habitId === e.id && a.status === 'active')) {
+    const ended = adjustments.map((a) => (a.habitId === e.id && a.status === 'active' ? { ...a, status: 'dropped' as const, endedOn: today } : a));
+    await tx.objectStore('settings').put({ ...settings, adjustments: ended });
+  }
+  await tx.done;
+  return { event: e, answers, ranks, adjustments };
+}
+
+/** Undo (5 s, toast-hold): everything a delete removed comes back as it was. */
+export async function restoreHabit(d: DeletedHabit): Promise<void> {
+  const database = await db();
+  const tx = database.transaction(['events', 'answers', 'ranks', 'settings'], 'readwrite');
+  await tx.objectStore('events').put(d.event);
+  for (const a of d.answers) await tx.objectStore('answers').put(a);
+  for (const r of d.ranks) await tx.objectStore('ranks').put(r);
+  const settings = (await tx.objectStore('settings').get('settings')) as Settings | undefined;
+  if (settings && d.adjustments) await tx.objectStore('settings').put({ ...settings, adjustments: d.adjustments });
+  await tx.done;
 }

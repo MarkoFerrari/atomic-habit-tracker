@@ -31,6 +31,9 @@
   import type { CalendarEvent } from './data/schema';
   import { expand, type AgendaItem } from './domain/agenda';
   import { addDays, habitDayOf, type IsoDay } from './domain/day';
+  import Toast from './ui/Toast.svelte';
+  import { restoreHabit, type DeletedHabit } from './data/habits';
+  import { syncReminders } from './push/reminders';
 
   type View = 'loading' | 'gallery' | 'build-test' | 'onboarding' | 'app' | 'recap';
   type Pushed =
@@ -90,6 +93,18 @@
   }
 
   const pop = () => { stack = stack.slice(0, -1); };
+
+  // 112: a deleted habit leaves its detail at once; the toast keeps Undo for toast-hold (5 s). `refresh` remounts
+  // the screen underneath after an Undo, so the habit shows again.
+  let deleted = $state.raw<DeletedHabit | null>(null);
+  let refresh = $state(0);
+  function habitDeleted(d: DeletedHabit) { pop(); deleted = d; }
+  async function undoDelete() {
+    if (!deleted) return;
+    await restoreHabit(deleted);
+    syncReminders().catch(() => {});
+    refresh++;
+  }
   function saved() { stack = []; } // screens above the editor are stale after a save
 
   onMount(() => {
@@ -113,8 +128,9 @@
   onrestore={(preview, fileName) => (stack = [{ kind: 'restore', preview, fileName, from: 'onboarding' }])} />
 {:else if view === 'recap'}<Recap onclose={closeRecap} />
 {:else if view === 'app'}
+  {#key refresh}
   {#if top?.kind === 'habit'}
-    {#key top}<HabitDetail eventId={top.eventId} backLabel={top.from} onback={pop} onedit={editHabit} />{/key}
+    {#key top}<HabitDetail eventId={top.eventId} backLabel={top.from} onback={pop} onedit={editHabit} ondeleted={habitDeleted} />{/key}
   {:else if top?.kind === 'badges'}
     <Badges onback={pop} onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Badges' })} />
   {:else if top?.kind === 'week-recap'}
@@ -145,4 +161,19 @@
     <Today ontab={(t) => (tab = t)} onnewhabit={newHabit} onrecap={() => (view = 'recap')}
       onbadges={() => push({ kind: 'badges' })} />
   {/if}
+  {/key}
+  {#if deleted}
+    {#key deleted}
+      <div class="toast-slot">
+        <Toast message="{deleted.event.title} deleted" onaction={undoDelete} ondismiss={() => (deleted = null)} />
+      </div>
+    {/key}
+  {/if}
 {/if}
+
+<style>
+  .toast-slot {
+    position: fixed; left: var(--layout-gutter); right: var(--layout-gutter); z-index: 1;
+    bottom: calc(max(env(safe-area-inset-bottom), var(--space-12)) + var(--space-64) + var(--space-16)); /* above the tab bar, as on Today (H12) */
+  }
+</style>
