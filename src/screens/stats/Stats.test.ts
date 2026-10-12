@@ -11,6 +11,7 @@ import WeeklyRecap from './WeeklyRecap.svelte';
 import { db, wipeDbForTests } from '../../data/db';
 import { getSettings, updateSettings } from '../../data/settings';
 import type { Answer, CalendarEvent } from '../../data/schema';
+import { restoreHabit, type DeletedHabit } from '../../data/habits';
 
 const habit = (id: string, title: string, start: string, end: string, icon: string): CalendarEvent =>
   ({ id, calendarId: 'cal-habits', title, icon, start, end, allDay: false, timeMode: 'clock', rrule: 'FREQ=DAILY', exdates: [], reminders: [] });
@@ -104,6 +105,43 @@ describe('Badges, habit detail and recap', () => {
     expect(await screen.findByRole('heading', { name: 'Sample breakfast 30 min' })).toBeTruthy();
     expect(screen.getByText(/Why it wasn’t done · 2/)).toBeTruthy();
     expect(screen.getByText('No time')).toBeTruthy();
+  });
+
+  it('habit detail: done of due as a ring, this run and the best run as two bars (113)', async () => {
+    render(HabitDetail, { eventId: 'b', onback: noop });
+    const ring = await screen.findByRole('img', { name: /^\d+ of \d+ due done, \d+%, last \d+ days$/ });
+    const [, done, due] = /^(\d+) of (\d+)/.exec(ring.getAttribute('aria-label')!)!;
+    expect(screen.getByText(`${done}/${due}`)).toBeTruthy();
+    expect(screen.getByRole('img', { name: /^This run .* best run / })).toBeTruthy();
+  });
+
+  it('habit detail: a habit with no rank is deleted after one plain question, and Undo brings it all back (112, B)', async () => {
+    let gone: DeletedHabit | null = null;
+    render(HabitDetail, { eventId: 'b', onback: noop, ondeleted: (d: DeletedHabit) => { gone = d; } });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Delete this habit' }));
+    expect(screen.getByText('Its 4 answers go too.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Archive instead' })).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete habit' }));
+    await vi.waitFor(() => expect(gone).not.toBeNull());
+    const database = await db();
+    expect(await database.get('events', 'b')).toBeUndefined();
+    expect(await database.getAllFromIndex('answers', 'eventId', 'b')).toHaveLength(0);
+    expect(await database.getAllFromIndex('answers', 'eventId', 'r')).toHaveLength(3); // other habits untouched
+    await restoreHabit(gone!);
+    expect((await database.get('events', 'b'))?.title).toBe('Sample breakfast 30 min');
+    expect(await database.getAllFromIndex('answers', 'eventId', 'b')).toHaveLength(4);
+  });
+
+  it('habit detail: a habit with a rank is offered Archive instead first (112, A)', async () => {
+    const database = await db();
+    for (let d = 1; d <= 12; d += 1) await database.put('answers', ans('r', `2027-11-${String(d).padStart(2, '0')}`, 'done'));
+    await database.put('ranks', { key: 'r|starter', seriesId: 'r', rank: 'starter', reachedOn: '2027-11-10' });
+    render(HabitDetail, { eventId: 'r', onback: noop });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Delete this habit' }));
+    expect(screen.getByText(/its Apprentice medal from this phone/)).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Archive instead' }));
+    await vi.waitFor(async () => expect((await database.get('events', 'r'))?.archivedOn).toBe('2027-11-25'));
+    expect(await database.getAll('ranks')).toHaveLength(1); // archive keeps the medal (E9)
   });
 
   it('recap: one pattern, one adjustment started for two weeks, saved with its review date (080)', async () => {

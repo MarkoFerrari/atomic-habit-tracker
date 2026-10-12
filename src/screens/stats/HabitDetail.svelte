@@ -4,9 +4,18 @@
   // Kaizen (080): the trial in progress shows here. A pushed screen: no tab bar (044).
   // 107: the next-rank bar carries its milestone ticks, and the last milestone keeps its quote here.
   // 108: runs saved, the current run drawn occurrence by occurrence with a mark on each comeback.
+  // 113 (Playground 05, V2): done of due is a ring, the current run and the best run two bars beside it.
+  // 112 (Playground 04): at the bottom, Archive habit and Delete this habit. Delete asks first: a habit with a rank is
+  // offered Archive instead (A); one without gets a plain question (B). Either way the toast keeps Undo for 5 s.
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
-  import Stat from '../../ui/Stat.svelte';
+  import ProgressRing from '../../ui/ProgressRing.svelte';
+  import ListRow from '../../ui/ListRow.svelte';
+  import Sheet from '../../ui/Sheet.svelte';
+  import Button from '../../ui/Button.svelte';
+  import { archiveHabit, getEvent } from '../../data/events';
+  import { deleteHabit, type DeletedHabit } from '../../data/habits';
+  import { syncReminders } from '../../push/reminders';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import RankMedal from '../../ui/RankMedal.svelte';
   import ProgressBar from '../../ui/ProgressBar.svelte';
@@ -28,8 +37,12 @@
   import Icon from '../../ui/Icon.svelte';
   import { dayAndNumber } from '../../domain/format';
 
-  interface Props { eventId: string; backLabel?: string; onback: () => void; onedit?: (eventId: string) => void }
-  let { eventId, backLabel = 'Stats', onback, onedit }: Props = $props();
+  interface Props {
+    eventId: string; backLabel?: string; onback: () => void; onedit?: (eventId: string) => void;
+    /** 112: the habit is gone; the owner shows the Undo toast and leaves this screen. */
+    ondeleted?: (d: DeletedHabit) => void;
+  }
+  let { eventId, backLabel = 'Stats', onback, onedit, ondeleted }: Props = $props();
 
   let data = $state.raw<StatsData | null>(null);
   let quotes = $state.raw<QuoteState | undefined>(undefined);
@@ -48,13 +61,34 @@
   const nextLine = $derived(detail?.medal.next ? `${RANKS.find((r) => r.id === detail.medal.next!.rank)!.label} at ${detail.medal.next.days} days` : 'Master');
   const schedule = $derived(habit ? `${repeatLabel(habit.rrule ? parseRRule(habit.rrule) : null, habit.start.slice(0, 10) as IsoDay)} · ${detail?.slot} · ${nextLine}` : '');
   const weeks = $derived(data && habit ? twelveWeeks(data.ctx, habit) : []);
-  const best = $derived(data && habit ? bestRun(data.ctx, habit) : 0);
+  // bestRun counts answered days; the current run also counts today (060), so the run in progress can be the best.
+  const best = $derived(data && habit ? Math.max(bestRun(data.ctx, habit), detail?.medal.held ?? 0) : 0);
   const nextLabel = $derived(detail?.medal.next ? RANKS.find((r) => r.id === detail.medal.next!.rank)!.label : '');
   const starsToGo = $derived(detail?.medal.next ? ({ starter: 1, builder: 2, keeper: 3, artisan: 3, master: 3 } as const)[detail.medal.next.rank] : 0);
   const ticks = $derived(detail?.medal.next ? milestoneDays(detail.medal.next.rank) : []);
   const milestone = $derived(lastMilestone(quotes, eventId));
   const saved = $derived(data && habit ? runsSaved(data.ctx, habit) : null);
   const maxTime = $derived(Math.max(1, ...(detail?.times ?? []).map((t) => t.count)));
+  const runMax = $derived(Math.max(1, best, detail?.medal.held ?? 0));
+  const answerCount = $derived(data ? data.ctx.answers.filter((a) => a.eventId === eventId).length : 0);
+  const archived = $derived(!!habit?.archivedOn && !!data && habit.archivedOn <= data.ctx.today);
+
+  let sheet = $state<'delete' | 'archive' | null>(null);
+  let busy = $state(false);
+  async function remove() {
+    const event = await getEvent(eventId);
+    if (!event || !data) return;
+    busy = true;
+    try { const d = await deleteHabit(event, data.ctx.today); sheet = null; syncReminders().catch(() => {}); ondeleted?.(d); }
+    finally { busy = false; }
+  }
+  async function archive() {
+    const event = await getEvent(eventId);
+    if (!event || !data) return;
+    busy = true;
+    try { await archiveHabit(event, data.ctx.today); sheet = null; syncReminders().catch(() => {}); onback(); }
+    finally { busy = false; }
+  }
   const rows = $derived(detail ? [...SKIP_REASONS.map((k) => ({ key: k as string, label: SKIP_REASON_LABEL[k], n: detail.why[k] })), { key: WHY_NONE, label: 'No reason given', n: detail.why[WHY_NONE] }] : []);
 </script>
 
@@ -89,8 +123,20 @@
     {/if}
 
     <section class="numbers">
-      <Stat value={percent(detail.rate.rate)} caption="{detail.rate.done} of {detail.rate.due} due · last {detail.windowDays} days" />
-      <Stat value={String(best)} caption="days, best run" />
+      <div role="img" aria-label={detail.rate.due ? `${detail.rate.done} of ${detail.rate.due} due done, ${percent(detail.rate.rate)}, last ${plural(detail.windowDays, 'day')}` : 'Nothing due yet'}>
+        <ProgressRing done={detail.rate.done} due={detail.rate.due} size="large">
+          <p class="t-number-large">{detail.rate.done}/{detail.rate.due}</p>
+          <p class="t-label-small tertiary">{detail.rate.due ? `${percent(detail.rate.rate)} · last ${plural(detail.windowDays, 'day')}` : 'Nothing due yet'}</p>
+        </ProgressRing>
+      </div>
+      <div class="runs" role="img" aria-label="This run {plural(detail.medal.held, 'day')}, best run {plural(best, 'day')}">
+        {#each [{ label: 'This run', n: detail.medal.held, best: false }, { label: 'Best run', n: best, best: true }] as r (r.label)}
+          <div class="run-bar">
+            <p class="line"><span class="t-body-small secondary">{r.label}</span><span class="t-number-default">{r.n}</span></p>
+            <span class="track">{#if r.n > 0}<span class="bar" class:best={r.best} style:width="{Math.round((r.n / runMax) * 100)}%"></span>{/if}</span>
+          </div>
+        {/each}
+      </div>
     </section>
 
     <section class="weeks">
@@ -151,10 +197,42 @@
         {/each}
       </ul>
     {/if}
+
+    <section class="actions">
+      <div>
+        {#if !archived}<ListRow label="Archive habit" onclick={() => (sheet = 'archive')} />{/if}
+        <ListRow type="destructive" label="Delete this habit" onclick={() => (sheet = 'delete')} />
+      </div>
+      <p class="t-label-small tertiary">{archived ? 'Delete removes its history and medal from this phone.' : 'Archive keeps its history and medal. Delete removes them from this phone.'}</p>
+    </section>
   {:else if data}
     <p class="t-body-default secondary">This habit isn’t in the calendar any more.</p>
   {/if}
 </main>
+
+{#if habit && detail}
+  <Sheet open={sheet === 'delete'} title="Delete “{habit.title}”?" onclose={() => (sheet = null)}>
+    <div class="sheet">
+      {#if detail.medal.rank && !archived}
+        <p class="t-body-default secondary">This removes its {plural(answerCount, 'answer')}{detail.medal.held > 0 ? `, its run of ${plural(detail.medal.held, 'day')}` : ''} and its {rankLabel} medal from this phone. It can’t be undone.</p>
+        <p class="t-label-small tertiary">Archive stops reminders from today and keeps everything (E9).</p>
+        <Button disabled={busy} onclick={archive}>Archive instead</Button>
+        <Button variant="secondary" disabled={busy} onclick={remove}>Delete habit</Button>
+      {:else}
+        <p class="t-body-default secondary">{answerCount ? `Its ${plural(answerCount, 'answer')}${detail.medal.rank ? ` and its ${rankLabel} medal` : ''} go too.` : 'Nothing has been answered yet.'}</p>
+        <Button variant="secondary" disabled={busy} onclick={remove}>Delete habit</Button>
+        <Button variant="tertiary" disabled={busy} onclick={() => (sheet = null)}>Cancel</Button>
+      {/if}
+    </div>
+  </Sheet>
+  <Sheet open={sheet === 'archive'} title="Archive “{habit.title}”?" onclose={() => (sheet = null)}>
+    <div class="sheet">
+      <p class="t-body-default secondary">It stops counting and reminding from today. Its history and medal stay, and Settings → Habits can bring it back.</p>
+      <Button disabled={busy} onclick={archive}>Archive habit</Button>
+      <Button variant="tertiary" disabled={busy} onclick={() => (sheet = null)}>Cancel</Button>
+    </div>
+  </Sheet>
+{/if}
 
 <style>
   .detail { display: flex; flex-direction: column; gap: var(--layout-block-gap); padding-bottom: var(--space-40); }
@@ -172,7 +250,12 @@
   .mark { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: var(--space-16); height: var(--space-16); display: grid; place-items: center;
     border-radius: var(--radius-round); background: var(--state-done); color: var(--icon-inverse); outline: var(--stroke-illustration) solid var(--bg-default); }
   .mark :global(svg) { width: var(--space-12); height: var(--space-12); }
-  .numbers { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-16); }
+  .numbers { display: flex; align-items: center; gap: var(--space-16); }
+  .runs { flex: 1; min-width: 0; display: grid; gap: var(--space-16); }
+  .run-bar { display: grid; gap: var(--space-4); }
+  .run-bar .bar.best { background: var(--border-control); } /* the best run: a reference, not an achievement colour (008) */
+  .actions { display: grid; gap: var(--space-8); }
+  .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-40); }
   .weeks { display: grid; gap: var(--space-8); }
   .bars { display: flex; justify-content: space-between; align-items: flex-end; height: calc(var(--space-64) + var(--space-24)); }
   .bar-col { width: var(--space-20); height: 100%; display: flex; align-items: flex-end; }

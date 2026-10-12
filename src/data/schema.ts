@@ -61,7 +61,7 @@ export interface Answer {
   history: { ts: string; from: AnswerStatus | null; to: AnswerStatus }[]; // append-only
 }
 
-export interface RankRecord { key: string; seriesId: string; rank: RankId; reachedOn: IsoDay } // never deleted
+export interface RankRecord { key: string; seriesId: string; rank: RankId; reachedOn: IsoDay } // never deleted, unless its habit is (112)
 
 export interface PushLogEntry { id?: number; receivedAt: string; kind: 'recap' | 'reminder' | 'test' }
 

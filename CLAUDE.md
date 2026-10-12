@@ -6,7 +6,7 @@ ATOMIC is a habit tracker first (097): habits, a nudge when each starts, an answ
 
 - Design (the source of truth): https://www.figma.com/design/wbZAtFDM2FazPT8wHTHJP2/Atomic-Habits
 - Owner: Marko Ferrari, the designer and main user. Close friends may try it on their own phones (059): nothing is built for them, but nothing blocks them.
-- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. **M5 built (0.5.0, Playground P2–P5 in 0.5.1)**: Stats (week, month, year), habit detail, Badges with ranks, the weekly recap with Kaizen (080). **0.6.0 (8 Oct 2026): habits first**, from Figma page 14: new start flow with a stepper, Today with the week strip and the perfect-day award, the Habits tab (list, week, month), star medals, Stats with perfect days, Settings. **0.6.2 (8 Oct 2026):** the Calendar and the .ics import left the app (104), Starter is now Apprentice (105). **0.6.3:** the award plays once per day and count, and on opening Today (106, U11). **0.7.0 (8 Oct 2026):** milestone quotes (107), the comeback (108), the perfect week (109), one quote library (110). **0.7.1:** round segmented controls, no corner star in the month, one Settings list (111). **0.7.2 (12 Oct 2026):** a long second line in a habit row wraps, so Mark as done stays on screen (U12). Playground (12 Oct): proposals 04 Delete a habit and 05 Rate and best run as pictures; ideas not adopted moved to page 15, Archived Ideas. On the phone for UX testing; M6 (polish, edge cases) next. Open Playground proposals: quote moments and rank signature quotes (02), identity votes, opt-in (03). Component gallery at `#gallery`, build test at `#build-test`.
+- Status (7 Oct 2026): **M0 passed on device (GO).** M1 deployed. **M2 built**: onboarding with the first import (065), Today, the Evening Recap; a push when each habit starts, no 22:30 recap push (069). **M3 built (0.3.0)**: Calendar day/week/month, event detail, create/edit/delete with repeats, reminders for every event. **M4 built (0.4.0)**: Settings, Calendars, Habits, Notifications, Data, About; .ics re-import (E8), backup, restore (also from Welcome), backup nudge. **M5 built (0.5.0, Playground P2–P5 in 0.5.1)**: Stats (week, month, year), habit detail, Badges with ranks, the weekly recap with Kaizen (080). **0.6.0 (8 Oct 2026): habits first**, from Figma page 14: new start flow with a stepper, Today with the week strip and the perfect-day award, the Habits tab (list, week, month), star medals, Stats with perfect days, Settings. **0.6.2 (8 Oct 2026):** the Calendar and the .ics import left the app (104), Starter is now Apprentice (105). **0.6.3:** the award plays once per day and count, and on opening Today (106, U11). **0.7.0 (8 Oct 2026):** milestone quotes (107), the comeback (108), the perfect week (109), one quote library (110). **0.7.1:** round segmented controls, no corner star in the month, one Settings list (111). **0.7.2 (12 Oct 2026):** a long second line in a habit row wraps, so Mark as done stays on screen (U12). **0.8.0 (12 Oct 2026):** delete a habit (112) and the habit detail's ring and two bars (113), from Playground 04 and 05; the chosen screens are on page 14, section 04 (H4, H4b–H4e), the options not chosen on page 15, Archived Ideas. On the phone for UX testing; M6 (polish, edge cases) next. Open Playground proposals: quote moments and rank signature quotes (02), identity votes, opt-in (03). Component gallery at `#gallery`, build test at `#build-test`.
 
 ---
 
@@ -126,7 +126,7 @@ The rules live in `/src/domain` as pure functions, each with tests.
   | Artisan | 182 (6 months) | 9 |
   | Master | 365 (1 year) | 12, the full ring |
 
-- **Ranks are never lost.** A lapsed habit keeps its rank, and the current run shows the real state.
+- **Ranks are never lost.** A lapsed habit keeps its rank, and the current run shows the real state. The one exception: deleting the habit itself (112).
 - **One medal per habit (055), the star medal (100).** The habit's own icon on a disc, ringed by twelve slots like the European flag; stars fill clockwise from the top. Empty slots are dots, so the way to Master is always visible. The gold is under 3:1 on white, so the rank's name always travels with the medal.
 - **At Master** the ring is full for good, the run keeps counting, and nothing else unlocks (H22b).
 - Rows no longer draw the 5-segment mastery ring (101); they name the next rank instead ("Builder in 6 days", 098), with a green bar in the Habits list.
@@ -151,7 +151,7 @@ Event      { id, icsUid?, calendarId, title, icon?, start, end, allDay,
              timeMode: 'clock' | 'zoned', tz?, rrule?, exdates[], overrides{}, reminders: minutes[] }
 Answer     { eventId, occurrence: 'YYYY-MM-DD', status: 'done'|'skipped'|'missed',
              reason?, answeredAt, history: {ts, from, to}[] }       // append-only history
-RankRecord { eventSeriesId, rank, reachedOn }                        // never deleted
+RankRecord { eventSeriesId, rank, reachedOn }                        // never deleted, unless its habit is (112)
 PushLog    { receivedAt, kind: 'recap'|'reminder'|'test' }
 Settings   { recapTime: '22:30', timezone, backupNudgeDays, lastBackupAt, onboardingDone }
 ```
@@ -318,6 +318,7 @@ Numbers are plain whole numbers, never zero-padded (061): 82%, 18, 10/30. Geist 
 | ID | Case | Behaviour | Screens | Status |
 |---|---|---|---|---|
 | E9 | Archived habit | Stops counting from today; history, ranks and the frozen ring stay. | H32, H45 | Designed |
+| E24 | Deleting a habit (112) | Habit detail, Delete this habit: with a rank, Archive instead comes first (A); without one, a plain question (B). The series, answers and rank records go; an active trial ends as dropped; perfect days stay as earned. Undo for 5 s. | H4b–H4e | Designed |
 | E14 | A run ends | The run goes back to day 1; the rank stays. The Recap says so once, plainly, with no streak-loss drama. | X1 | Designed |
 | E15 | Several ranks on one day | One sheet lists them all; never a push. | H22 | Designed |
 | E16 | Editing a repeating habit | This event · this and following · all events; past answers keep their original time and title. | H31 | Designed |
@@ -548,6 +549,8 @@ The riskiest assumptions get tested before any screen is built.
 | 109 | Perfect week (Playground 05): the last-day line, the constellation award after the day's star (once a week), and the year's sky on Stats | Decided (owner, 8 Oct 2026) |
 | 110 | Quotes: one pool per moment (milestone, morning after a miss, comeback, week), given once per moment and never repeated until the pool turns; at most one on Today; public domain or ATOMIC only, no modern authors; none on the daily perfect-day award, none in pushes | Proposed |
 | 111 | Small tweaks after use: segmented controls are fully rounded (`radius/round`, container and selected segment, with 103's fill); a perfect day in the Habits month grid is the full green cell, the corner star left; Settings is one list with every row the same distance apart | Decided (owner, 8 Oct 2026) |
+| 112 | A habit can be deleted, not only archived (Playground 04): Delete this habit at the bottom of the habit detail, beside Archive habit. With a rank, the sheet offers Archive instead first (A); without one, a plain question (B); either way a toast keeps Undo for 5 s. Delete removes the series, its answers and its rank records (the one exception to 084); an active Kaizen trial on it ends as dropped (083); perfect days and weeks already celebrated stay | Decided (owner, 12 Oct 2026) |
+| 113 | Habit detail (Playground 05, V2): done of due as the ring, done/due inside with the rate and its window; beside it This run (green) and Best run (`border/control`) on one scale. The best run is never shorter than the run in progress | Decided (owner, 12 Oct 2026) |
 
 Note: "Proposed" means designed and built as specified, but not yet confirmed by the owner. Treat it as the spec until it changes.
 
