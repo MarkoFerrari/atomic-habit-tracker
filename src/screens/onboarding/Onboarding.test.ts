@@ -32,10 +32,19 @@ const choose = async (...files: File[]) => {
 };
 
 describe('first run (F1)', () => {
-  it('a wrong file explains itself (E11, H07b)', async () => {
-    render(Onboarding, { ondone: () => {} });
+  it('Get started goes straight to the app: no reminders step, no invite code (114)', async () => {
+    const ondone = vi.fn();
+    render(Onboarding, { ondone });
     await click('Get started');
-    await click('Not now');
+    await vi.waitFor(() => expect(ondone).toHaveBeenCalledOnce());
+    expect(screen.queryByLabelText('Invite code')).toBeNull();
+    const settings = await getSettings();
+    expect(settings.onboardingDone).toBe(true);
+    expect(settings.trackingStart).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('a wrong file explains itself (E11, H07b)', async () => {
+    render(Onboarding, { ondone: () => {}, from: 'bring' });
     await choose(file('proton-export.html', '<html></html>'));
     expect(await screen.findByText('Can’t read this file')).toBeTruthy();
     expect(screen.getByDisplayValue('proton-export.html')).toBeTruthy();
@@ -43,9 +52,7 @@ describe('first run (F1)', () => {
 
   it('imports, merges a second habit calendar, picks icons, saves, and finishes', async () => {
     const ondone = vi.fn();
-    render(Onboarding, { ondone });
-    await click('Get started');
-    await click('Not now');
+    render(Onboarding, { ondone, from: 'bring' });
     await choose(
       file('personal.ics', ics('SAMPLE PERSONAL', [ev('p1', 'Sample dinner', '20261009T200000')])),
       file('habits.ics', ics('SAMPLE HABITS', [ev('h1', 'Sample train 60 min', '20261006T053000', 'FREQ=WEEKLY;BYDAY=TU,TH,SA')])),
