@@ -6,6 +6,7 @@ import type { Answer, CalendarEvent, RankRecord, Settings } from './schema';
 import type { IsoDay } from '../domain/day';
 import { wallOf } from '../domain/zone';
 import { snapshot, splitChains } from '../domain/versions';
+import { endPause, PauseError, withPause, type Pause } from '../domain/pause';
 
 const untilOf = (rrule: string) => { const m = /UNTIL=(\d{4})(\d{2})(\d{2})/.exec(rrule); return m ? `${m[1]}-${m[2]}-${m[3]}` : null; };
 
@@ -133,4 +134,22 @@ export async function joinSplitHabits(): Promise<number> {
   await tx.objectStore('settings').put({ ...(JSON.parse(text) as Settings), seriesJoined: true });
   await tx.done;
   return joined;
+}
+
+/** 117: pause a habit ahead of time, with a reason. Throws PauseError when the rules say no. */
+export async function pauseHabit(eventId: string, p: Omit<Pause, 'setOn'>, today: IsoDay): Promise<CalendarEvent> {
+  const database = await db();
+  const event = await database.get('events', eventId);
+  if (!event) throw new PauseError('This habit isn’t here any more.');
+  const next = { ...event, pauses: withPause(event.pauses, { ...p, setOn: today }, today) };
+  await database.put('events', next);
+  return next;
+}
+
+/** 117: bring a paused habit back today (or drop a pause set ahead). */
+export async function resumeHabit(eventId: string, today: IsoDay): Promise<void> {
+  const database = await db();
+  const event = await database.get('events', eventId);
+  if (!event) return;
+  await database.put('events', { ...event, pauses: endPause(event.pauses, today) });
 }

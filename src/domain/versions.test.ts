@@ -1,7 +1,8 @@
 // 115: a habit keeps one identity across schedule changes. Sample data only (045).
 import { describe, expect, it } from 'vitest';
 import { firstDayOf, onVersionOf, splitChains, versionsOf } from './versions';
-import { daysHeldFor, occurrencesOn, type HabitSource } from './today';
+import { occurrencesOn, type HabitSource } from './today';
+import { daysHeldFor } from './stats';
 import type { IsoDay } from './day';
 
 const moved: HabitSource = {

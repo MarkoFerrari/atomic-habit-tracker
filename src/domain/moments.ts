@@ -82,7 +82,7 @@ export function comebacksToday(ctx: Context): Comeback[] {
   for (const h of ctx.habits) {
     const history = historyOf(ctx, h);
     if (!comebackDays(history).includes(ctx.today)) continue;
-    out.push({ eventId: h.id, title: h.title, held: daysHeld(history.reduce(step, EMPTY_RUN), ctx.today), day: ctx.today });
+    out.push({ eventId: h.id, title: h.title, held: daysHeld(history.reduce(step, EMPTY_RUN), ctx.today, h.pauses), day: ctx.today });
   }
   return out;
 }

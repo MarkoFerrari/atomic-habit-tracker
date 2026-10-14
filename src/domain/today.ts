@@ -3,10 +3,9 @@
 import type { IsoDay } from './day';
 import { occurrences, parseRRule } from './recurrence';
 import { habitState, type AnswerStatus, type HabitState } from './states';
-import { daysHeld, runOf, type DueDay } from './runs';
-import { nextRank, RANKS, reachedRank, type RankId } from './ranks';
 import { addMinutes, instantOf, type Wall } from './zone';
-import { firstDayOf, versionsOf, type PastVersion } from './versions';
+import { versionsOf, type PastVersion } from './versions';
+import { isPaused, type Pause } from './pause';
 
 /** The parts of a stored habit event these rules need (clock time, 028). */
 export interface HabitSource {
@@ -24,6 +23,7 @@ export interface HabitSource {
   smallest?: string;
   identity?: string;
   past?: PastVersion[]; // 115: earlier schedules, same habit
+  pauses?: Pause[]; // 117
 }
 
 export interface Occurrence {
@@ -52,6 +52,7 @@ export function occurrencesOn(habits: readonly HabitSource[], target: IsoDay): O
   const out: Occurrence[] = [];
   for (const h of habits.flatMap((x) => versionsOf(x))) { // 115: every schedule the habit has had
     if (h.archivedOn && target >= h.archivedOn) continue; // E9: stops counting from the day it's archived
+    if (isPaused(h.pauses, target)) continue; // 117: a paused day is not a day for this habit
     const startDay = day(h.start);
     const length = minutesBetween(h.start, h.end);
     const rule = h.rrule ? parseRRule(h.rrule) : null;
@@ -122,31 +123,4 @@ export function greeting(hour: number): Greeting {
 /** "Close the day" appears in the evening (C6): from 18:00 until the day closes at 04:00. */
 export function showCloseTheDay(hour: number): boolean {
   return hour >= 18 || hour < 4;
-}
-
-/**
- * The run line on the habit sheet (H16): "Day 4 · Apprentice at 10 days". Past occurrences without an
- * answer count as missed (052); today's counts only once answered. Days held per 060 (proposed).
- */
-export function runLine(h: HabitSource, answers: readonly AnswerLike[], trackingStart: IsoDay, today: IsoDay, stored: RankId | null = null): string {
-  const held = daysHeldFor(h, answers, trackingStart, today);
-  const next = nextRank(reachedRank(stored, held), held);
-  const target = next ? `${RANKS.find((r) => r.id === next.rank)!.label} at ${RANKS.find((r) => r.id === next.rank)!.days} days` : 'Master';
-  return held > 0 ? `Day ${held} · ${target}` : target;
-}
-
-/** Days held in the habit's current run (060), counting unanswered past occurrences as missed (052). */
-export function daysHeldFor(h: HabitSource, answers: readonly AnswerLike[], trackingStart: IsoDay, today: IsoDay): number {
-  const startDay = firstDayOf(h); // 115: the habit's history spans every version
-  const from = startDay > trackingStart ? startDay : trackingStart;
-  const status = new Map(answers.filter((a) => a.eventId === h.id).map((a) => [a.occurrence, a.status]));
-  const days = versionsOf(h).flatMap((v) => occurrences(day(v.start), v.rrule ? parseRRule(v.rrule) : null, v.exdates as IsoDay[], today));
-  const history: DueDay[] = [...new Set(days)].sort()
-    .filter((d) => d >= from)
-    .flatMap((d) => {
-      const s = status.get(d);
-      if (s) return [{ day: d, status: s }];
-      return d < today ? [{ day: d, status: 'missed' as const }] : [];
-    });
-  return daysHeld(runOf(history), today);
 }

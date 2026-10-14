@@ -18,7 +18,7 @@
   import type { Answer, CalendarEvent, RankRecord } from '../../data/schema';
   import { parseRRule } from '../../domain/recurrence';
   import { repeatLabel } from '../../domain/format';
-  import { daysHeldFor } from '../../domain/today';
+  import { daysHeldFor } from '../../domain/stats';
   import { RANKS, reachedRank, ringSegments, type RankId } from '../../domain/ranks';
   import { habitDayOf, type IsoDay } from '../../domain/day';
   import { syncReminders } from '../../push/reminders';

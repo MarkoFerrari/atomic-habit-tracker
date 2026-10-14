@@ -41,6 +41,9 @@
   import { getSettings } from '../../data/settings';
   import { db } from '../../data/db';
   import { syncReminders } from '../../push/reminders';
+  import { backToday, currentPause, lastPausedDay } from '../../domain/pause';
+  import { resumeHabit } from '../../data/habits';
+  import { plural } from '../../domain/format';
   import { permission, pushDevice, pushSupported, PUSH_URL } from '../../push/notifications';
   import { READY_TABS } from '../../ui/tabs';
   import Banner from '../../ui/Banner.svelte';
@@ -52,7 +55,8 @@
   import { activeAdjustment, type Adjustment } from '../../domain/adjust';
   import { addMinutes, wallOf, type Wall } from '../../domain/zone';
   import { SKIP_REASONS, type AnswerStatus, type SkipReason } from '../../domain/states';
-  import { greeting, runLine, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
+  import { greeting, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
+  import { runLine } from '../../domain/stats';
 
   interface Props { onrecap?: () => void; onnewhabit?: () => void; ontab?: (tab: Tab) => void; onbadges?: () => void; onnotifications?: () => void }
   let { onrecap, onnewhabit, ontab, onbadges, onnotifications }: Props = $props();
@@ -91,6 +95,11 @@
   // 085 (P3): who today's next habit votes for; the first open habit that has an identity
   const voting = $derived((view.open.find((r) => r.identity) ?? view.answered.find((r) => r.identity))?.identity ?? '');
   const trialHabit = $derived(trial ? events.find((e) => e.id === trial!.habitId) : undefined);
+  // 117: habits paused today leave the list; one line each says until when, and a habit back from a pause is greeted once
+  const paused = $derived(events.flatMap((e) => { const p = currentPause(e.pauses, habitDay); const last = p && lastPausedDay(p); return p && last && p.from <= habitDay ? [{ e, last }] : []; }));
+  const back = $derived(events.filter((e) => backToday(e.pauses, habitDay) && view.open.concat(view.answered).some((r) => r.eventId === e.id)));
+  const backLine = (e: CalendarEvent) => { const held = medalOf.get(e.id)?.held ?? 0; return `${shortName(e.title)} is back today.${held > 0 ? ` Its ${plural(held, 'day')} run carries on from here.` : ''}`; };
+  async function bringBack(id: string) { await resumeHabit(id, habitDay); await load(); }
 
   async function load() {
     now = new Date();
@@ -326,9 +335,21 @@
       {#if risk}
         <p class="note t-body-small"><Icon name="refresh" />{risk}</p>
       {/if}
+      {#each back as e (e.id)}
+        <p class="note t-body-small"><Icon name="refresh" />{backLine(e)}</p>
+      {/each}
+      {#each paused as p (p.e.id)}
+        <div class="note t-body-small">
+          <Icon name="clock" />
+          <span class="note-text">
+            <span>{shortName(p.e.title)} is paused until {fullDate(p.last)}. {(medalOf.get(p.e.id)?.held ?? 0) > 0 ? `Its ${plural(medalOf.get(p.e.id)!.held, 'day')} run waits for it.` : ''}</span>
+            <button class="link t-body-strong" onclick={() => bringBack(p.e.id)}>Bring it back today</button>
+          </span>
+        </div>
+      {/each}
 
       {#if view.due === 0}
-        <EmptyState title="Nothing due today" body="No habit repeats on this day." />
+        <EmptyState title="Nothing due today" body={paused.length ? 'Paused habits come back on their own.' : 'No habit repeats on this day.'} />
       {/if}
 
       <section class="lists">
@@ -432,6 +453,8 @@
   .week-line { display: flex; align-items: center; gap: var(--space-8); color: var(--text-primary); }
   .note { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); background: var(--bg-subtle); border-radius: var(--radius-control); color: var(--text-primary); }
   .lists { display: grid; }
+  .note-text { display: grid; gap: var(--space-8); justify-items: start; }
+  .link { color: var(--text-accent); min-height: var(--size-touch); margin-block: calc((var(--space-24) - var(--size-touch)) / 2); }
   .tertiary { color: var(--text-tertiary); }
   .secondary { color: var(--text-secondary); }
   .block { display: block; }

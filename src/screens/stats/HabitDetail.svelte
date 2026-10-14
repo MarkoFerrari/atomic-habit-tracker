@@ -5,6 +5,7 @@
   // 107: the next-rank bar carries its milestone ticks, and the last milestone keeps its quote here.
   // 108: runs saved, the current run drawn occurrence by occurrence with a mark on each comeback.
   // 113 (Playground 05, V2): done of due is a ring, the current run and the best run two bars beside it.
+  // 117 (Playground 08): Pause habit, set ahead for 3 days to 2 weeks, with a reason; the 2-min version is offered first.
   // 112 (Playground 04): at the bottom, Archive habit and Delete this habit. Delete asks first: a habit with a rank is
   // offered Archive instead (A); one without gets a plain question (B). Either way the toast keeps Undo for 5 s.
   import { onMount } from 'svelte';
@@ -14,13 +15,18 @@
   import Sheet from '../../ui/Sheet.svelte';
   import Button from '../../ui/Button.svelte';
   import { archiveHabit, getEvent } from '../../data/events';
-  import { deleteHabit, type DeletedHabit } from '../../data/habits';
+  import { deleteHabit, pauseHabit, resumeHabit, type DeletedHabit } from '../../data/habits';
+  import PickerRow from '../../ui/PickerRow.svelte';
+  import Chip from '../../ui/Chip.svelte';
+  import TextField from '../../ui/TextField.svelte';
+  import { currentPause, lastPausedDay, PAUSE_LENGTHS, PAUSE_REASONS, PauseError, type PauseReason } from '../../domain/pause';
+  import { addDays } from '../../domain/day';
   import { syncReminders } from '../../push/reminders';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import RankMedal from '../../ui/RankMedal.svelte';
   import ProgressBar from '../../ui/ProgressBar.svelte';
   import { bestRun, nextRankLine, twelveWeeks } from '../../domain/award';
-  import { SKIP_REASON_LABEL } from '../../ui/copy';
+  import { PAUSE_REASON_LABEL, SKIP_REASON_LABEL } from '../../ui/copy';
   import type { IconName } from '../../ui/icons';
   import { RANKS } from '../../domain/ranks';
   import { SKIP_REASONS } from '../../domain/states';
@@ -73,7 +79,35 @@
   const answerCount = $derived(data ? data.ctx.answers.filter((a) => a.eventId === eventId).length : 0);
   const archived = $derived(!!habit?.archivedOn && !!data && habit.archivedOn <= data.ctx.today);
 
-  let sheet = $state<'delete' | 'archive' | null>(null);
+  let sheet = $state<'delete' | 'archive' | 'pause' | null>(null);
+  // --- 117: pause ---------------------------------------------------------------------------------------------
+  let reload = $state(0);
+  $effect(() => { if (reload) loadStats().then((d) => (data = d)); });
+  const pause = $derived(habit && data ? currentPause(habit.pauses, data.ctx.today) : null);
+  const pauseLast = $derived(pause ? lastPausedDay(pause) : null);
+  let pFrom = $state<IsoDay | ''>('');
+  let pDays = $state<number>(7);
+  let pReason = $state<PauseReason | null>(null);
+  let pNote = $state('');
+  let pProblem = $state('');
+  const pStart = $derived((pFrom || data?.ctx.today || '') as IsoDay);
+  const pUntil = $derived(pStart ? addDays(pStart, pDays - 1) : ('' as IsoDay));
+  const lengthLabel = (n: number) => (n === 3 ? '3 days' : n === 7 ? '1 week' : '2 weeks');
+  function openPause() { pFrom = ''; pDays = 7; pReason = null; pNote = ''; pProblem = ''; sheet = 'pause'; }
+  async function savePause() {
+    if (!data || !pReason) return;
+    busy = true; pProblem = '';
+    try {
+      await pauseHabit(eventId, { from: pStart, until: pUntil, reason: pReason, ...(pReason === 'other' ? { note: pNote } : {}) }, data.ctx.today);
+      sheet = null; syncReminders().catch(() => {}); reload++;
+    } catch (e) { pProblem = e instanceof PauseError ? e.message : 'Couldn’t pause it. Try again.'; }
+    finally { busy = false; }
+  }
+  async function bringBack() {
+    if (!data) return;
+    await resumeHabit(eventId, data.ctx.today);
+    syncReminders().catch(() => {}); reload++;
+  }
   let busy = $state(false);
   async function remove() {
     const event = await getEvent(eventId);
@@ -200,6 +234,12 @@
 
     <section class="actions">
       <div>
+        {#if !archived && pause && pauseLast}
+          <p class="t-body-small secondary paused">Paused {pause.from > data!.ctx.today ? `from ${fullDate(pause.from)} ` : ''}until {fullDate(pauseLast)} · {PAUSE_REASON_LABEL[pause.reason]}{pause.note ? `: ${pause.note}` : ''}</p>
+          <ListRow label={pause.from > data!.ctx.today ? 'Cancel the pause' : 'Bring it back today'} onclick={bringBack} />
+        {:else if !archived}
+          <ListRow label="Pause habit" onclick={openPause} />
+        {/if}
         {#if !archived}<ListRow label="Archive habit" onclick={() => (sheet = 'archive')} />{/if}
         <ListRow type="destructive" label="Delete this habit" onclick={() => (sheet = 'delete')} />
       </div>
@@ -223,6 +263,31 @@
         <Button variant="secondary" disabled={busy} onclick={remove}>Delete habit</Button>
         <Button variant="tertiary" disabled={busy} onclick={() => (sheet = null)}>Cancel</Button>
       {/if}
+    </div>
+  </Sheet>
+  <Sheet open={sheet === 'pause'} title="Pause “{habit.title}”" onclose={() => (sheet = null)}>
+    <div class="sheet">
+      {#if habit.smallest}
+        <p class="t-body-small travel">Can it travel? The 2-min version ({habit.smallest}) counts as done and keeps the run going without a pause.</p>
+      {/if}
+      <div>
+        <PickerRow label="Starts" type="date" value={pStart === data?.ctx.today ? 'Today' : fullDate(pStart)} input={pStart} min={data?.ctx.today} onchange={(v) => v && (pFrom = v as IsoDay)} />
+        <div class="chips" role="group" aria-label="How long">
+          {#each PAUSE_LENGTHS as n (n)}<Chip label={lengthLabel(n)} selected={pDays === n} onclick={() => (pDays = n)} />{/each}
+        </div>
+      </div>
+      <div>
+        <SectionLabel text="Why" />
+        <div class="chips" role="group" aria-label="Why">
+          {#each PAUSE_REASONS as r (r)}<Chip label={PAUSE_REASON_LABEL[r]} selected={pReason === r} onclick={() => (pReason = r)} />{/each}
+        </div>
+        {#if pReason === 'other'}<TextField bind:value={pNote} label="In a few words" placeholder="Moving house" autocapitalize="sentences" />{/if}
+      </div>
+      <p class="t-body-small secondary">Until {fullDate(pUntil)}. Paused days don’t count: nothing is due, nothing is missed. {detail.medal.held > 0 ? `Your ${plural(detail.medal.held, 'day')} run waits and carries on after.` : 'Nothing is lost.'} No nudges until then.</p>
+      <p class="t-label-small tertiary">Only ahead, so a pause can’t erase a miss. Two weeks at most; for longer, Archive keeps everything.</p>
+      {#if pProblem}<p class="t-body-small problem" role="alert">{pProblem}</p>{/if}
+      <Button disabled={busy || !pReason} onclick={savePause}>{pReason ? `Pause until ${fullDate(pUntil)}` : 'Choose why first'}</Button>
+      <Button variant="tertiary" disabled={busy} onclick={() => (sheet = null)}>Cancel</Button>
     </div>
   </Sheet>
   <Sheet open={sheet === 'archive'} title="Archive “{habit.title}”?" onclose={() => (sheet = null)}>
@@ -255,6 +320,10 @@
   .run-bar { display: grid; gap: var(--space-4); }
   .run-bar .bar.best { background: var(--border-control); } /* the best run: a reference, not an achievement colour (008) */
   .actions { display: grid; gap: var(--space-8); }
+  .paused { padding-top: var(--space-12); }
+  .chips { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }
+  .travel { padding: var(--space-12) var(--space-16); background: var(--bg-subtle); border-radius: var(--radius-control); color: var(--text-primary); }
+  .problem { color: var(--text-accent); }
   .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-40); }
   .weeks { display: grid; gap: var(--space-8); }
   .bars { display: flex; justify-content: space-between; align-items: flex-end; height: calc(var(--space-64) + var(--space-24)); }

@@ -4,6 +4,8 @@
   // in green (098). Week puts the week strip over the grid; Month is the one month grid of the app (it absorbs H35),
   // where a perfect day is simply the full green cell (111: the corner star left). Days before the start and days
   // ahead are never zero (033).
+  import { currentPause, lastPausedDay } from '../../domain/pause';
+  import { dayAndNumber } from '../../domain/format';
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
   import TabBar from '../../ui/TabBar.svelte';
@@ -61,6 +63,10 @@
     const rule = repeatLabel(h.rrule ? parseRRule(h.rrule) : null, h.start.slice(0, 10) as IsoDay);
     const m = medalOf.get(h.id);
     const next = m ? nextRankLine(m) : '';
+    // 117: a paused habit says until when instead of its next rank
+    const p = ctx ? currentPause(h.pauses, ctx.today) : null;
+    const last = p ? lastPausedDay(p) : null;
+    if (p && last && ctx && p.from <= ctx.today) return `${rule} · Paused until ${dayAndNumber(last)}`;
     return `${rule} · ${h.allDay ? 'All day' : h.start.slice(11, 16)}${next ? ` · ${next}` : ''}`;
   };
   const rankName = (m: Medal | undefined) => (m?.rank ? RANKS.find((r) => r.id === m.rank)!.label : 'No medal yet');

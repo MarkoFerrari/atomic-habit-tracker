@@ -5,7 +5,7 @@ import { addDays, type IsoDay } from './day';
 import { plural, shortName, weekdayLetter, weekdayShort } from './format';
 import { RANKS } from './ranks';
 import { daysHeld, step, EMPTY_RUN, type DueDay } from './runs';
-import { bestHeld, habitDays, mondayOf, rateOf, type Context, type HabitDay, type Medal } from './stats';
+import { bestHeld, habitDays, historyOf, mondayOf, rateOf, type Context, type HabitDay, type Medal } from './stats';
 
 /** perfect: every due habit done · partial: some done · missed: past, none done · open: today, not yet perfect ·
  *  future: ahead · empty: nothing due, or before tracking started (never counted, 033). */
@@ -62,16 +62,10 @@ export function runAtRisk(ctx: Context): RunAtRisk | null {
   for (const c of todays) {
     const h = ctx.habits.find((x) => x.id === c.eventId);
     if (!h) continue;
-    const startDay = firstDayOf(h); // 115
-    const from = ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
-    const yesterday = addDays(ctx.today, -1);
-    if (from > yesterday) continue;
-    const history: DueDay[] = habitDays({ ...ctx, habits: [h] }, from, yesterday)
-      .filter((d) => d.state === 'done' || d.state === 'skipped' || d.state === 'missed')
-      .map((d) => ({ day: d.day, status: d.state as DueDay['status'] }));
+    const history: DueDay[] = historyOf(ctx, h, addDays(ctx.today, -1));
     const run = history.reduce(step, EMPTY_RUN);
     if (run.startedOn && run.missesInARow === 1) {
-      return { eventId: h.id, title: h.title, held: daysHeld(run, ctx.today), missedOn: history.at(-1)!.day };
+      return { eventId: h.id, title: h.title, held: daysHeld(run, ctx.today, h.pauses), missedOn: history.at(-1)!.day };
     }
   }
   return null;
@@ -101,11 +95,5 @@ export function twelveWeeks(ctx: Context, h: Context['habits'][number]): WeekBar
 
 /** H4: the longest run the habit ever held, in days (060). */
 export function bestRun(ctx: Context, h: Context['habits'][number]): number {
-  const startDay = firstDayOf(h); // 115
-  const from = ctx.trackingStart && ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
-  if (!ctx.trackingStart || from > ctx.today) return 0;
-  const history: DueDay[] = habitDays({ ...ctx, habits: [h] }, from, ctx.today)
-    .filter((d) => d.state === 'done' || d.state === 'skipped' || d.state === 'missed')
-    .map((d) => ({ day: d.day, status: d.state as DueDay['status'] }));
-  return bestHeld(history);
+  return bestHeld(historyOf(ctx, h), h.pauses);
 }

@@ -8,7 +8,7 @@ import { agenda, expand } from '../domain/agenda';
 import type { Calendar, CalendarEvent } from './schema';
 import type { IsoDay } from '../domain/day';
 import { toSource } from './answers';
-import { daysHeldFor } from '../domain/today';
+import { daysHeldFor } from '../domain/stats';
 
 const ZONE = 'Europe/Athens';
 const habits: Calendar = { id: 'hab', name: 'SAMPLE HABITS', color: 'habits', trackAsHabits: true, createdAt: '1' };

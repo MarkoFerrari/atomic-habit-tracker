@@ -5,6 +5,7 @@ import { addDays, type IsoDay } from './day';
 import { occurrences, parseRRule } from './recurrence';
 import { addMinutes, instantOf, wallOf, type Wall } from './zone';
 import { versionsOf, type PastVersion } from './versions';
+import { isPaused, type Pause } from './pause';
 
 /** The parts of a stored event the calendar needs (structurally the same as CalendarEvent). */
 export interface EventSource {
@@ -21,6 +22,7 @@ export interface EventSource {
   overrides?: Record<string, { start: string; end: string; title?: string; cancelled?: boolean }>;
   archivedOn?: string;
   past?: PastVersion[]; // 115: earlier schedules of the same habit
+  pauses?: Pause[]; // 117: paused days have no occurrence, so no reminder
 }
 
 export interface AgendaItem {
@@ -68,11 +70,12 @@ export function expand(e: EventSource, from: IsoDay, to: IsoDay, zone: string): 
   for (const d of days) {
     if (d < earliest || overrides[d]) continue;
     if (e.archivedOn && d >= e.archivedOn) continue; // E9
+    if (isPaused(e.pauses, d)) continue; // 117
     const s = `${d}T${timeOf(startWall)}` as Wall;
     push(d, s, addMinutes(s, lengthMin), e.title);
   }
   for (const [original, o] of Object.entries(overrides)) {
-    if (o.cancelled || (e.archivedOn && original >= e.archivedOn)) continue;
+    if (o.cancelled || (e.archivedOn && original >= e.archivedOn) || isPaused(e.pauses, original as IsoDay)) continue;
     if (!occurrences(firstDay, rule, [], original as IsoDay).includes(original as IsoDay)) continue;
     const s = (clock ? o.start.slice(0, 16) : wallOf(new Date(o.start), ownZone)) as Wall;
     const en = (clock ? o.end.slice(0, 16) : wallOf(new Date(o.end), ownZone)) as Wall;
