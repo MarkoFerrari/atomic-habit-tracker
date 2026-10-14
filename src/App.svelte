@@ -32,7 +32,7 @@
   import { expand, type AgendaItem } from './domain/agenda';
   import { addDays, habitDayOf, type IsoDay } from './domain/day';
   import Toast from './ui/Toast.svelte';
-  import { restoreHabit, type DeletedHabit } from './data/habits';
+  import { joinSplitHabits, restoreHabit, type DeletedHabit } from './data/habits';
   import { syncReminders } from './push/reminders';
 
   type View = 'loading' | 'gallery' | 'build-test' | 'onboarding' | 'app' | 'recap';
@@ -72,6 +72,7 @@
     if (!isInstalled() && import.meta.env.PROD) { view = 'build-test'; return; }
     const done = (await getSettings()).onboardingDone;
     if (!done) { view = 'onboarding'; return; }
+    await joinSplitHabits().catch(() => 0); // 115: once per phone, before any screen reads runs
     if (location.hash === '#recap') { view = 'recap'; return; }
     view = 'app';
     const m = /^#event=(.+)$/.exec(location.hash);

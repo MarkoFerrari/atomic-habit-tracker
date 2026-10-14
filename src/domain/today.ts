@@ -6,6 +6,7 @@ import { habitState, type AnswerStatus, type HabitState } from './states';
 import { daysHeld, runOf, type DueDay } from './runs';
 import { nextRank, RANKS, reachedRank, type RankId } from './ranks';
 import { addMinutes, instantOf, type Wall } from './zone';
+import { firstDayOf, versionsOf, type PastVersion } from './versions';
 
 /** The parts of a stored habit event these rules need (clock time, 028). */
 export interface HabitSource {
@@ -22,6 +23,7 @@ export interface HabitSource {
   after?: string;
   smallest?: string;
   identity?: string;
+  past?: PastVersion[]; // 115: earlier schedules, same habit
 }
 
 export interface Occurrence {
@@ -48,7 +50,7 @@ const design = (h: HabitSource) => ({ ...(h.after ? { after: h.after } : {}), ..
 /** Every occurrence of the habits that starts on `target` (moved occurrences included, cancelled ones not). */
 export function occurrencesOn(habits: readonly HabitSource[], target: IsoDay): Occurrence[] {
   const out: Occurrence[] = [];
-  for (const h of habits) {
+  for (const h of habits.flatMap((x) => versionsOf(x))) { // 115: every schedule the habit has had
     if (h.archivedOn && target >= h.archivedOn) continue; // E9: stops counting from the day it's archived
     const startDay = day(h.start);
     const length = minutesBetween(h.start, h.end);
@@ -135,10 +137,11 @@ export function runLine(h: HabitSource, answers: readonly AnswerLike[], tracking
 
 /** Days held in the habit's current run (060), counting unanswered past occurrences as missed (052). */
 export function daysHeldFor(h: HabitSource, answers: readonly AnswerLike[], trackingStart: IsoDay, today: IsoDay): number {
-  const startDay = day(h.start);
+  const startDay = firstDayOf(h); // 115: the habit's history spans every version
   const from = startDay > trackingStart ? startDay : trackingStart;
   const status = new Map(answers.filter((a) => a.eventId === h.id).map((a) => [a.occurrence, a.status]));
-  const history: DueDay[] = occurrences(startDay, h.rrule ? parseRRule(h.rrule) : null, h.exdates as IsoDay[], today)
+  const days = versionsOf(h).flatMap((v) => occurrences(day(v.start), v.rrule ? parseRRule(v.rrule) : null, v.exdates as IsoDay[], today));
+  const history: DueDay[] = [...new Set(days)].sort()
     .filter((d) => d >= from)
     .flatMap((d) => {
       const s = status.get(d);

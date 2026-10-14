@@ -8,6 +8,7 @@ import { expand, type AgendaItem } from '../domain/agenda';
 import { endBefore, excludeOne, overrideOne, repeatFromRule, restFrom, ruleFromRepeat, type RepeatDraft, type Scope } from '../domain/series';
 import { addMinutes, instantOf, wallOf, type Wall } from '../domain/zone';
 import { guessHabitIcon } from '../ui/habit-icon-guess';
+import { onVersionOf, snapshot } from '../domain/versions';
 
 export async function calendars(): Promise<Calendar[]> {
   return (await (await db()).getAll('calendars')).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name));
@@ -139,9 +140,10 @@ export async function saveEdit(e: CalendarEvent, item: AgendaItem, draft: EventD
 
   if (scope === 'this' && e.rrule) {
     const clock = e.timeMode === 'clock' || e.allDay;
-    await database.put('events', overrideOne(e, item.occurrence, {
+    // 115: an occurrence from before a schedule change lives in a past version of the habit
+    await database.put('events', onVersionOf(e, item.occurrence, (v) => overrideOne(v, item.occurrence, {
       start: stored(draft.start, clock, zone), end: stored(draft.end, clock, zone), title,
-    }));
+    })));
     return;
   }
 
@@ -158,12 +160,20 @@ export async function saveEdit(e: CalendarEvent, item: AgendaItem, draft: EventD
       const first = splitDay === item.occurrence ? item : firstFrom(e, splitDay, zone);
       if (!first) { await database.put('events', before); return; }
       const start = addMinutes(first.start, shift);
-      const rest = restFrom(e, splitDay, crypto.randomUUID(), zoneDay);
+      // 115: a habit stays one habit. The old schedule is kept inside it as a past version and the id
+      // stays, so its run, ranks, stats, quotes and trial carry on (the split used to make a new habit).
+      const habit = !!oldCal?.trackAsHabits && !!cal?.trackAsHabits;
+      const rest = restFrom(e, splitDay, habit ? e.id : crypto.randomUUID(), zoneDay);
       const next = tidy(e, {
         ...rest, ...base(draft, cal, zone, start, addMinutes(start, length)),
         ...(rrule ? { rrule: draft.repeatChanged ? rrule : rest.rrule } : {}),
       }, rrule, !!cal?.trackAsHabits);
-      await moveSeries(e.id, next.id, splitDay, before, next);
+      if (habit) {
+        await database.put('events', { ...next, past: [...(e.past ?? []), snapshot(before)] });
+        return;
+      }
+      delete next.past;
+      await moveSeries(e.id, next.id, splitDay, { ...before }, next);
       return;
     }
   }
@@ -204,7 +214,7 @@ async function moveSeries(oldId: string, newId: string, from: IsoDay, before: Ca
 /** Deletes one occurrence, this and the following ones, or the whole event. */
 export async function deleteEvent(e: CalendarEvent, occurrence: IsoDay, scope: Scope, zone: string): Promise<void> {
   const database = await db();
-  if (scope === 'this' && e.rrule) { await database.put('events', excludeOne(e, occurrence)); return; }
+  if (scope === 'this' && e.rrule) { await database.put('events', onVersionOf(e, occurrence, (v) => excludeOne(v, occurrence))); return; } // 115
   if (scope === 'following' && e.rrule) {
     const before = endBefore(e, occurrence, zoneDayOf(zone));
     if (before) { await database.put('events', before); return; }

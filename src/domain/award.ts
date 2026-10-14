@@ -1,5 +1,6 @@
 // The habits-first rewards (Figma page 14) as pure rules: the week strip under the Today ring (096),
 // perfect days (093), the line the morning after a miss (099) and the next-rank line on every row (098).
+import { firstDayOf } from './versions';
 import { addDays, type IsoDay } from './day';
 import { plural, shortName, weekdayLetter, weekdayShort } from './format';
 import { RANKS } from './ranks';
@@ -61,7 +62,7 @@ export function runAtRisk(ctx: Context): RunAtRisk | null {
   for (const c of todays) {
     const h = ctx.habits.find((x) => x.id === c.eventId);
     if (!h) continue;
-    const startDay = h.start.slice(0, 10) as IsoDay;
+    const startDay = firstDayOf(h); // 115
     const from = ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
     const yesterday = addDays(ctx.today, -1);
     if (from > yesterday) continue;
@@ -86,7 +87,7 @@ export interface WeekBar { from: IsoDay; done: number; due: number; share: numbe
 
 /** H4: twelve weeks of one habit, oldest first, ending with this week. */
 export function twelveWeeks(ctx: Context, h: Context['habits'][number]): WeekBar[] {
-  const startDay = h.start.slice(0, 10) as IsoDay;
+  const startDay = firstDayOf(h); // 115
   const from = ctx.trackingStart && ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
   const thisWeek = mondayOf(ctx.today);
   return Array.from({ length: 12 }, (_, i) => {
@@ -100,7 +101,7 @@ export function twelveWeeks(ctx: Context, h: Context['habits'][number]): WeekBar
 
 /** H4: the longest run the habit ever held, in days (060). */
 export function bestRun(ctx: Context, h: Context['habits'][number]): number {
-  const startDay = h.start.slice(0, 10) as IsoDay;
+  const startDay = firstDayOf(h); // 115
   const from = ctx.trackingStart && ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
   if (!ctx.trackingStart || from > ctx.today) return 0;
   const history: DueDay[] = habitDays({ ...ctx, habits: [h] }, from, ctx.today)
