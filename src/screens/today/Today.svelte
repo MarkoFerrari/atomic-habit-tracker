@@ -55,7 +55,7 @@
   import { activeAdjustment, type Adjustment } from '../../domain/adjust';
   import { addMinutes, wallOf, type Wall } from '../../domain/zone';
   import { SKIP_REASONS, type AnswerStatus, type SkipReason } from '../../domain/states';
-  import { greeting, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
+  import { greeting, rowKey, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
   import { runLine } from '../../domain/stats';
 
   interface Props { onrecap?: () => void; onnewhabit?: () => void; ontab?: (tab: Tab) => void; onbadges?: () => void; onnotifications?: () => void }
@@ -92,6 +92,10 @@
   const dateLabel = $derived(new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
     .format(new Date(`${habitDay}T12:00:00Z`)));
   const allDone = $derived(view.answered.every((r) => r.state === 'done'));
+  // 118: routines come first, in the order their habits follow each other; the lists below hold the rest
+  const inRoutine = $derived(new Set(view.routines.flatMap((g) => g.rows.map(rowKey))));
+  const looseOpen = $derived(view.open.filter((r) => !inRoutine.has(rowKey(r))));
+  const looseAnswered = $derived(view.answered.filter((r) => !inRoutine.has(rowKey(r))));
   // 085 (P3): who today's next habit votes for; the first open habit that has an identity
   const voting = $derived((view.open.find((r) => r.identity) ?? view.answered.find((r) => r.identity))?.identity ?? '');
   const trialHabit = $derived(trial ? events.find((e) => e.id === trial!.habitId) : undefined);
@@ -353,10 +357,21 @@
       {/if}
 
       <section class="lists">
-      {#if view.open.length}
-        <SectionLabel text={view.open.length === 1 ? 'Next' : 'Today'} />
+      {#each view.routines as g (rowKey(g.rows[0]!))}
+        <SectionLabel text="{g.name} · {g.done} of {g.rows.length}" />
         <ul>
-          {#each view.open as r (`${r.eventId}|${r.occurrence}`)}
+          {#each g.rows as r (rowKey(r))}
+            <li>
+              <HabitRow name={r.title} meta={meta(r)} status={r.state} icon={icon(r)} showMarkDone={r.markDone} trailing={trailing(r)}
+                onopen={() => openSheet(r)} ondone={() => set(r, 'done')} onskip={() => askSkip(r)} />
+            </li>
+          {/each}
+        </ul>
+      {/each}
+      {#if looseOpen.length}
+        <SectionLabel text={view.routines.length ? 'Later' : looseOpen.length === 1 ? 'Next' : 'Today'} />
+        <ul>
+          {#each looseOpen as r (`${r.eventId}|${r.occurrence}`)}
             <li>
               <HabitRow name={r.title} meta={meta(r)} status={r.state} icon={icon(r)} showMarkDone={r.markDone}
                 onopen={() => openSheet(r)} ondone={() => set(r, 'done')} onskip={() => askSkip(r)} />
@@ -365,10 +380,10 @@
         </ul>
       {/if}
 
-      {#if view.answered.length}
+      {#if looseAnswered.length}
         <SectionLabel text={allDone ? 'Done' : 'Answered'} />
         <ul>
-          {#each view.answered as r (`${r.eventId}|${r.occurrence}`)}
+          {#each looseAnswered as r (`${r.eventId}|${r.occurrence}`)}
             <li>
               <HabitRow name={r.title} meta={meta(r)} status={r.state} icon={icon(r)} trailing={trailing(r)}
                 onopen={() => openSheet(r)} ondone={() => set(r, 'done')} onskip={() => askSkip(r)} />

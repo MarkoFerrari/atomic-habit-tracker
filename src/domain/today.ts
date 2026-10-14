@@ -6,6 +6,7 @@ import { habitState, type AnswerStatus, type HabitState } from './states';
 import { addMinutes, instantOf, type Wall } from './zone';
 import { versionsOf, type PastVersion } from './versions';
 import { isPaused, type Pause } from './pause';
+import { routinesOf } from './routines';
 
 /** The parts of a stored habit event these rules need (clock time, 028). */
 export interface HabitSource {
@@ -86,7 +87,11 @@ export interface TodayView {
   answered: TodayRow[]; // done and skipped ("Done" or "Answered")
   done: number;
   due: number;
+  /** 118: habits linked by After, together in the order they follow each other. Their rows are also in open/answered. */
+  routines: { name: string; rows: TodayRow[]; done: number }[];
 }
+
+export const rowKey = (r: Pick<TodayRow, 'eventId' | 'occurrence'>) => `${r.eventId}|${r.occurrence}`;
 
 /**
  * The day as Today shows it at `now`. Clock times are read in the phone's zone (028, E6).
@@ -104,12 +109,21 @@ export function todayView(
     return { ...o, answer, markDone: false, state: habitState({ answer: answer?.status ?? null, slotStart, slotEnd, now, dayClosed }) };
   });
   const open = rows.filter((r) => r.state === 'open' || r.state === 'running');
-  const pick = open.find((r) => r.state === 'running')
+  const routines = routinesOf(rows.map((r) => ({ ...r, id: rowKey(r) }))).map((g) => {
+    const members = g.members.map((m) => rows.find((r) => rowKey(r) === m.id)!);
+    return { name: g.name, rows: members, done: members.filter((r) => r.state === 'done').length };
+  });
+  // 118: inside a routine, a done hands Mark as done to the next open habit, whatever its clock time
+  const handed = routines.map((g) => {
+    const lastAnswered = g.rows.map((r) => !!r.answer).lastIndexOf(true);
+    return lastAnswered >= 0 ? g.rows.slice(lastAnswered + 1).find((r) => r.state === 'open' || r.state === 'running') : undefined;
+  }).find(Boolean);
+  const pick = handed ?? open.find((r) => r.state === 'running')
     ?? open.find((r) => !r.allDay && instantOf(r.start, zone) >= now)
     ?? open.find((r) => r.allDay);
   if (pick) pick.markDone = true;
   const answered = rows.filter((r) => r.answer).sort((a, b) => b.answer!.answeredAt.localeCompare(a.answer!.answeredAt));
-  return { open, answered, done: rows.filter((r) => r.state === 'done').length, due: rows.length };
+  return { open, answered, done: rows.filter((r) => r.state === 'done').length, due: rows.length, routines };
 }
 
 export type Greeting = 'Good morning' | 'Good afternoon' | 'Good evening';
