@@ -1,4 +1,5 @@
 import { daysBetween, type IsoDay } from './day';
+import { pausedDaysIn, type Pause } from './pause';
 import type { AnswerStatus } from './states';
 
 // 047, 051: a run lasts while the habit is never missed twice in a row.
@@ -37,7 +38,8 @@ export function runOf(history: readonly DueDay[]): Run {
  * Days held (060, proposed): calendar days from the run's first done to `asOf`, inclusive.
  * Calendar days, not occurrences, so a 3-times-a-week habit and a daily one reach Apprentice on the same calendar.
  */
-export function daysHeld(run: Run, asOf: IsoDay): number {
+export function daysHeld(run: Run, asOf: IsoDay, pauses?: readonly Pause[]): number {
   if (!run.startedOn) return 0;
-  return Math.max(0, daysBetween(run.startedOn, asOf) + 1);
+  // 117: a paused day doesn't count; the run waits without growing
+  return Math.max(0, daysBetween(run.startedOn, asOf) + 1 - pausedDaysIn(pauses, run.startedOn, asOf));
 }

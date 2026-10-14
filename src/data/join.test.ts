@@ -5,7 +5,7 @@ import { db, wipeDbForTests } from './db';
 import { joinSplitHabits } from './habits';
 import { defaultSettings } from './settings';
 import { toSource } from './answers';
-import { daysHeldFor } from '../domain/today';
+import { daysHeldFor } from '../domain/stats';
 import type { Answer, CalendarEvent } from './schema';
 import type { IsoDay } from '../domain/day';
 

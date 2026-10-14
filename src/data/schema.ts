@@ -6,6 +6,7 @@ import type { AnswerStatus, SkipReason } from '../domain/states';
 import type { RankId } from '../domain/ranks';
 import type { Adjustment } from '../domain/adjust';
 import type { PastVersion } from '../domain/versions';
+import type { Pause } from '../domain/pause';
 
 export const DB_NAME = 'atomic';
 export const DB_VERSION = 3;
@@ -50,6 +51,8 @@ export interface CalendarEvent {
   identity?: string;
   /** 115: earlier schedules of this habit, oldest first, each ended by its rule's UNTIL. The habit keeps its id. */
   past?: PastVersion[];
+  /** 117: pauses set ahead, oldest first; kept after they end, so history and backups know why days weren't due. */
+  pauses?: Pause[];
 }
 
 export interface Answer {

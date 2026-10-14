@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { IsoDay } from './day';
-import { greeting, occurrencesOn, runLine, showCloseTheDay, todayView, type AnswerLike, type HabitSource } from './today';
+import { greeting, occurrencesOn, showCloseTheDay, todayView, type AnswerLike, type HabitSource } from './today';
+import { runLine } from './stats';
 
 // SAMPLE DATA (045): invented habits in the shape of the design's examples.
 const habits: HabitSource[] = [

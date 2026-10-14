@@ -19,7 +19,7 @@ export async function habitEvents(): Promise<CalendarEvent[]> {
 export const toSource = (e: CalendarEvent): HabitSource => ({
   id: e.id, title: e.title, icon: e.icon, start: e.start, end: e.end, allDay: e.allDay,
   rrule: e.rrule, exdates: e.exdates, overrides: e.overrides, archivedOn: e.archivedOn,
-  after: e.after, smallest: e.smallest, identity: e.identity, ...(e.past?.length ? { past: e.past } : {}),
+  after: e.after, smallest: e.smallest, identity: e.identity, ...(e.past?.length ? { past: e.past } : {}), ...(e.pauses?.length ? { pauses: e.pauses } : {}),
 });
 
 export async function answersOn(day: IsoDay): Promise<Answer[]> {

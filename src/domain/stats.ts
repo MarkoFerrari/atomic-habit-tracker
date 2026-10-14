@@ -160,23 +160,23 @@ export interface Medal {
 }
 
 /** The run history of a habit: closed or answered occurrences up to today (052), in date order. */
-export function historyOf(ctx: Context, h: HabitSource): DueDay[] {
+export function historyOf(ctx: Context, h: HabitSource, to: IsoDay = ctx.today): DueDay[] {
   const startDay = firstDayOf(h); // 115
   const from = ctx.trackingStart && ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
-  if (from > ctx.today) return [];
+  if (!ctx.trackingStart || from > to) return [];
   const mine = { ...ctx, habits: [h] };
-  return habitDays(mine, from, ctx.today)
+  return habitDays(mine, from, to)
     .filter((d) => d.state === 'done' || d.state === 'skipped' || d.state === 'missed')
     .map((d) => ({ day: d.day, status: d.state as AnswerStatus }));
 }
 
 /** The longest days-held ever reached, so a rank is never taken back after a run ends (E4, 047). */
-export function bestHeld(history: readonly DueDay[]): number {
+export function bestHeld(history: readonly DueDay[], pauses?: HabitSource['pauses']): number {
   let run = EMPTY_RUN;
   let best = 0;
   for (const due of history) {
     run = step(run, due);
-    if (run.startedOn) best = Math.max(best, daysHeld(run, due.day));
+    if (run.startedOn) best = Math.max(best, daysHeld(run, due.day, pauses));
   }
   return best;
 }
@@ -184,13 +184,27 @@ export function bestHeld(history: readonly DueDay[]): number {
 export function medalOf(ctx: Context, h: HabitSource, stored: RankId | null): Medal {
   const history = historyOf(ctx, h);
   const run = history.reduce(step, EMPTY_RUN);
-  const held = daysHeld(run, ctx.today);
-  const rank = reachedRank(reachedRank(stored, bestHeld(history)), held);
+  const held = daysHeld(run, ctx.today, h.pauses);
+  const rank = reachedRank(reachedRank(stored, bestHeld(history, h.pauses)), held);
   const n = nextRank(rank, held);
   return {
     eventId: h.id, title: h.title, icon: h.icon ?? 'sprout', rank, held,
     next: n ? { rank: n.rank, daysLeft: n.daysLeft, days: RANKS.find((r) => r.id === n.rank)!.days } : null,
   };
+}
+
+/** Days held in the habit's current run (060), counting unanswered past occurrences as missed (052). */
+export function daysHeldFor(h: HabitSource, answers: readonly AnswerLike[], trackingStart: IsoDay, today: IsoDay): number {
+  const history = historyOf({ habits: [h], answers, trackingStart, today }, h);
+  return daysHeld(history.reduce(step, EMPTY_RUN), today, h.pauses);
+}
+
+/** The run line on the habit sheet (H16): "Day 4 · Apprentice at 10 days". Days held per 060 (proposed). */
+export function runLine(h: HabitSource, answers: readonly AnswerLike[], trackingStart: IsoDay, today: IsoDay, stored: RankId | null = null): string {
+  const held = daysHeldFor(h, answers, trackingStart, today);
+  const next = nextRank(reachedRank(stored, held), held);
+  const target = next ? `${RANKS.find((r) => r.id === next.rank)!.label} at ${RANKS.find((r) => r.id === next.rank)!.days} days` : 'Master';
+  return held > 0 ? `Day ${held} · ${target}` : target;
 }
 
 const order = (r: RankId | null) => (r ? RANKS.findIndex((x) => x.id === r) : -1);
