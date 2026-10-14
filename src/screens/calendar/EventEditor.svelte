@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PER_WEEK_MAX, PER_WEEK_MIN } from '../../domain/perweek';
   // H30 New event / Edit event (Figma 46:2105), H31 the repeating-event choice (46:2207).
   // The title is an action with an end point (004): "Diorama - 45 min" ends 45 minutes after it starts.
   // A new event's reminder follows its calendar (R5); habits get a push at their start (069).
@@ -148,7 +149,7 @@
   const REMINDERS: number[][] = [[], [0], [5], [10], [15], [30], [60], [1440]];
 
   // --- sheets and saving ----------------------------------------------------------------------------
-  let sheet = $state<'calendar' | 'repeat' | 'reminder' | 'place' | 'notes' | 'scope' | 'after' | 'smallest' | 'identity' | null>(null);
+  let sheet = $state<'calendar' | 'repeat' | 'reminder' | 'place' | 'notes' | 'scope' | 'after' | 'smallest' | 'identity' | 'times' | null>(null);
   let titleError = $state('');
   let timeError = $state('');
   let problem = $state('');
@@ -205,7 +206,12 @@
       {#if timeError}<p class="t-label-small problem" role="alert">{timeError}</p>{/if}
     </div>
     <div class="group">
-      <ListRow label="Repeat" value={repeatText} onclick={() => (sheet = 'repeat')} />
+      {#if draft.perWeek}
+        <!-- 119: a per-week habit repeats every day; what changes is how many times a week -->
+        <ListRow label="Times a week" value={String(draft.perWeek)} onclick={() => (sheet = 'times')} />
+      {:else}
+        <ListRow label="Repeat" value={repeatText} onclick={() => (sheet = 'repeat')} />
+      {/if}
       <ListRow label="Reminder" value={reminderText} onclick={() => (sheet = 'reminder')} />
     </div>
     {#if cal?.trackAsHabits}
@@ -240,6 +246,13 @@
     </ul>
   </Sheet>
 
+  <Sheet open={sheet === 'times'} title="Times a week" onclose={() => (sheet = null)}>
+    <div class="sheet chips-wrap">
+      {#each Array.from({ length: PER_WEEK_MAX }, (_, i) => i + PER_WEEK_MIN) as n (n)}
+        <Chip label={String(n)} selected={draft.perWeek === n} onclick={() => { if (draft) draft.perWeek = n; sheet = null; }} />
+      {/each}
+    </div>
+  </Sheet>
   <Sheet open={sheet === 'repeat'} title="Repeat" onclose={() => (sheet = null)}>
     <div class="sheet">
       <ul class="list">
@@ -353,6 +366,7 @@
 {/if}
 
 <style>
+  .chips-wrap { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }
   .editor { display: flex; flex-direction: column; gap: var(--space-8); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
   .group { border-bottom: var(--stroke-hairline) solid var(--border-divider); padding-bottom: var(--space-8); }
   .group.last { border-bottom: 0; }

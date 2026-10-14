@@ -42,6 +42,7 @@ export interface EventDraft {
   after: string; // 085
   smallest: string;
   identity: string;
+  perWeek?: number; // 119: habits only; set, the repeat is every day and the habit counts per week
 }
 
 const day = (w: string) => w.slice(0, 10) as IsoDay;
@@ -76,6 +77,7 @@ export function draftOf(e: CalendarEvent, item: AgendaItem): EventDraft {
     repeat: repeatFromRule(e.rrule, item.occurrence), repeatChanged: false,
     reminders: [...e.reminders], place: e.place ?? '', notes: e.notes ?? '',
     after: e.after ?? '', smallest: e.smallest ?? '', identity: e.identity ?? '',
+    ...(e.perWeek ? { perWeek: e.perWeek } : {}),
   };
 }
 
@@ -103,6 +105,7 @@ function base(draft: EventDraft, cal: Calendar | undefined, zone: string, start:
     after: cal?.trackAsHabits ? draft.after.trim() || undefined : undefined,
     smallest: cal?.trackAsHabits ? draft.smallest.trim() || undefined : undefined,
     identity: cal?.trackAsHabits ? draft.identity.trim() || undefined : undefined,
+    perWeek: cal?.trackAsHabits && draft.perWeek ? draft.perWeek : undefined, // 119
   };
 }
 

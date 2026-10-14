@@ -17,7 +17,7 @@
   import Icon from '../../ui/Icon.svelte';
   import { SKIP_REASON_LABEL } from '../../ui/copy';
   import type { IconName } from '../../ui/icons';
-  import { answer, answersOn, habitEvents, toSource } from '../../data/answers';
+  import { answer, answersOn, habitEvents, toSource, answersBetween } from '../../data/answers';
   import { db } from '../../data/db';
   import type { Answer, CalendarEvent } from '../../data/schema';
   import { addDays } from '../../domain/day';
@@ -26,6 +26,7 @@
   import { bulkDoneLabel, recapFor, resultSentence } from '../../domain/recap';
   import { SKIP_REASONS, type AnswerStatus, type SkipReason } from '../../domain/states';
   import { occurrencesOn, todayView, type TodayRow } from '../../domain/today';
+  import { mondayOf } from '../../domain/perweek';
 
   let { onclose }: { onclose: () => void } = $props();
 
@@ -35,6 +36,7 @@
 
   let events = $state<CalendarEvent[]>([]);
   let answers = $state<Answer[]>([]);
+  let weekAnswers = $state<Answer[]>([]); // 119
   let calendarName = $state('');
   let loaded = $state(false);
   type Step = 'answer' | 'result' | 'tomorrow';
@@ -45,7 +47,7 @@
   let problem = $state('');
 
   const sources = $derived(events.map(toSource));
-  const view = $derived(todayView(sources, answers, recap.day, new Date(), zone));
+  const view = $derived(todayView(sources, answers, recap.day, new Date(), zone, false, weekAnswers));
   const allRows = $derived([...view.open, ...view.answered].sort((a, b) => a.start.localeCompare(b.start)));
   const perfect = $derived(isPerfectDay(allRows.map((r) => r.state)));
   const tomorrow = $derived(occurrencesOn(sources, addDays(recap.day, 1)));
@@ -56,8 +58,9 @@
   const eyebrow = recap.afterMidnight ? `Opened at ${clockNow}` : `${fullDate(recap.day)} · ${clockNow}`;
 
   async function load() {
-    const [evs, ans, calendars] = await Promise.all([habitEvents(), answersOn(recap.day), (await db()).getAll('calendars')]);
+    const [evs, ans, calendars, week] = await Promise.all([habitEvents(), answersOn(recap.day), (await db()).getAll('calendars'), answersBetween(mondayOf(recap.day), recap.day)]);
     events = evs;
+    weekAnswers = week;
     answers = ans;
     calendarName = calendars.find((c) => c.trackAsHabits)?.name ?? '';
   }

@@ -1,7 +1,7 @@
 // A new habit, habits first (Figma page 14: S3 Your habit, S4 When, E1 New habit). What, how often, when: the same
 // three questions in onboarding and in the editor. It lives in the HABITS calendar (made if missing, 079), keeps clock
-// time (028) and gets a push at its start (069). "Per week" is not offered yet: it has no fixed due days, so rates
-// and runs need new rules first (006, 051).
+// time (028) and gets a push at its start (069). Per week (119): any days, a number of times a week; it repeats every
+// day and its rules live in domain/perweek.
 import { ensureHabitCalendar } from './calendars';
 import { createEvent, durationFromTitle, type EventDraft } from './events';
 import { saveHabit } from './habits';
@@ -10,12 +10,13 @@ import type { IsoDay } from '../domain/day';
 import { addMinutes, type Wall } from '../domain/zone';
 import type { HabitIcon } from '../ui/icons';
 
-export type Often = 'daily' | 'days';
+export type Often = 'daily' | 'days' | 'week';
 export interface HabitDraft {
   title: string;
   icon: HabitIcon;
   often: Often;
   days: number[]; // 0 = Monday … 6 = Sunday, for 'days'
+  times: number; // 119: times a week, for 'week'
   start: string; // 'HH:mm', clock time
   minutes: number;
   nudge: boolean; // a push at the start (069)
@@ -27,7 +28,7 @@ export interface HabitDraft {
 export const SUGGESTIONS = ['Walk 20 min', 'Breakfast 30 min', 'Train 45 min', 'Stretch 10 min', 'Read 20 min'] as const;
 
 export function blankHabit(): HabitDraft {
-  return { title: '', icon: 'sprout', often: 'daily', days: [0, 1, 2, 3, 4], start: '07:30', minutes: 20, nudge: true, after: '', smallest: '', identity: '' };
+  return { title: '', icon: 'sprout', often: 'daily', days: [0, 1, 2, 3, 4], times: 3, start: '07:30', minutes: 20, nudge: true, after: '', smallest: '', identity: '' };
 }
 
 /** 004: the end point in the title sets the length ("Read 20 min" lasts 20 minutes). */
@@ -42,7 +43,8 @@ export function toDraft(d: HabitDraft, calendarId: string, today: IsoDay): Event
   const start = `${today}T${d.start}` as Wall;
   return {
     title: d.title.trim(), calendarId, allDay: false, start, end: addMinutes(start, d.minutes),
-    repeat: d.often === 'daily' ? { kind: 'daily', days: [], until: null } : { kind: 'days', days: [...d.days].sort((a, b) => a - b), until: null, every: 1 },
+    repeat: d.often !== 'days' ? { kind: 'daily', days: [], until: null } : { kind: 'days', days: [...d.days].sort((a, b) => a - b), until: null, every: 1 },
+    ...(d.often === 'week' ? { perWeek: d.times } : {}),
     repeatChanged: true, reminders: d.nudge ? [0] : [], place: '', notes: '',
     after: d.after, smallest: d.smallest, identity: d.identity,
   };

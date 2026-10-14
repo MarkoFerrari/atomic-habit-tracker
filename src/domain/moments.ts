@@ -80,6 +80,7 @@ export interface Comeback { eventId: string; title: string; held: number; day: I
 export function comebacksToday(ctx: Context): Comeback[] {
   const out: Comeback[] = [];
   for (const h of ctx.habits) {
+    if (h.perWeek) continue; // 119: comebacks are counted in days, not weeks
     const history = historyOf(ctx, h);
     if (!comebackDays(history).includes(ctx.today)) continue;
     out.push({ eventId: h.id, title: h.title, held: daysHeld(history.reduce(step, EMPTY_RUN), ctx.today, h.pauses), day: ctx.today });
@@ -96,7 +97,7 @@ export const comebackLine = (c: Comeback) => `Back after a miss: your ${c.held}-
 /** Every day in a range on which some habit came back, for the marks in the week strip. */
 export function comebackDaySet(ctx: Context, from: IsoDay, to: IsoDay): Set<IsoDay> {
   const out = new Set<IsoDay>();
-  for (const h of ctx.habits) for (const d of comebackDays(historyOf(ctx, h))) if (d >= from && d <= to) out.add(d);
+  for (const h of ctx.habits) if (!h.perWeek) for (const d of comebackDays(historyOf(ctx, h))) if (d >= from && d <= to) out.add(d);
   return out;
 }
 
@@ -106,7 +107,7 @@ export interface RunsSaved { total: number; cells: RunCell[]; recent: { missedOn
 /** H4: runs saved over the habit's life, and the current run drawn occurrence by occurrence (the last 28). */
 export function runsSaved(ctx: Context, h: HabitSource): RunsSaved {
   const history = historyOf(ctx, h);
-  const backs = comebackDays(history);
+  const backs = h.perWeek ? [] : comebackDays(history);
   const run = history.reduce(step, EMPTY_RUN);
   const current = run.startedOn ? history.filter((d) => d.day >= run.startedOn!) : [];
   const cells = current.slice(-28).map((d) => ({ day: d.day, status: d.status, comeback: backs.includes(d.day) }));

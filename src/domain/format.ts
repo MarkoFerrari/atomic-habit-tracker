@@ -122,3 +122,6 @@ export function arrivalLabel(iso: string, now: Date, zone: string): string {
 
 /** "1 event", "2 events" (061: plain whole numbers). */
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** 119: "3 times a week", "Once a week". */
+export const timesAWeek = (n: number) => (n === 1 ? 'Once a week' : n === 2 ? 'Twice a week' : `${n} times a week`);
