@@ -5,6 +5,8 @@
   // where a perfect day is simply the full green cell (111: the corner star left). Days before the start and days
   // ahead are never zero (033).
   import { currentPause, lastPausedDay } from '../../domain/pause';
+  import { routinesOf } from '../../domain/routines';
+  import SectionLabel from '../../ui/SectionLabel.svelte';
   import { dayAndNumber } from '../../domain/format';
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
@@ -21,7 +23,7 @@
   import { READY_TABS, type Tab } from '../../ui/tabs';
   import { RANKS } from '../../domain/ranks';
   import { parseRRule } from '../../domain/recurrence';
-  import { fullDate, monthName, percent, plural, repeatLabel, weekRange } from '../../domain/format';
+  import { fullDate, monthName, percent, plural, repeatLabel, shortName, weekRange } from '../../domain/format';
   import { monthView, weekView, type Medal } from '../../domain/stats';
   import { nextRankLine, perfectDays, weekStrip } from '../../domain/award';
   import { addDays, type IsoDay } from '../../domain/day';
@@ -69,6 +71,12 @@
     if (p && last && ctx && p.from <= ctx.today) return `${rule} · Paused until ${dayAndNumber(last)}`;
     return `${rule} · ${h.allDay ? 'All day' : h.start.slice(11, 16)}${next ? ` · ${next}` : ''}`;
   };
+  // 118: routines from After, as groups in the order they follow each other; the rest stand on their own
+  const groups = $derived(routinesOf(habits.filter((h) => active.has(h.id))));
+  const grouped = $derived(new Set(groups.flatMap((g) => g.members.slice(1).map((m) => m.id))));
+  const firsts = $derived(new Set(groups.map((g) => g.members[0]!.id)));
+  const alone = $derived(habits.filter((h) => !grouped.has(h.id) && !firsts.has(h.id)));
+  const line = (h: (typeof habits)[number]) => (grouped.has(h.id) && h.after ? sched(h).replace(/ · (\d\d:\d\d|All day)/, ` · After ${shortName(h.after)}`) : sched(h));
   const rankName = (m: Medal | undefined) => (m?.rank ? RANKS.find((r) => r.id === m.rank)!.label : 'No medal yet');
 </script>
 
@@ -85,22 +93,36 @@
       <SegmentedControl options={OPTIONS} selected={mode} label="View" onselect={pick} />
 
       {#if mode === 'list'}
-        <ul class="list">
-          {#each habits as h (h.id)}
-            {@const m = medalOf.get(h.id)}
-            <li>
-              <button class="habit" onclick={() => onhabit(h.id)} aria-label="{h.title}, {rankName(m)}, {sched(h)}">
-                <RankMedal rank={m?.rank ?? null} icon={(h.icon ?? 'sprout') as IconName} />
-                <span class="text">
-                  <span class="t-body-strong name">{h.title}</span>
-                  <span class="t-body-small secondary meta">{sched(h)}</span>
-                  {#if m?.next}<ProgressBar value={m.held} of={m.next.days} label="Toward {RANKS.find((r) => r.id === m.next!.rank)!.label}" />{/if}
-                </span>
-                <span class="chev"><Icon name="chevron-right" /></span>
-              </button>
-            </li>
+        {#snippet habitItem(h: (typeof habits)[number])}
+          {@const m = medalOf.get(h.id)}
+          <li>
+            <button class="habit" onclick={() => onhabit(h.id)} aria-label="{h.title}, {rankName(m)}, {line(h)}">
+              <RankMedal rank={m?.rank ?? null} icon={(h.icon ?? 'sprout') as IconName} />
+              <span class="text">
+                <span class="t-body-strong name">{h.title}</span>
+                <span class="t-body-small secondary meta">{line(h)}</span>
+                {#if m?.next}<ProgressBar value={m.held} of={m.next.days} label="Toward {RANKS.find((r) => r.id === m.next!.rank)!.label}" />{/if}
+              </span>
+              <span class="chev"><Icon name="chevron-right" /></span>
+            </button>
+          </li>
+        {/snippet}
+        {#if groups.length}
+          {#each groups as g (g.members[0]!.id)}
+            <div class="group">
+              <SectionLabel text="{g.name} · {g.members[0]!.allDay ? 'All day' : g.members[0]!.start.slice(11, 16)}" />
+              <ul class="list">{#each g.members as h (h.id)}{@render habitItem(h)}{/each}</ul>
+            </div>
           {/each}
-        </ul>
+          {#if alone.length}
+            <div class="group">
+              <SectionLabel text="On its own" />
+              <ul class="list">{#each alone as h (h.id)}{@render habitItem(h)}{/each}</ul>
+            </div>
+          {/if}
+        {:else}
+          <ul class="list">{#each habits as h (h.id)}{@render habitItem(h)}{/each}</ul>
+        {/if}
 
       {:else if mode === 'week' && week}
         <div class="grid" role="table" aria-label="This week">
@@ -141,6 +163,7 @@
   .spacer { flex: 1; }
   .secondary { color: var(--text-secondary); }
   .list { display: grid; gap: var(--space-24); }
+  .group { display: grid; }
   .habit { display: flex; align-items: center; gap: var(--space-12); width: 100%; text-align: left; }
   .text { flex: 1; min-width: 0; display: grid; gap: var(--space-4); }
   .name, .meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* E21 */

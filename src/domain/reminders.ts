@@ -3,11 +3,13 @@
 // start", the habits' default (069). A habit answered early gets no push.
 import { addDays, type IsoDay } from './day';
 import { agenda, itemKey, timeRange, type EventSource } from './agenda';
+import { routinesOf } from './routines';
+import { shortName } from './format';
 
 export const REMINDER_DAYS = 14; // §10: the function holds the next 14 days
 export const MAX_REMINDERS = 500; // the function's queue limit
 
-export interface ReminderSource extends EventSource { reminders: number[] }
+export interface ReminderSource extends EventSource { reminders: number[]; after?: string }
 
 export interface PlannedReminder {
   id: string; // unique in the queue; the function's id rule allows [A-Za-z0-9_.:-]
@@ -39,12 +41,26 @@ export function planReminders(
   const items = agenda(events, addDays(fromDay, -1), addDays(fromDay, days - 1), zone);
   const out: Omit<PlannedReminder, 'id'>[] = [];
   const seen = new Set<string>();
+  // 118: one nudge per routine and day, on its first habit not yet answered; the others in it stay quiet
+  const quiet = new Set<string>();
+  const routineText = new Map<string, { title: string; first: boolean }>();
+  const habitItems = items.filter((i) => habitCalendars.has(i.calendarId) && !i.allDay);
+  for (const d of new Set(habitItems.map((i) => i.start.slice(0, 10)))) {
+    const members = habitItems.filter((i) => i.start.slice(0, 10) === d)
+      .map((i) => ({ id: itemKey(i), title: i.title, after: byId.get(i.eventId)?.after, start: i.start, allDay: i.allDay }));
+    for (const g of routinesOf(members)) {
+      const lead = g.members.findIndex((m) => !answered.has(m.id));
+      g.members.forEach((m, i) => { if (i !== lead) quiet.add(m.id); });
+      if (lead >= 0) routineText.set(g.members[lead]!.id, { title: g.name, first: lead === 0 });
+    }
+  }
   for (const item of items) {
     const habit = habitCalendars.has(item.calendarId);
     const key = itemKey(item);
     if (seen.has(key)) continue; // an event over several days is one occurrence
     seen.add(key);
-    if (habit && (item.allDay || answered.has(key))) continue;
+    if (habit && (item.allDay || answered.has(key) || quiet.has(key))) continue;
+    const routine = habit ? routineText.get(key) : undefined;
     const day = item.start.slice(0, 10) as IsoDay;
     const range = timeRange(item, day);
     const minutes = Math.round((item.endAt - item.startAt) / 60_000);
@@ -54,7 +70,9 @@ export function planReminders(
       const body = habit
         ? `${item.start.slice(11, 16)} · ${minutes} min`
         : before === 0 ? range : `In ${beforeLabel(before)} · ${range}`;
-      out.push({ fireAt: new Date(fireAt).toISOString(), title: item.title, body, tag: key });
+      out.push(routine
+        ? { fireAt: new Date(fireAt).toISOString(), title: routine.title, body: `${shortName(item.title)} ${routine.first ? 'first' : 'next'} · ${item.start.slice(11, 16)}`, tag: key }
+        : { fireAt: new Date(fireAt).toISOString(), title: item.title, body, tag: key });
     }
   }
   return out
