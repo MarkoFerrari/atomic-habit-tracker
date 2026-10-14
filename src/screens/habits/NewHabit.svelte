@@ -10,6 +10,7 @@
   import Button from '../../ui/Button.svelte';
   import HabitWhat from './HabitWhat.svelte';
   import HabitWhen from './HabitWhen.svelte';
+  import HabitHelp, { type HelpTopic } from './HabitHelp.svelte';
   import { blankHabit, canSave, createHabit, type HabitDraft } from '../../data/newHabit';
   import { habitEvents } from '../../data/answers';
   import { habitDayOf } from '../../domain/day';
@@ -19,6 +20,7 @@
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let draft = $state<HabitDraft>(blankHabit());
   let stick = $state(false);
+  let help = $state<HelpTopic | null>(null);
   let others = $state<string[]>([]);
   let busy = $state(false);
   let problem = $state('');
@@ -42,12 +44,13 @@
   <section class="group"><HabitWhat bind:draft suggestions={false} /></section>
   <section class="group"><HabitWhen bind:draft /></section>
   <section class="group">
-    <ListRow label="Make it stick" value={extras} onclick={() => (stick = true)} />
-    <p class="t-label-small tertiary">A cue (“after Read”), a smallest version and who you are becoming.</p>
+    <ListRow label="Make it stick" value={extras} onclick={() => (stick = true)} oninfo={() => (help = 'stick')} />
   </section>
   {#if problem}<p class="t-body-small problem" role="alert">{problem}</p>{/if}
   {#if !canSave(draft) && draft.often === 'days' && !draft.days.length}<p class="t-body-small tertiary">Pick at least one day.</p>{/if}
 </main>
+
+<HabitHelp bind:topic={help} topics={['stick']} />
 
 <Sheet open={stick} title="Make it stick" onclose={() => (stick = false)}>
   <div class="sheet">

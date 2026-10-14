@@ -4,6 +4,7 @@
 import { addDays, type IsoDay } from './day';
 import { occurrences, parseRRule } from './recurrence';
 import { addMinutes, instantOf, wallOf, type Wall } from './zone';
+import { versionsOf, type PastVersion } from './versions';
 
 /** The parts of a stored event the calendar needs (structurally the same as CalendarEvent). */
 export interface EventSource {
@@ -19,6 +20,7 @@ export interface EventSource {
   exdates: string[];
   overrides?: Record<string, { start: string; end: string; title?: string; cancelled?: boolean }>;
   archivedOn?: string;
+  past?: PastVersion[]; // 115: earlier schedules of the same habit
 }
 
 export interface AgendaItem {
@@ -40,6 +42,7 @@ const minutesBetween = (a: string, b: string) => Math.round((Date.parse(`${b}:00
 
 /** All occurrences of one event that overlap the days `from`–`to` (inclusive) in `zone`. */
 export function expand(e: EventSource, from: IsoDay, to: IsoDay, zone: string): AgendaItem[] {
+  if (e.past?.length) return versionsOf(e).flatMap((v) => expand(v, from, to, zone)); // 115
   const rule = e.rrule ? parseRRule(e.rrule) : null;
   const overrides = e.overrides ?? {};
   const clock = e.timeMode === 'clock' || e.allDay;

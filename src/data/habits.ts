@@ -5,6 +5,7 @@ import { db } from './db';
 import type { Answer, CalendarEvent, RankRecord, Settings } from './schema';
 import type { IsoDay } from '../domain/day';
 import { wallOf } from '../domain/zone';
+import { snapshot, splitChains } from '../domain/versions';
 
 const untilOf = (rrule: string) => { const m = /UNTIL=(\d{4})(\d{2})(\d{2})/.exec(rrule); return m ? `${m[1]}-${m[2]}-${m[3]}` : null; };
 
@@ -74,4 +75,62 @@ export async function restoreHabit(d: DeletedHabit): Promise<void> {
   const settings = (await tx.objectStore('settings').get('settings')) as Settings | undefined;
   if (settings && d.adjustments) await tx.objectStore('settings').put({ ...settings, adjustments: d.adjustments });
   await tx.done;
+}
+
+/**
+ * 115, a one-time repair: before 0.8.2, changing a habit's time or repeat split it into a new habit with a
+ * new id, so its run started again (U15). This joins each such chain back into its first habit: the earlier
+ * schedules become past versions, answers and rank records move to the first id, and settings that name a
+ * later id (ranks seen, quotes, trials) are pointed at it. Runs once per phone, and again after restoring a
+ * backup made before it (the flag lives in the settings record). Returns how many habits were joined.
+ */
+export async function joinSplitHabits(): Promise<number> {
+  const database = await db();
+  const tx = database.transaction(['calendars', 'events', 'answers', 'ranks', 'settings'], 'readwrite');
+  const settings = (await tx.objectStore('settings').get('settings')) as Settings | undefined;
+  if (!settings || settings.seriesJoined) { await tx.done; return 0; }
+  const tracked = new Set((await tx.objectStore('calendars').getAll()).filter((c) => c.trackAsHabits).map((c) => c.id));
+  const events = (await tx.objectStore('events').getAll()).filter((e) => tracked.has(e.calendarId) && e.rrule);
+  const answers = await tx.objectStore('answers').getAll();
+  const days = new Map<string, IsoDay[]>();
+  for (const a of answers) days.set(a.eventId, [...(days.get(a.eventId) ?? []), a.occurrence]);
+  const chains = splitChains(events, days);
+  const byId = new Map(events.map((e) => [e.id, e]));
+  let text = JSON.stringify(settings);
+  let joined = 0;
+  for (const chain of chains) {
+    const parts = chain.map((id) => byId.get(id)!);
+    const head = parts[0]!;
+    const last = parts.at(-1)!;
+    const past = parts.slice(0, -1).flatMap((p) => [...(p.past ?? []), snapshot(p)]);
+    const merged: CalendarEvent = {
+      ...last, id: head.id, icon: head.icon ?? last.icon, past,
+      ...(head.icsUid ? { icsUid: head.icsUid } : {}),
+    };
+    if (!head.icsUid) delete merged.icsUid;
+    await tx.objectStore('events').put(merged);
+    const ranks = await tx.objectStore('ranks').getAll();
+    for (const tail of parts.slice(1)) {
+      for (const a of answers.filter((x) => x.eventId === tail.id)) {
+        await tx.objectStore('answers').delete(a.key);
+        await tx.objectStore('answers').put({ ...a, eventId: head.id, key: `${head.id}|${a.occurrence}` });
+      }
+      for (const r of ranks.filter((x) => x.seriesId === tail.id)) {
+        await tx.objectStore('ranks').delete(r.key);
+        const key = `${head.id}|${r.rank}`;
+        const kept = ranks.find((x) => x.key === key);
+        if (!kept || kept.reachedOn > r.reachedOn) {
+          const moved = { ...r, key, seriesId: head.id };
+          await tx.objectStore('ranks').put(moved);
+          ranks.splice(kept ? ranks.indexOf(kept) : ranks.length, kept ? 1 : 0, moved);
+        }
+      }
+      await tx.objectStore('events').delete(tail.id);
+      text = text.split(tail.id).join(head.id); // ids are UUIDs: they appear nowhere else
+      joined += 1;
+    }
+  }
+  await tx.objectStore('settings').put({ ...(JSON.parse(text) as Settings), seriesJoined: true });
+  await tx.done;
+  return joined;
 }

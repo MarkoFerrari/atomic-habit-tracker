@@ -5,6 +5,7 @@ import type { QuoteState } from '../domain/quotes';
 import type { AnswerStatus, SkipReason } from '../domain/states';
 import type { RankId } from '../domain/ranks';
 import type { Adjustment } from '../domain/adjust';
+import type { PastVersion } from '../domain/versions';
 
 export const DB_NAME = 'atomic';
 export const DB_VERSION = 3;
@@ -47,6 +48,8 @@ export interface CalendarEvent {
   after?: string;
   smallest?: string;
   identity?: string;
+  /** 115: earlier schedules of this habit, oldest first, each ended by its rule's UNTIL. The habit keeps its id. */
+  past?: PastVersion[];
 }
 
 export interface Answer {
@@ -91,6 +94,8 @@ export interface Settings {
   quotes?: QuoteState;
   /** 109: the Monday of the last week whose perfect-week award played. */
   weekAwardShown?: IsoDay;
+  /** 115: habits split by an edit before 0.8.2 have been joined back (one-time repair, joinSplitHabits). */
+  seriesJoined?: boolean;
 }
 
 /** This phone's identity with the push function (059). Lives in the settings store, under its own key. */

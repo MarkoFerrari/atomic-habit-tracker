@@ -2,6 +2,7 @@
 // one habit in depth, medals per habit, and the Sunday recap. No DOM, no IndexedDB.
 // 006: completion rate = done ÷ due, with the number due beside it. 033: days before tracking started
 // and days ahead are never counted as zero. 051/052: a skip and an unanswered closed day both count as a miss.
+import { firstDayOf } from './versions';
 import { addDays, daysBetween, type IsoDay } from './day';
 import { isoWeek, monthName, shortName, weekRange } from './format';
 import { nextRank, RANKS, reachedRank, type RankId } from './ranks';
@@ -160,7 +161,7 @@ export interface Medal {
 
 /** The run history of a habit: closed or answered occurrences up to today (052), in date order. */
 export function historyOf(ctx: Context, h: HabitSource): DueDay[] {
-  const startDay = h.start.slice(0, 10) as IsoDay;
+  const startDay = firstDayOf(h); // 115
   const from = ctx.trackingStart && ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
   if (from > ctx.today) return [];
   const mine = { ...ctx, habits: [h] };
@@ -222,7 +223,7 @@ export interface HabitDetail {
 const hhmm = (w: string) => w.slice(11, 16);
 
 export function habitDetail(ctx: Context, h: HabitSource, stored: RankId | null, zone: string): HabitDetail {
-  const startDay = h.start.slice(0, 10) as IsoDay;
+  const startDay = firstDayOf(h); // 115
   const trackedFrom = ctx.trackingStart && ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
   const windowStart = addDays(ctx.today, -89) > trackedFrom ? addDays(ctx.today, -89) : trackedFrom;
   const mine = { ...ctx, habits: [h] };

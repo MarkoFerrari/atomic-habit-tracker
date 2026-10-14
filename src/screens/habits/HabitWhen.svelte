@@ -7,12 +7,14 @@
   import Sheet from '../../ui/Sheet.svelte';
   import Chip from '../../ui/Chip.svelte';
   import type { HabitDraft, Often } from '../../data/newHabit';
+  import HabitHelp, { type HelpTopic } from './HabitHelp.svelte';
 
   let { draft = $bindable() }: { draft: HabitDraft } = $props();
   const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   const NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const LENGTHS = [2, 5, 10, 15, 20, 30, 45, 60, 90];
   let lasts = $state(false);
+  let help = $state<HelpTopic | null>(null);
   function toggle(d: number) {
     const on = draft.days.includes(d);
     draft = { ...draft, days: on ? draft.days.filter((x) => x !== d) : [...draft.days, d].sort((a, b) => a - b) };
@@ -35,8 +37,10 @@
 <div class="rows">
   <PickerRow label="Starts" type="time" value={draft.start} input={draft.start} onchange={(v) => v && (draft = { ...draft, start: v })} />
   <ListRow label="Lasts" value={length(draft.minutes)} onclick={() => (lasts = true)} />
-  <ListRow type="toggle" label="Nudge at the start" on={draft.nudge} onchange={(on) => (draft = { ...draft, nudge: on })} />
+  <ListRow type="toggle" label="Nudge at the start" on={draft.nudge} onchange={(on) => (draft = { ...draft, nudge: on })} oninfo={() => (help = 'nudge')} />
 </div>
+
+<HabitHelp bind:topic={help} topics={['nudge']} />
 
 <Sheet open={lasts} title="How long" onclose={() => (lasts = false)}>
   <div class="chips">
