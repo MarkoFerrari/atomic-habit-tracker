@@ -37,6 +37,8 @@
   import Toast from '../../ui/Toast.svelte';
   import { SKIP_REASON_LABEL } from '../../ui/copy';
   import type { IconName } from '../../ui/icons';
+  import { answersBetween } from '../../data/answers';
+  import { mondayOf as weekStart } from '../../domain/perweek';
   import { answer, answersFor, answersOn, habitEvents, moveOccurrence, restoreOverrides, toSource, undoAnswer, ReadOnlyAnswerError } from '../../data/answers';
   import { getSettings } from '../../data/settings';
   import { db } from '../../data/db';
@@ -65,6 +67,7 @@
   let now = $state(new Date());
   let events = $state<CalendarEvent[]>([]);
   let answers = $state<Answer[]>([]);
+  let weekAnswers = $state<Answer[]>([]); // 119: a per-week habit needs its whole week
   let habitCalendarName = $state('');
   let trackingStart = $state<IsoDay | null>(null);
   let trial = $state<Adjustment | null>(null); // 080: the Kaizen adjustment being tried, if any
@@ -88,7 +91,7 @@
 
   const habitDay = $derived(habitDayOf(now, zone));
   const hour = $derived(localParts(now, zone).hour);
-  const view = $derived<TodayView>(todayView(events.map(toSource), answers, habitDay, now, zone));
+  const view = $derived<TodayView>(todayView(events.map(toSource), answers, habitDay, now, zone, false, weekAnswers, trackingStart));
   const dateLabel = $derived(new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
     .format(new Date(`${habitDay}T12:00:00Z`)));
   const allDone = $derived(view.answered.every((r) => r.state === 'done'));
@@ -107,11 +110,13 @@
 
   async function load() {
     now = new Date();
-    const [evs, ans, settings, calendars] = await Promise.all([
-      habitEvents(), answersOn(habitDayOf(now, zone)), getSettings(), (await db()).getAll('calendars'),
+    const day = habitDayOf(now, zone);
+    const [evs, ans, settings, calendars, week] = await Promise.all([
+      habitEvents(), answersOn(day), getSettings(), (await db()).getAll('calendars'), answersBetween(weekStart(day), day),
     ]);
     events = evs;
     answers = ans;
+    weekAnswers = week;
     trackingStart = settings.trackingStart as IsoDay | null;
     trial = activeAdjustment(settings.adjustments ?? []);
     // R7 (O7 open: 7 or 14 days): a nudge once the last backup is older than the setting, or there's none
@@ -279,6 +284,8 @@
   const meta = (r: TodayRow) => {
     const rank = medalOf.get(r.eventId);
     const line = rank ? nextRankLine(rank) : '';
+    // 119: a per-week habit says where its week stands instead of the time it was given
+    if (r.week) return `${r.week.done} of ${r.week.target} this week · ${r.week.mustDo ? 'today counts' : `${plural(r.week.daysLeft, 'day')} left`}${line ? ` · ${line}` : ''}`;
     return `${r.allDay ? 'All day' : clock(r.start)}${r.after ? ` · after ${r.after}` : ''}${line ? ` · ${line}` : ` · ${r.minutes} min`}`;
   };
   const left = $derived(view.due - view.done);
@@ -353,7 +360,7 @@
       {/each}
 
       {#if view.due === 0}
-        <EmptyState title="Nothing due today" body={paused.length ? 'Paused habits come back on their own.' : 'No habit repeats on this day.'} />
+        <EmptyState title="Nothing due today" body={view.thisWeek.length ? 'This week’s habits are below, for whenever suits.' : paused.length ? 'Paused habits come back on their own.' : 'No habit repeats on this day.'} />
       {/if}
 
       <section class="lists">
@@ -380,6 +387,18 @@
         </ul>
       {/if}
 
+      {#if view.thisWeek.length}
+        <!-- 119: per-week habits that can be done today but aren't due: outside the day's count -->
+        <SectionLabel text="This week" />
+        <ul>
+          {#each view.thisWeek as r (rowKey(r))}
+            <li>
+              <HabitRow name={r.title} meta={meta(r)} status={r.state} icon={icon(r)} showMarkDone={true} swipeable={false}
+                onopen={() => openSheet(r)} ondone={() => set(r, 'done')} />
+            </li>
+          {/each}
+        </ul>
+      {/if}
       {#if looseAnswered.length}
         <SectionLabel text={allDone ? 'Done' : 'Answered'} />
         <ul>
@@ -429,7 +448,7 @@
         <Button variant="secondary" onclick={smallFromSheet}>Did the 2-min version</Button>
         <p class="t-label-small tertiary">2-min version: {sheetRow.smallest}. It counts as done; Stats keeps it apart.</p>
       {/if}
-      {#if sheetRow.state !== 'skipped'}<Button variant="secondary" onclick={() => askSkip(sheetRow!)}>Skip</Button>{/if}
+      {#if sheetRow.state !== 'skipped' && !(sheetRow.week && !sheetRow.week.mustDo)}<Button variant="secondary" onclick={() => askSkip(sheetRow!)}>Skip</Button>{/if}
     </div>
   {/if}
 </Sheet>

@@ -4,12 +4,13 @@
 import { addDays, type IsoDay } from './day';
 import { agenda, itemKey, timeRange, type EventSource } from './agenda';
 import { routinesOf } from './routines';
+import { mondayOf } from './perweek';
 import { shortName } from './format';
 
 export const REMINDER_DAYS = 14; // §10: the function holds the next 14 days
 export const MAX_REMINDERS = 500; // the function's queue limit
 
-export interface ReminderSource extends EventSource { reminders: number[]; after?: string }
+export interface ReminderSource extends EventSource { reminders: number[]; after?: string; perWeek?: number }
 
 export interface PlannedReminder {
   id: string; // unique in the queue; the function's id rule allows [A-Za-z0-9_.:-]
@@ -60,6 +61,13 @@ export function planReminders(
     if (seen.has(key)) continue; // an event over several days is one occurrence
     seen.add(key);
     if (habit && (item.allDay || answered.has(key) || quiet.has(key))) continue;
+    // 119: a per-week habit nudges on days still open, and stops once the week's target is met
+    const perWeek = byId.get(item.eventId)?.perWeek;
+    if (habit && perWeek) {
+      const monday = mondayOf(item.occurrence);
+      const doneThisWeek = [...answered].filter((k) => { const [id, d] = k.split('|'); return id === item.eventId && d! >= monday && d! <= addDays(monday, 6); }).length;
+      if (doneThisWeek >= perWeek) continue;
+    }
     const routine = habit ? routineText.get(key) : undefined;
     const day = item.start.slice(0, 10) as IsoDay;
     const range = timeRange(item, day);

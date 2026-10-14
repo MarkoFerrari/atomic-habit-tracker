@@ -7,6 +7,7 @@ import { addMinutes, instantOf, type Wall } from './zone';
 import { versionsOf, type PastVersion } from './versions';
 import { isPaused, type Pause } from './pause';
 import { routinesOf } from './routines';
+import { isMustDo, isPerWeek, mondayOf, weekProgress } from './perweek';
 
 /** The parts of a stored habit event these rules need (clock time, 028). */
 export interface HabitSource {
@@ -25,6 +26,7 @@ export interface HabitSource {
   identity?: string;
   past?: PastVersion[]; // 115: earlier schedules, same habit
   pauses?: Pause[]; // 117
+  perWeek?: number; // 119: times a week, any days
 }
 
 export interface Occurrence {
@@ -80,7 +82,11 @@ export function occurrencesOn(habits: readonly HabitSource[], target: IsoDay): O
 }
 
 export interface AnswerLike { eventId: string; occurrence: string; status: AnswerStatus; reason?: string; small?: boolean; answeredAt: string }
-export interface TodayRow extends Occurrence { state: HabitState; answer: AnswerLike | null; markDone: boolean }
+export interface TodayRow extends Occurrence {
+  state: HabitState; answer: AnswerLike | null; markDone: boolean;
+  /** 119: a per-week habit's week so far */
+  week?: { done: number; target: number; daysLeft: number; mustDo: boolean };
+}
 
 export interface TodayView {
   open: TodayRow[]; // still to answer, in time order ("Today's goals")
@@ -89,6 +95,8 @@ export interface TodayView {
   due: number;
   /** 118: habits linked by After, together in the order they follow each other. Their rows are also in open/answered. */
   routines: { name: string; rows: TodayRow[]; done: number }[];
+  /** 119: per-week habits that can be done today but aren't due (not a must-do day): outside the day's count. */
+  thisWeek: TodayRow[];
 }
 
 export const rowKey = (r: Pick<TodayRow, 'eventId' | 'occurrence'>) => `${r.eventId}|${r.occurrence}`;
@@ -100,13 +108,26 @@ export const rowKey = (r: Pick<TodayRow, 'eventId' | 'occurrence'>) => `${r.even
  */
 export function todayView(
   habits: readonly HabitSource[], answers: readonly AnswerLike[], habitDay: IsoDay, now: Date, zone: string, dayClosed = false,
+  weekAnswers: readonly AnswerLike[] = answers, trackingStart?: IsoDay | null,
 ): TodayView {
   const byKey = new Map(answers.map((a) => [`${a.eventId}|${a.occurrence}`, a]));
-  const rows: TodayRow[] = occurrencesOn(habits, habitDay).map((o) => {
+  const habitOf = new Map(habits.map((h) => [h.id, h]));
+  const thisWeek: TodayRow[] = [];
+  const rows: TodayRow[] = occurrencesOn(habits, habitDay).flatMap((o) => {
     const answer = byKey.get(`${o.eventId}|${o.occurrence}`) ?? null;
     const slotStart = o.allDay ? null : instantOf(o.start, zone);
     const slotEnd = o.allDay ? null : instantOf(o.end, zone);
-    return { ...o, answer, markDone: false, state: habitState({ answer: answer?.status ?? null, slotStart, slotEnd, now, dayClosed }) };
+    const row: TodayRow = { ...o, answer, markDone: false, state: habitState({ answer: answer?.status ?? null, slotStart, slotEnd, now, dayClosed }) };
+    const h = habitOf.get(o.eventId);
+    if (!h || !isPerWeek(h)) return [row];
+    // 119: counted today only when answered or on a must-do day; hidden once the week's target is met
+    const merged = [...weekAnswers.filter((a) => !(a.eventId === h.id && a.occurrence === habitDay)), ...(answer ? [answer] : [])];
+    const w = weekProgress(h, merged, mondayOf(habitDay), trackingStart ?? undefined);
+    const mustDo = isMustDo(w, habitDay);
+    row.week = { done: w.done.length, target: w.target, daysLeft: w.available.filter((d) => d >= habitDay).length, mustDo };
+    if (answer || mustDo) return [row];
+    if (w.done.length < w.target) thisWeek.push({ ...row, markDone: true });
+    return [];
   });
   const open = rows.filter((r) => r.state === 'open' || r.state === 'running');
   const routines = routinesOf(rows.map((r) => ({ ...r, id: rowKey(r) }))).map((g) => {
@@ -123,7 +144,7 @@ export function todayView(
     ?? open.find((r) => r.allDay);
   if (pick) pick.markDone = true;
   const answered = rows.filter((r) => r.answer).sort((a, b) => b.answer!.answeredAt.localeCompare(a.answer!.answeredAt));
-  return { open, answered, done: rows.filter((r) => r.state === 'done').length, due: rows.length, routines };
+  return { open, answered, done: rows.filter((r) => r.state === 'done').length, due: rows.length, routines, thisWeek };
 }
 
 export type Greeting = 'Good morning' | 'Good afternoon' | 'Good evening';

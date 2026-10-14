@@ -31,7 +31,7 @@
   import { RANKS } from '../../domain/ranks';
   import { SKIP_REASONS } from '../../domain/states';
   import { parseRRule } from '../../domain/recurrence';
-  import { fullDate, percent, plural, repeatLabel } from '../../domain/format';
+  import { fullDate, percent, plural, repeatLabel, timesAWeek } from '../../domain/format';
   import { habitDetail, WHY_NONE, type HabitDetail } from '../../domain/stats';
   import type { IsoDay } from '../../domain/day';
   import { activeAdjustment } from '../../domain/adjust';
@@ -65,7 +65,7 @@
   const rankLabel = $derived(detail?.medal.rank ? RANKS.find((r) => r.id === detail.medal.rank)!.label : 'No rank yet');
   const runLine = $derived(detail ? (detail.medal.held > 0 ? `${rankLabel} · run of ${plural(detail.medal.held, 'day')}` : `${rankLabel} · no run now`) : '');
   const nextLine = $derived(detail?.medal.next ? `${RANKS.find((r) => r.id === detail.medal.next!.rank)!.label} at ${detail.medal.next.days} days` : 'Master');
-  const schedule = $derived(habit ? `${repeatLabel(habit.rrule ? parseRRule(habit.rrule) : null, habit.start.slice(0, 10) as IsoDay)} · ${detail?.slot} · ${nextLine}` : '');
+  const schedule = $derived(habit ? `${habit.perWeek ? timesAWeek(habit.perWeek) : repeatLabel(habit.rrule ? parseRRule(habit.rrule) : null, habit.start.slice(0, 10) as IsoDay)} · ${detail?.slot} · ${nextLine}` : '');
   const weeks = $derived(data && habit ? twelveWeeks(data.ctx, habit) : []);
   // bestRun counts answered days; the current run also counts today (060), so the run in progress can be the best.
   const best = $derived(data && habit ? Math.max(bestRun(data.ctx, habit), detail?.medal.held ?? 0) : 0);
@@ -157,10 +157,10 @@
     {/if}
 
     <section class="numbers">
-      <div role="img" aria-label={detail.rate.due ? `${detail.rate.done} of ${detail.rate.due} due done, ${percent(detail.rate.rate)}, last ${plural(detail.windowDays, 'day')}` : 'Nothing due yet'}>
+      <div role="img" aria-label={detail.rate.due ? (detail.unit === 'weeks' ? `${detail.rate.done} of ${detail.rate.due} weeks held, last 12 weeks` : `${detail.rate.done} of ${detail.rate.due} due done, ${percent(detail.rate.rate)}, last ${plural(detail.windowDays, 'day')}`) : 'Nothing due yet'}>
         <ProgressRing done={detail.rate.done} due={detail.rate.due} size="large">
           <p class="t-number-large">{detail.rate.done}/{detail.rate.due}</p>
-          <p class="t-label-small tertiary">{detail.rate.due ? `${percent(detail.rate.rate)} · last ${plural(detail.windowDays, 'day')}` : 'Nothing due yet'}</p>
+          <p class="t-label-small tertiary">{detail.rate.due ? `${percent(detail.rate.rate)} · ${detail.unit === 'weeks' ? 'weeks held, last 12' : `last ${plural(detail.windowDays, 'day')}`}` : 'Nothing due yet'}</p>
         </ProgressRing>
       </div>
       <div class="runs" role="img" aria-label="This run {plural(detail.medal.held, 'day')}, best run {plural(best, 'day')}">
@@ -180,7 +180,7 @@
           <span class="bar-col">{#if w.share === null}<span class="bar before"></span>{:else}<span class="bar" class:full={w.share >= 1} style:height="{Math.max(4, Math.round(w.share * 100))}%"></span>{/if}</span>
         {/each}
       </div>
-      <p class="t-label-small tertiary">Outlined weeks are before you started. Full green: every due day done.</p>
+      <p class="t-label-small tertiary">Outlined weeks are before you started. Full green: {habit.perWeek ? 'the week held' : 'every due day done'}.</p>
     </section>
 
     {#if saved && saved.total > 0}

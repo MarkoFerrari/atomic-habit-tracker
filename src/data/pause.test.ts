@@ -20,3 +20,11 @@ describe('pauseHabit and resumeHabit (117)', () => {
     await expect(pauseHabit('walk', { from: '2026-10-10', until: '2026-10-12', reason: 'travel' }, '2026-10-14')).rejects.toThrow('A pause starts today or later.');
   });
 });
+
+describe('a new per-week habit (119)', () => {
+  it('repeats every day and keeps its times a week', async () => {
+    const { createHabit, blankHabit } = await import('./newHabit');
+    const e = await createHabit({ ...blankHabit(), title: 'Sample gym 45 min', often: 'week', times: 3 }, '2026-10-14', 'Europe/Athens');
+    expect(e).toMatchObject({ rrule: 'FREQ=DAILY', perWeek: 3 });
+  });
+});

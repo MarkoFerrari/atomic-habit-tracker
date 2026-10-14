@@ -1,6 +1,7 @@
 // The habits-first rewards (Figma page 14) as pure rules: the week strip under the Today ring (096),
 // perfect days (093), the line the morning after a miss (099) and the next-rank line on every row (098).
 import { firstDayOf } from './versions';
+import { weekProgress } from './perweek';
 import { addDays, type IsoDay } from './day';
 import { plural, shortName, weekdayLetter, weekdayShort } from './format';
 import { RANKS } from './ranks';
@@ -61,7 +62,7 @@ export function runAtRisk(ctx: Context): RunAtRisk | null {
   const todays = habitDays(ctx, ctx.today, ctx.today).filter((c) => c.state === 'open');
   for (const c of todays) {
     const h = ctx.habits.find((x) => x.id === c.eventId);
-    if (!h) continue;
+    if (!h || h.perWeek) continue; // 119: a per-week habit has no single day that keeps the run
     const history: DueDay[] = historyOf(ctx, h, addDays(ctx.today, -1));
     const run = history.reduce(step, EMPTY_RUN);
     if (run.startedOn && run.missesInARow === 1) {
@@ -88,6 +89,10 @@ export function twelveWeeks(ctx: Context, h: Context['habits'][number]): WeekBar
     const monday = addDays(thisWeek, (i - 11) * 7);
     const sunday = addDays(monday, 6);
     if (sunday < from) return { from: monday, done: 0, due: 0, share: null };
+    if (h.perWeek) { // 119: a week's bar is its share of the target; held = full
+      const w = weekProgress(h, ctx.answers, monday, from);
+      return { from: monday, done: w.done.length, due: w.target, share: w.target ? Math.min(1, w.done.length / w.target) : null };
+    }
     const r = rateOf(habitDays({ ...ctx, habits: [h] }, monday, sunday < ctx.today ? sunday : ctx.today));
     return { from: monday, done: r.done, due: r.due, share: r.due ? r.done / r.due : 0 };
   });

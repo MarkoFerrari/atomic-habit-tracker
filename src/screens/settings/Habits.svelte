@@ -17,7 +17,7 @@
   import { getSettings } from '../../data/settings';
   import type { Answer, CalendarEvent, RankRecord } from '../../data/schema';
   import { parseRRule } from '../../domain/recurrence';
-  import { repeatLabel } from '../../domain/format';
+  import { repeatLabel, timesAWeek } from '../../domain/format';
   import { daysHeldFor } from '../../domain/stats';
   import { RANKS, reachedRank, ringSegments, type RankId } from '../../domain/ranks';
   import { habitDayOf, type IsoDay } from '../../domain/day';
@@ -52,7 +52,7 @@
   function meta(e: CalendarEvent): string {
     const rank = rankOf(e);
     const when = e.allDay ? 'All day' : e.start.slice(11, 16);
-    return `${repeatLabel(e.rrule ? parseRRule(e.rrule) : null, e.start.slice(0, 10) as IsoDay)} · ${when} · ${rank ? RANKS.find((r) => r.id === rank)!.label : 'no rank yet'}`;
+    return `${e.perWeek ? timesAWeek(e.perWeek) : repeatLabel(e.rrule ? parseRRule(e.rrule) : null, e.start.slice(0, 10) as IsoDay)} · ${when} · ${rank ? RANKS.find((r) => r.id === rank)!.label : 'no rank yet'}`;
   }
 
   // --- H45b ------------------------------------------------------------------------------------------

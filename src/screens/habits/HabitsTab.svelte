@@ -23,7 +23,7 @@
   import { READY_TABS, type Tab } from '../../ui/tabs';
   import { RANKS } from '../../domain/ranks';
   import { parseRRule } from '../../domain/recurrence';
-  import { fullDate, monthName, percent, plural, repeatLabel, shortName, weekRange } from '../../domain/format';
+  import { fullDate, monthName, percent, plural, repeatLabel, shortName, timesAWeek, weekRange } from '../../domain/format';
   import { monthView, weekView, type Medal } from '../../domain/stats';
   import { nextRankLine, perfectDays, weekStrip } from '../../domain/award';
   import { addDays, type IsoDay } from '../../domain/day';
@@ -62,7 +62,7 @@
   const title = $derived(mode === 'list' ? 'Habits' : mode === 'week' ? 'This week' : 'This month');
   const eyebrow = $derived(mode === 'list' ? plural(habits.length, 'habit') : mode === 'week' && week ? weekRange(week.from, week.to) : ctx ? `${monthName(ctx.today)} ${ctx.today.slice(0, 4)}` : '');
   const sched = (h: (typeof habits)[number]) => {
-    const rule = repeatLabel(h.rrule ? parseRRule(h.rrule) : null, h.start.slice(0, 10) as IsoDay);
+    const rule = h.perWeek ? timesAWeek(h.perWeek) : repeatLabel(h.rrule ? parseRRule(h.rrule) : null, h.start.slice(0, 10) as IsoDay);
     const m = medalOf.get(h.id);
     const next = m ? nextRankLine(m) : '';
     // 117: a paused habit says until when instead of its next rank

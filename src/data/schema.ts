@@ -53,6 +53,8 @@ export interface CalendarEvent {
   past?: PastVersion[];
   /** 117: pauses set ahead, oldest first; kept after they end, so history and backups know why days weren't due. */
   pauses?: Pause[];
+  /** 119: times a week, any days (the rule is FREQ=DAILY). Missing: a habit with fixed days. */
+  perWeek?: number;
 }
 
 export interface Answer {

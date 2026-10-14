@@ -3,6 +3,7 @@
 // 006: completion rate = done ÷ due, with the number due beside it. 033: days before tracking started
 // and days ahead are never counted as zero. 051/052: a skip and an unanswered closed day both count as a miss.
 import { firstDayOf } from './versions';
+import { isMustDo, isPerWeek, weeklyHistory, weekProgress, type WeekProgress } from './perweek';
 import { addDays, daysBetween, type IsoDay } from './day';
 import { isoWeek, monthName, shortName, weekRange } from './format';
 import { nextRank, RANKS, reachedRank, type RankId } from './ranks';
@@ -41,9 +42,20 @@ const answerKey = (eventId: string, occurrence: string) => `${eventId}|${occurre
 export function habitDays(ctx: Context, from: IsoDay, to: IsoDay): HabitDay[] {
   const byKey = new Map(ctx.answers.map((a) => [answerKey(a.eventId, a.occurrence), a]));
   const out: HabitDay[] = [];
+  // 119: a per-week habit is a cell only on days it was answered and on its must-do days
+  const weeks = new Map<string, WeekProgress>();
+  const habitOf = new Map(ctx.habits.map((h) => [h.id, h]));
+  const weekOf = (h: HabitSource, day: IsoDay) => {
+    const monday = mondayOf(day);
+    const key = `${h.id}|${monday}`;
+    if (!weeks.has(key)) weeks.set(key, weekProgress(h, ctx.answers, monday, ctx.trackingStart ?? undefined));
+    return weeks.get(key)!;
+  };
   for (let day = from; day <= to; day = addDays(day, 1)) {
     for (const o of occurrencesOn(ctx.habits, day)) {
       const a = byKey.get(answerKey(o.eventId, o.occurrence));
+      const h = habitOf.get(o.eventId);
+      if (h && isPerWeek(h) && !a && !isMustDo(weekOf(h, day), day)) continue;
       let state: CellState;
       if (!ctx.trackingStart || day < ctx.trackingStart) state = 'before';
       else if (a) state = a.status;
@@ -164,6 +176,7 @@ export function historyOf(ctx: Context, h: HabitSource, to: IsoDay = ctx.today):
   const startDay = firstDayOf(h); // 115
   const from = ctx.trackingStart && ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
   if (!ctx.trackingStart || from > to) return [];
+  if (isPerWeek(h)) return weeklyHistory(h, ctx.answers, from, to); // 119: runs in weeks
   const mine = { ...ctx, habits: [h] };
   return habitDays(mine, from, to)
     .filter((d) => d.state === 'done' || d.state === 'skipped' || d.state === 'missed')
@@ -232,6 +245,26 @@ export interface HabitDetail {
   whyTotal: number;
   times: TimeBucket[] | null; // null for an all-day habit
   slot: string;
+  /** 119: a per-week habit counts weeks held ÷ weeks over the last 12 weeks; the others count days. */
+  unit: 'days' | 'weeks';
+}
+
+/** 119: weeks held ÷ weeks (with the count, 006): finished weeks, plus this week once it is held. */
+export function weekRate(ctx: Context, h: HabitSource, weeks = 12): Rate {
+  const startDay = firstDayOf(h);
+  const from = ctx.trackingStart && ctx.trackingStart > startDay ? ctx.trackingStart : startDay;
+  let done = 0;
+  let due = 0;
+  for (let i = weeks - 1; i >= 0; i -= 1) {
+    const monday = addDays(mondayOf(ctx.today), -7 * i);
+    if (addDays(monday, 6) < from) continue;
+    const w = weekProgress(h, ctx.answers, monday, from);
+    if (!w.target) continue;
+    const held = w.done.length >= w.target;
+    if (addDays(monday, 6) < ctx.today) { due += 1; if (held) done += 1; }
+    else if (held) { due += 1; done += 1; }
+  }
+  return { done, due, rate: due === 0 ? null : done / due };
 }
 
 const hhmm = (w: string) => w.slice(11, 16);
@@ -276,8 +309,9 @@ export function habitDetail(ctx: Context, h: HabitSource, stored: RankId | null,
     times = labels.map((_, i) => ({ label: names[i]!, count: counts[i]! }));
   }
   return {
-    medal: medalOf(ctx, h, stored), rate: rateOf(days), windowDays: daysBetween(windowStart, ctx.today) + 1, why, whyTotal, times,
-    slot: first && !first.allDay ? `${hhmm(first.start)}–${hhmm(first.end)}` : 'All day',
+    medal: medalOf(ctx, h, stored), rate: h.perWeek ? weekRate(ctx, h) : rateOf(days), windowDays: h.perWeek ? 84 : daysBetween(windowStart, ctx.today) + 1, why, whyTotal, times,
+    slot: first && !first.allDay ? `${hhmm(first.start)}–${hhmm(first.end)}` : h.perWeek ? `${h.start.slice(11, 16)}` : 'All day',
+    unit: h.perWeek ? 'weeks' : 'days',
   };
 }
 
