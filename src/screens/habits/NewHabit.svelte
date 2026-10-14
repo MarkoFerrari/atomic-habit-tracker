@@ -45,7 +45,6 @@
   <section class="group"><HabitWhen bind:draft /></section>
   <section class="group">
     <ListRow label="Make it stick" value={extras} onclick={() => (stick = true)} oninfo={() => (help = 'stick')} />
-    <p class="t-label-small tertiary">A cue (“after Read”), a smallest version and who you are becoming.</p>
   </section>
   {#if problem}<p class="t-body-small problem" role="alert">{problem}</p>{/if}
   {#if !canSave(draft) && draft.often === 'days' && !draft.days.length}<p class="t-body-small tertiary">Pick at least one day.</p>{/if}
