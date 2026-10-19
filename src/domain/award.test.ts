@@ -51,7 +51,7 @@ describe('star medal (100)', () => {
 describe('never miss twice, made visible (099)', () => {
   it('a run with one miss and today still open is at risk', () => {
     const r = runAtRisk(ctx([done('read', '2026-10-05'), done('read', '2026-10-06'), skip('read', '2026-10-07'), done('walk', '2026-10-05'), done('walk', '2026-10-06'), done('walk', '2026-10-07')]));
-    expect(r).toMatchObject({ eventId: 'read', held: 4, missedOn: '2026-10-07' });
+    expect(r).toMatchObject({ eventId: 'read', held: 3, missedOn: '2026-10-07' }); // 120: the missed day isn't held
   });
   it('nothing at risk once today is answered, or when no run is alive', () => {
     expect(runAtRisk(ctx([done('read', '2026-10-05'), skip('read', '2026-10-07'), done('read', '2026-10-08'), done('walk', '2026-10-07')]))).toBeNull();

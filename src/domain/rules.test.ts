@@ -66,6 +66,20 @@ describe('runs (051: never miss twice; a skip is a miss)', () => {
     expect(daysHeld(runOf(tts), d('2026-10-15'))).toBe(10);
     expect(daysHeld(runOf([]), d('2026-10-15'))).toBe(0);
   });
+  it('a forgiven miss keeps the run but is not a held day (120)', () => {
+    // Breakfast done 10 of 10, Training 9 of 10: the same run, but only Breakfast has 10 days held.
+    expect(daysHeld(runOf(days('2026-10-01', 'xxxxxxxxxx')), d('2026-10-10'))).toBe(10);
+    expect(daysHeld(runOf(days('2026-10-01', 'xxxxmxxxxx')), d('2026-10-10'))).toBe(9);
+    expect(daysHeld(runOf(days('2026-10-01', 'xxxxsxxxxx')), d('2026-10-10'))).toBe(9); // a skip too (051)
+  });
+  it('done, miss, done, miss earns half the days, not all of them (120)', () => {
+    const run = runOf(days('2026-10-01', 'xmxmxmxmxm'));
+    expect(run.startedOn).toBe('2026-10-01');
+    expect(daysHeld(run, d('2026-10-10'))).toBe(5);
+  });
+  it('a new run starts clean, with no days lost from the old one (120)', () => {
+    expect(daysHeld(runOf(days('2026-10-01', 'xmxmmxx')), d('2026-10-07'))).toBe(2);
+  });
 });
 
 describe('ranks (047, 055)', () => {
