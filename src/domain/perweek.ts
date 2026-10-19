@@ -2,7 +2,8 @@
 // A per-week habit can be done on any day of its week (Monday to Sunday) but is not due on a single day, so it never
 // spoils a perfect day and is never missed by itself. It becomes due on its must-do days: when the days left in the
 // week equal the times still to do. A week is held when the target is met. For runs, a week not held is one miss,
-// and two in a row end the run (051, in weeks); days held stay calendar days (060). Pure rules.
+// and two in a row end the run (051, in weeks); days held stay calendar days (060), and a week not held adds none of
+// its days (120). Pure rules.
 import { addDays, type IsoDay } from './day';
 import type { AnswerLike, HabitSource } from './today';
 import type { DueDay } from './runs';
@@ -51,7 +52,8 @@ export const isHeld = (w: WeekProgress) => w.target > 0 && w.done.length >= w.ta
 
 /**
  * The run history of a per-week habit (051 in weeks): each finished week held gives its done days; a finished week
- * not held gives one miss, on its last day; the week in progress gives its done days so far.
+ * not held gives one miss, on its last day, that takes its days off days held (120); the week in progress gives its
+ * done days so far.
  */
 export function weeklyHistory(h: HabitSource, answers: readonly AnswerLike[], from: IsoDay, to: IsoDay): DueDay[] {
   const out: DueDay[] = [];
@@ -62,7 +64,7 @@ export function weeklyHistory(h: HabitSource, answers: readonly AnswerLike[], fr
     const doneSoFar = w.done.filter((d) => d <= to);
     if (!finished) { out.push(...doneSoFar.map((day) => ({ day, status: 'done' as const }))); continue; }
     if (isHeld(w)) out.push(...w.done.map((day) => ({ day, status: 'done' as const })));
-    else out.push({ day: w.available.at(-1)!, status: 'missed' });
+    else out.push({ day: w.available.at(-1)!, status: 'missed', cost: w.available.length }); // 120: none of its days held
   }
   return out;
 }

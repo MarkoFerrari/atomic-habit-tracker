@@ -47,6 +47,7 @@
   import { resumeHabit } from '../../data/habits';
   import { plural } from '../../domain/format';
   import { permission, pushDevice, pushSupported, PUSH_URL } from '../../push/notifications';
+  import { enablePush } from '../../push/enable';
   import { READY_TABS } from '../../ui/tabs';
   import Banner from '../../ui/Banner.svelte';
   import { shareBackup } from '../../data/backup';
@@ -84,6 +85,11 @@
   // 114: the start no longer asks for reminders; once a habit exists, Today offers them until they are on.
   // Not when the iPhone has refused them: Settings → Notifications keeps that warning (R3).
   let remindersOff = $state(false);
+  // 121: the banner turns reminders on in place, one tap; a no, or a failure, opens Notifications to explain (R3)
+  async function turnOnHere() {
+    try { if ((await enablePush()) === 'granted') { remindersOff = false; return; } } catch { /* fall through */ }
+    onnotifications?.();
+  }
   async function backUpNow() {
     try { await shareBackup(); } catch { /* the banner stays */ }
     await load();
@@ -305,7 +311,7 @@
 <div class="page">
   <main class="screen today">
     <TopBar eyebrow={dateLabel} title={greeting(hour)} action={onnewhabit ? { icon: 'plus', label: 'New habit' } : undefined} onaction={onnewhabit} />
-    {#if remindersOff && onnotifications}<Banner tone="info" message="Turn on reminders and ATOMIC nudges you when each habit starts." action="Turn on reminders" onaction={onnotifications} />{/if}
+    {#if remindersOff && onnotifications}<Banner tone="info" message="Turn on reminders and ATOMIC nudges you when each habit starts." action="Turn on reminders" onaction={turnOnHere} />{/if}
     {#if backupNote}<Banner message={backupNote} action="Back up now" onaction={backUpNow} />{/if}
 
     {#if !loaded}

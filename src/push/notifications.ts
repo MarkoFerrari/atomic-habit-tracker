@@ -71,10 +71,10 @@ export async function call(path: string, method: string, token: string, body?: u
 }
 
 /**
- * Subscribes this phone and registers it with the push function. A new phone needs the invite code (059);
+ * Subscribes this phone and registers it with the push function. Any phone may join (121, no invite code);
  * a known one just renews its address and time zone (E1, E6).
  */
-export async function turnOnPush(invite: string): Promise<void> {
+export async function turnOnPush(): Promise<void> {
   const device = await pushDevice();
   const { key } = await call('/vapid-public-key', 'GET', device.token);
   if (typeof key !== 'string') throw new Error('The push service sent no key');
@@ -83,7 +83,7 @@ export async function turnOnPush(invite: string): Promise<void> {
   if (sub && !sameKey(sub, key)) { await sub.unsubscribe(); sub = null; }
   sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(key) });
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const data = await call('/subscribe', 'POST', device.token, { subscription: sub.toJSON(), timezone, invite: invite.trim() || undefined, recap: await recapWanted() });
+  const data = await call('/subscribe', 'POST', device.token, { subscription: sub.toJSON(), timezone, recap: await recapWanted() });
   const latest = await pushDevice(); // a reminder sync may have written to it meanwhile
   // 069: keep only what the function confirmed, so an older function that ignored the flag gets asked again.
   const recap = typeof data.recap === 'boolean' ? data.recap : undefined;
@@ -109,7 +109,7 @@ export async function sendTestPush(delayMinutes = 0): Promise<string | null> {
 /** H46: the recap push on or off, told to the push function at once (069). */
 export async function setRecapPush(on: boolean): Promise<void> {
   await updateSettings({ recapPush: on });
-  if ((await pushDevice()).subscribedAt && permission() === 'granted') await turnOnPush('');
+  if ((await pushDevice()).subscribedAt && permission() === 'granted') await turnOnPush();
 }
 
 /** The last push this phone logged (027, E1): the service worker writes one line per arrival. */

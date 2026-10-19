@@ -163,18 +163,18 @@ describe('Today (F4)', () => {
 
   it('the morning after a miss, one line says today keeps the run (099)', async () => {
     const database = await db();
-    // Breakfast held 3 days (2–4 Oct), then slipped on 5 Oct: one miss is forgiven, today decides.
+    // Breakfast held 3 days (2–4 Oct), then slipped on 5 Oct: one miss is forgiven, today decides. 3 held + today = 4 (120)
     await updateSettings({ trackingStart: '2026-10-02' });
     await database.put('events', habit('breakfast', 'Sample breakfast 30 min', '2026-10-02T08:00', '2026-10-02T08:30', 'FREQ=DAILY', 'coffee'));
     for (const d of ['2026-10-02', '2026-10-03', '2026-10-04']) await database.put('answers', { key: `breakfast|${d}`, eventId: 'breakfast', occurrence: d as `${number}-${number}-${number}`, status: 'done', answeredAt: `${d}T05:10:00Z`, history: [] });
     render(Today, {});
-    expect(await screen.findByText('Sample breakfast slipped yesterday. Do it today and your 5-day run holds.')).toBeTruthy();
+    expect(await screen.findByText('Sample breakfast slipped yesterday. Do it today and your 4-day run holds.')).toBeTruthy();
     expect(screen.getByText('“Fall seven times, stand up eight.”')).toBeTruthy(); // 108: the quote above the line (110)
-    // Done today: 5 days held is halfway to Apprentice, and a milestone outranks the comeback (one quote, 107)
+    // Done today: 4 days held (120: the miss isn't held), so no milestone yet; the comeback shows instead (108)
     await fireEvent.click(await within(row('Sample breakfast 30 min')).findByRole('button', { name: 'Mark as done' }));
-    expect(await screen.findByText('Milestone · day 5')).toBeTruthy();
-    expect(screen.getByText('Sample breakfast: halfway to Apprentice. Keep going.')).toBeTruthy();
-    expect(screen.getByText('“Well begun is half done.”')).toBeTruthy();
+    expect(await screen.findByText('Comeback · Sample breakfast')).toBeTruthy();
+    expect(screen.getByText('Back after a miss: your 4-day run holds.')).toBeTruthy();
+    expect(screen.queryByText('Milestone · day 5')).toBeNull();
     expect(screen.queryByText(/slipped yesterday/)).toBeNull();
   });
 
@@ -186,7 +186,7 @@ describe('Today (F4)', () => {
     render(Today, {});
     await fireEvent.click(await within(await screen.findByRole('group', { name: 'Sample breakfast 30 min' })).findByRole('button', { name: 'Mark as done' }));
     expect(await screen.findByText('Comeback · Sample breakfast')).toBeTruthy();
-    expect(screen.getByText('Back after a miss: your 4-day run holds.')).toBeTruthy();
+    expect(screen.getByText('Back after a miss: your 3-day run holds.')).toBeTruthy(); // 120: the missed day isn't held
     expect(screen.getByText('“When thou hast failed, return back again.”')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Tuesday 6 October, today: .*a run saved/ })).toBeTruthy();
   });

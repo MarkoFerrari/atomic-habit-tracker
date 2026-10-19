@@ -81,8 +81,8 @@ describe('medals (047, 051, 060)', () => {
     expect(m.rank).toBe('starter');
     expect(m.held).toBe(0);
   });
-  it('bestHeld remembers the longest run, one forgiven miss included', () => {
-    expect(bestHeld([{ day: '2027-10-01' as IsoDay, status: 'done' }, { day: '2027-10-02' as IsoDay, status: 'missed' }, { day: '2027-10-03' as IsoDay, status: 'done' }])).toBe(3);
+  it('bestHeld remembers the longest run; a forgiven miss keeps it but is not held (120)', () => {
+    expect(bestHeld([{ day: '2027-10-01' as IsoDay, status: 'done' }, { day: '2027-10-02' as IsoDay, status: 'missed' }, { day: '2027-10-03' as IsoDay, status: 'done' }])).toBe(2);
   });
   it('sorts the highest rank first and picks the nearest next medal', () => {
     const a = { eventId: 'a', title: 'A', icon: 'sprout', rank: 'builder' as const, held: 40, next: { rank: 'keeper' as const, daysLeft: 50, days: 90 } };

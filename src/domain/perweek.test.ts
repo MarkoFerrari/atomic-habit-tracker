@@ -58,7 +58,8 @@ describe('runs in weeks (119)', () => {
 
   it('one week not held is forgiven; two in a row end the run', () => {
     const answers = [...held('2026-09-28'), done('2026-10-06')];
-    expect(daysHeldFor(gym, answers, day('2026-09-28'), day('2026-10-13'))).toBe(16);
+    // 120: the run holds, but the week not held (5–11 Oct) adds none of its 7 days: 16 calendar days, 9 held
+    expect(daysHeldFor(gym, answers, day('2026-09-28'), day('2026-10-13'))).toBe(9);
     expect(daysHeldFor(gym, answers, day('2026-09-28'), day('2026-10-19'))).toBe(0);
     expect(weeklyHistory(gym, answers, day('2026-09-28'), day('2026-10-19')).filter((d) => d.status === 'missed').map((d) => d.day)).toEqual(['2026-10-11', '2026-10-18']);
   });

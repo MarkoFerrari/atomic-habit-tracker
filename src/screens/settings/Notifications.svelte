@@ -7,11 +7,10 @@
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import Button from '../../ui/Button.svelte';
   import Banner from '../../ui/Banner.svelte';
-  import TextField from '../../ui/TextField.svelte';
   import Toggle from '../../ui/Toggle.svelte';
   import { getSettings } from '../../data/settings';
-  import { askPermission, lastPushArrival, permission, pushDevice, PUSH_URL, sendTestPush, setRecapPush, turnOnPush } from '../../push/notifications';
-  import { syncReminders } from '../../push/reminders';
+  import { lastPushArrival, permission, pushDevice, PUSH_URL, sendTestPush, setRecapPush } from '../../push/notifications';
+  import { enablePush } from '../../push/enable';
   import { arrivalLabel } from '../../domain/format';
 
   let { onback }: { onback: () => void } = $props();
@@ -20,8 +19,6 @@
   let recap = $state(false);
   let last = $state('Not yet');
   let ready = $state(false); // notifications allowed and this phone subscribed
-  let needsInvite = $state(false);
-  let invite = $state('');
   let busy = $state(false);
   let message = $state('');
 
@@ -29,7 +26,6 @@
     const [settings, device, arrival] = await Promise.all([getSettings(), pushDevice(), lastPushArrival()]);
     recap = settings.recapPush ?? false;
     ready = permission() === 'granted' && !!device.subscribedAt;
-    needsInvite = !device.subscribedAt;
     last = arrival ? arrivalLabel(arrival, new Date(), zone) : 'Not yet';
   }
   onMount(load);
@@ -40,10 +36,8 @@
     finally { busy = false; }
   }
   const turnOn = () => attempt(async () => {
-    const p = await askPermission();
+    const p = await enablePush(); // 121: one tap, no invite code
     if (p !== 'granted') throw new Error('Notifications are off for ATOMIC. Turn them on in the iPhone’s Settings → Notifications → ATOMIC.'); // R3
-    await turnOnPush(invite);
-    await syncReminders();
     await load();
   }, 'Notifications are on.');
   const toggleRecap = (on: boolean) => attempt(async () => { await setRecapPush(on); recap = on; }, on ? 'The recap push arrives at 22:30.' : 'No recap push. Habits remind you when they start.');
@@ -57,8 +51,7 @@
 
   {#if !ready && PUSH_URL}
     <Banner message="Notifications are off on this phone. Habits can’t remind you when they start." />
-    {#if needsInvite}<TextField bind:value={invite} label="Invite code" placeholder="The phrase you were given" />{/if}
-    <Button disabled={busy || (needsInvite && !invite.trim())} onclick={turnOn}>Turn on notifications</Button>
+    <Button disabled={busy} onclick={turnOn}>Turn on notifications</Button>
   {/if}
 
   <SectionLabel text="Evening recap" />

@@ -15,6 +15,8 @@
   import { habitEvents } from '../../data/answers';
   import { habitDayOf } from '../../domain/day';
   import { syncReminders } from '../../push/reminders';
+  import { askPermission } from '../../push/notifications';
+  import { canAsk, enablePush } from '../../push/enable';
 
   let { oncancel, onsaved }: { oncancel: () => void; onsaved: () => void } = $props();
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -30,9 +32,12 @@
   async function save() {
     if (!canSave(draft) || busy) return;
     busy = true; problem = '';
+    // 121: a habit with Nudge on, on a phone never asked: the iPhone asks now, inside the tap on Save
+    const asked = draft.nudge && canAsk() ? askPermission() : null;
     try {
       await createHabit($state.snapshot(draft) as HabitDraft, habitDayOf(new Date(), zone), zone);
-      syncReminders().catch(() => {});
+      if (asked) await enablePush(asked).catch(() => 'default'); // Not now, or no connection: Today's banner stays
+      else syncReminders().catch(() => {});
       onsaved();
     } catch { problem = 'Couldn’t save the habit. Try again.'; }
     finally { busy = false; }

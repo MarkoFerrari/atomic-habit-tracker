@@ -18,7 +18,7 @@ FUNCTION="atomic-push"
 BUCKET="atomic-push-${SCW_DEFAULT_PROJECT_ID:0:8}" # bucket names are global; the project prefix keeps it unique
 ZIP="${1:?usage: deploy.sh path/to/function.zip}"
 
-for name in SCW_ACCESS_KEY SCW_SECRET_KEY SCW_DEFAULT_PROJECT_ID SCW_DEFAULT_ORGANIZATION_ID ATOMIC_INVITE_CODE ATOMIC_APP_URL; do
+for name in SCW_ACCESS_KEY SCW_SECRET_KEY SCW_DEFAULT_PROJECT_ID SCW_DEFAULT_ORGANIZATION_ID ATOMIC_APP_URL; do
   if [ -z "${!name:-}" ]; then echo "::error::Missing $name. Add it under Settings → Secrets and variables → Actions."; exit 1; fi
 done
 
@@ -56,7 +56,6 @@ CONFIG=(
   environment-variables.ATOMIC_APP_URL="$ATOMIC_APP_URL"
   secret-environment-variables.0.key=ATOMIC_S3_ACCESS_KEY secret-environment-variables.0.value="$SCW_ACCESS_KEY"
   secret-environment-variables.1.key=ATOMIC_S3_SECRET_KEY secret-environment-variables.1.value="$SCW_SECRET_KEY"
-  secret-environment-variables.2.key=ATOMIC_INVITE_CODE secret-environment-variables.2.value="$ATOMIC_INVITE_CODE"
   region="$REGION"
 )
 

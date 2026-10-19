@@ -77,7 +77,7 @@ async function syncOnce(now: Date): Promise<number | null> {
   if (!device.subscribedAt) return null;
   // 069: tell the function about the recap choice once (a phone subscribed before 069 still gets the recap).
   if (device.recap !== (await recapWanted())) {
-    try { await turnOnPush(''); device = await pushDevice(); } catch { /* the next open tries again */ }
+    try { await turnOnPush(); device = await pushDevice(); } catch { /* the next open tries again */ }
   }
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const today = habitDayOf(now, zone);

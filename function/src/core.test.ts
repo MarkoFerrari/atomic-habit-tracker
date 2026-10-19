@@ -24,7 +24,7 @@ beforeEach(() => {
   store = new MemoryStore();
   sender = new FakeSender();
   clock = new Date('2026-10-07T07:00:00Z'); // 10:00 in Athens
-  deps = { store, sender, inviteCode: 'olive tree dawn', allowedOrigin: ORIGIN, now: () => clock };
+  deps = { store, sender, allowedOrigin: ORIGIN, now: () => clock };
 });
 
 const req = (method: string, path: string, body?: unknown, headers: Record<string, string> = {}): Req => ({
@@ -32,7 +32,7 @@ const req = (method: string, path: string, body?: unknown, headers: Record<strin
   headers: { origin: ORIGIN, 'x-device-token': TOKEN, ...headers },
 });
 const subscribe = (extra: Record<string, unknown> = {}) =>
-  handle(req('POST', '/subscribe', { subscription: SUB, timezone: ZONE, invite: 'olive tree dawn', ...extra }), deps);
+  handle(req('POST', '/subscribe', { subscription: SUB, timezone: ZONE, ...extra }), deps);
 
 describe('time (R1, 039, E5)', () => {
   it('belongs to yesterday before 04:00', () => {
@@ -50,12 +50,19 @@ describe('time (R1, 039, E5)', () => {
 });
 
 describe('subscribe (059, E1, E6)', () => {
-  it('needs the invite code for a new phone', async () => {
-    expect((await subscribe({ invite: 'wrong' })).status).toBe(403);
+  it('lets a new phone join with no invite code (121)', async () => {
     expect((await subscribe()).status).toBe(201);
     expect(store.devices.get(TOKEN)?.timezone).toBe(ZONE);
   });
-  it('renews a known phone without the invite code, and takes its new zone', async () => {
+  it('refuses a new phone once the cap is reached, but still renews a known one (121)', async () => {
+    deps.maxDevices = 2;
+    expect((await subscribe()).status).toBe(201);
+    const other = (t: string) => handle(req('POST', '/subscribe', { subscription: SUB, timezone: ZONE }, { 'x-device-token': t }), deps);
+    expect((await other('b'.repeat(32))).status).toBe(201);
+    expect((await other('c'.repeat(32))).status).toBe(403);
+    expect((await subscribe()).status).toBe(200);
+  });
+  it('renews a known phone and takes its new zone', async () => {
     await subscribe();
     const res = await handle(req('POST', '/subscribe', { subscription: SUB, timezone: 'Europe/Rome' }), deps);
     expect(res.status).toBe(200);

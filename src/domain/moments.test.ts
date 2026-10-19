@@ -47,7 +47,7 @@ describe('comebacks (108)', () => {
   it('finds today’s comeback and counts runs saved on the habit', () => {
     const answers = [...days('2026-10-01', 4).map((x) => a('read', x)), a('read', '2026-10-06'), a('read', '2026-10-07'), a('read', '2026-10-09')];
     const ctx: Context = { habits: [h('read', '2026-10-01T07:30')], answers, trackingStart: '2026-10-01', today: '2026-10-09' };
-    expect(comebacksToday(ctx)).toEqual([{ eventId: 'read', title: 'Sample read 20 min', held: 9, day: '2026-10-09' }]);
+    expect(comebacksToday(ctx)).toEqual([{ eventId: 'read', title: 'Sample read 20 min', held: 7, day: '2026-10-09' }]); // 120: two forgiven misses, 2 days not held
     const saved = runsSaved(ctx, ctx.habits[0]!);
     expect(saved.total).toBe(2); // back on 6 Oct after 5 Oct, back on 9 Oct after 8 Oct
     expect(saved.recent).toEqual([{ missedOn: '2026-10-05', backOn: '2026-10-06' }, { missedOn: '2026-10-08', backOn: '2026-10-09' }]);
