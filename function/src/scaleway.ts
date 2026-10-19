@@ -31,7 +31,6 @@ function getDeps(): Deps {
   deps = {
     store: new S3DeviceStore(s3),
     sender: new WebPushSender(s3, appUrl), // VAPID subject: the app's URL, so no email sits in this public repo
-    inviteCode: env('ATOMIC_INVITE_CODE'),
     allowedOrigin: new URL(appUrl).origin,
     now: () => new Date(),
   };

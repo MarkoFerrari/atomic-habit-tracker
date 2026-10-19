@@ -1,7 +1,7 @@
 <script lang="ts">
   // 01 Start (Figma page 14, habits first, 097; 114): Welcome (S1) → Get started → the empty Today, which asks for
   // the first habit (E17, 079). No reminders step and no invite code on the way in: Today offers reminders once a
-  // habit exists (114), and the invite code is asked only there, when the phone first subscribes (067). The .ics import keeps its own flow (`from="bring"`), opened from Settings → Calendars:
+  // habit exists (114), and the iPhone asks when a habit with Nudge on is saved (121, no invite code). The .ics import keeps its own flow (`from="bring"`), opened from Settings → Calendars:
   // bring your calendars (H06) → files read (H07, or H07b) → review (H08) → habits found (H09) → your data (H10).
   // The import is a plan until H09's Continue: nothing is saved before the person has reviewed it.
   import { untrack } from 'svelte';

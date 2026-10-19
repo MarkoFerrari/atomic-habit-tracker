@@ -47,5 +47,4 @@ jobs:
       - name: Deploy to Scaleway
         run: bash deploy.sh function.zip
         env:
-          ATOMIC_INVITE_CODE: ${{ secrets.ATOMIC_INVITE_CODE }}
           ATOMIC_APP_URL: https://markoferrari.github.io/atomic-habit-tracker/

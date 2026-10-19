@@ -1,6 +1,5 @@
 // ATOMIC push function, host-agnostic core (CLAUDE.md §10). The host adapter maps its request
 // format onto `Req`/`Res` and supplies a Store and a Sender. Nothing here logs a payload.
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { habitDay, inRecapWindow, isValidZone } from './time';
 
 export interface PushSubscriptionData { endpoint: string; keys: { p256dh: string; auth: string } }
@@ -36,12 +35,14 @@ export interface Sender {
   send(sub: PushSubscriptionData, payload: Record<string, unknown>, opts: { ttl: number; urgency: 'normal' | 'high' }): Promise<SendResult>;
 }
 
-export interface Deps { store: Store; sender: Sender; inviteCode: string; allowedOrigin: string; now: () => Date }
+export interface Deps { store: Store; sender: Sender; allowedOrigin: string; now: () => Date; maxDevices?: number }
 
 export interface Req { method: string; path: string; headers: Record<string, string | undefined>; body: string }
 export interface Res { status: number; headers: Record<string, string>; body: string }
 
 const RATE_PER_MINUTE = 30;
+// 121: no invite code; the free tier is kept safe by a cap on how many phones the function will hold (059)
+export const MAX_DEVICES = 25;
 const MAX_QUEUE = 500; // 14 days of reminders is far below this
 const MAX_CIPHERTEXT = 2048;
 const MAX_TEST_DELAY_MS = 24 * 3600_000;
@@ -76,13 +77,6 @@ function parseBody(body: string): Record<string, unknown> {
     if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>;
   } catch { /* fall through */ }
   throw new HttpError(400, 'Body must be a JSON object');
-}
-
-function sameSecret(given: unknown, expected: string): boolean {
-  if (!expected || typeof given !== 'string') return false;
-  const a = createHash('sha256').update(given.trim()).digest();
-  const b = createHash('sha256').update(expected.trim()).digest();
-  return timingSafeEqual(a, b);
 }
 
 function validSubscription(value: unknown): PushSubscriptionData {
@@ -121,8 +115,8 @@ async function subscribe(req: Req, deps: Deps): Promise<Res> {
   const token = deviceToken(req);
   const body = parseBody(req.body);
   const existing = await deps.store.get(token);
-  // 059: a new phone needs the invite code; a known phone renewing its address (E1) or zone (E6) doesn't.
-  if (!existing && !sameSecret(body.invite, deps.inviteCode)) throw new HttpError(403, 'Wrong invite code');
+  // 121: any phone may join, up to the cap; a known phone renewing its address (E1) or zone (E6) always may.
+  if (!existing && (await deps.store.list()).length >= (deps.maxDevices ?? MAX_DEVICES)) throw new HttpError(403, 'ATOMIC is full');
   const timezone = typeof body.timezone === 'string' && isValidZone(body.timezone) ? body.timezone : null;
   if (!timezone) throw new HttpError(400, 'Invalid time zone');
   const subscription = validSubscription(body.subscription);

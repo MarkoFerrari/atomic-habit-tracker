@@ -20,7 +20,6 @@
   let message = $state('');
   let messageAt = $state<'storage' | 'notifications' | 'haptics' | 'results'>('storage');
   let subscribedAt = $state<string | null>(null);
-  let invite = $state('');
   let busy = $state(false);
 
   const records = $derived(entries.filter((e) => e.kind === 'record'));
@@ -78,8 +77,7 @@
     messageAt = 'notifications';
     busy = true;
     try {
-      await turnOnPush(invite);
-      invite = '';
+      await turnOnPush();
       message = 'Push is on for this iPhone. Now send a test.';
       await addDiagnostic({ kind: 'notification', at: new Date().toISOString(), installed: ctx.installed, browser: ctx.browser, note: 'Push turned on' });
     } catch (e) {
@@ -208,11 +206,7 @@
     {#if !PUSH_URL}
       <p class="t-body-small hint">The push service isn’t deployed yet. Everything else can be tested now.</p>
     {:else if !subscribedAt}
-      <label class="field">
-        <span class="t-label-small">Invite code</span>
-        <input class="t-body-default" bind:value={invite} autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="The phrase Marko gave you" />
-      </label>
-      <Button onclick={enablePush} disabled={perm !== 'granted' || !ctx.installed || busy || !invite.trim()}>Turn on push</Button>
+      <Button onclick={enablePush} disabled={perm !== 'granted' || !ctx.installed || busy}>Turn on push</Button>
     {:else}
       <Button onclick={scheduleTest} disabled={busy}>Send a test in 2 minutes</Button>
       <Button variant="tertiary" onclick={enablePush} disabled={busy}>Renew push address</Button>
@@ -237,7 +231,7 @@
     <li>Reopen ATOMIC from the Home Screen. The oldest record must still be there.</li>
     <li>Allow notifications and show a test notification.</li>
     <li>Tomorrow, reopen, tap Share results and send them to Claude.</li>
-    <li>Push: enter the invite code, tap Turn on push, then Send a test in 2 minutes.</li>
+    <li>Push: tap Turn on push, then Send a test in 2 minutes.</li>
     <li>Close ATOMIC and lock the iPhone. The test must arrive while the app is closed.</li>
     <li>Reopen ATOMIC: Pushes received goes up by one. Share the results.</li>
   </ol>
@@ -255,12 +249,5 @@
   .actions { display: grid; gap: var(--space-8); padding: var(--space-16) 0 var(--space-8); }
   .log { display: grid; gap: var(--space-4); color: var(--text-secondary); padding-bottom: var(--space-8); }
   .message { padding-bottom: var(--space-8); color: var(--text-primary); }
-  .field { display: grid; gap: var(--space-4); }
-  .field span { color: var(--text-secondary); }
-  .field input {
-    min-height: var(--size-control); padding: 0 var(--space-12);
-    border-radius: var(--radius-control); background: var(--bg-default); color: var(--text-primary);
-    box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-control); /* 019: a meaningful outline at 3:1 */
-  }
   .steps { list-style: decimal; padding-left: var(--space-20); display: grid; gap: var(--space-8); color: var(--text-secondary); }
 </style>
