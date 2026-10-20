@@ -1,4 +1,6 @@
 <script lang="ts">
+  import HabitObject from '../../ui/HabitObject.svelte';
+  import { fieldColor } from '../../ui/objects';
   // 04 Evening Recap (Figma 65:3820), flow F5: answer what's still open (H18 all at once, H19 one by
   // one), see the day result (H20) or the perfect day (H21), then tomorrow (H23). After midnight it
   // closes yesterday by name (H24); a day with nothing open goes straight to the result (H25).
@@ -8,7 +10,6 @@
   import SegmentedControl from '../../ui/SegmentedControl.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import HabitRow from '../../ui/HabitRow.svelte';
-  import StateIcon from '../../ui/StateIcon.svelte';
   import ProgressRing from '../../ui/ProgressRing.svelte';
   import Button from '../../ui/Button.svelte';
   import Banner from '../../ui/Banner.svelte';
@@ -130,10 +131,13 @@
     {#if mode === 'all'}
       <SectionLabel text="Open · {view.open.length}" />
       {#each view.open as r (`${r.eventId}|${r.occurrence}`)}
-        <HabitRow name={r.title} meta={openMeta(r)} status={r.state} icon={icon(r)} swipeable={false} />
-        <div class="answer">
-          <Button variant="secondary" onclick={() => (skipRow = r)}>Skip</Button>
-          <Button icon="check" onclick={() => set(r, 'done')}>Done</Button>
+        <!-- R1 (style B): the open habit and its two answers on one field card -->
+        <div class="open-card" style:--field={fieldColor(icon(r))}>
+          <HabitRow name={r.title} meta={openMeta(r)} status={r.state} icon={icon(r)} swipeable={false} />
+          <div class="answer">
+            <Button variant="card" onclick={() => (skipRow = r)}>Skip</Button>
+            <Button onclick={() => set(r, 'done')}>Done</Button>
+          </div>
         </div>
       {/each}
       {#if view.answered.length}
@@ -150,7 +154,7 @@
         {#each Array.from({ length: startOpen }, (_, i) => i) as i (i)}<span class:filled={i <= startOpen - view.open.length}></span>{/each}
       </div>
       <div class="spacer"></div>
-      <div class="big"><StateIcon status={current.state} icon={icon(current)} /></div>
+      <HabitObject icon={icon(current)} size="xl" />
       <h2 class="t-heading-large">{current.title}</h2>
       <p class="t-body-small tertiary">{openMeta(current)}{calendarName ? ` · ${calendarName}` : ''}</p>
       {#if askingReason}
@@ -161,17 +165,17 @@
       {/if}
       {#if problem}<p class="t-body-small problem" role="alert">{problem}</p>{/if}
       <div class="spacer"></div>
-      <Button icon="check" onclick={() => set(current, 'done')}>Done</Button>
+      <Button onclick={() => set(current, 'done')}>Done</Button>
       {#if askingReason}
-        <Button variant="secondary" onclick={() => skipWith()}>Skip without a reason</Button>
+        <Button variant="card" onclick={() => skipWith()}>Skip without a reason</Button>
       {:else}
-        <Button variant="secondary" onclick={() => (askingReason = true)}>Skip</Button>
+        <Button variant="card" onclick={() => (askingReason = true)}>Skip</Button>
       {/if}
     {/if}
 
   {:else if step === 'result'}
     <TopBar eyebrow={fullDate(recap.day)} title="Day result" action={close} onaction={onclose} />
-    <div class="ring">
+    <div class="ring card">
       <ProgressRing done={view.done} due={view.due} size="large" perfect={perfect}>
         <p class="t-number-large">{view.done} of {view.due}</p>
         <p class="t-label-small tertiary">{percent(view.due ? view.done / view.due : null)} · {view.due} due</p>
@@ -222,17 +226,17 @@
 </Sheet>
 
 <style>
-  .recap { display: flex; flex-direction: column; gap: var(--space-8); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
+  .recap { display: flex; flex-direction: column; gap: var(--space-12); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
   .spacer { flex: 1; }
-  .answer { display: flex; gap: var(--space-8); padding-bottom: var(--space-8); }
+  .open-card { background: var(--field); border-radius: var(--radius-card); padding-bottom: var(--space-12); }
+  .answer { display: flex; gap: var(--space-8); padding: 0 var(--space-12); }
   .answer :global(.btn) { flex: 1; }
   .tertiary { color: var(--text-tertiary); }
   .secondary { color: var(--text-secondary); }
-  .problem { color: var(--text-accent); }
+  .problem { color: var(--text-destructive); }
   .bars { display: flex; gap: var(--space-4); }
   .bars span { flex: 1; height: var(--space-4); border-radius: var(--radius-round); background: var(--border-divider); }
   .bars span.filled { background: var(--icon-default); }
-  .big { align-self: flex-start; transform: scale(1.6); transform-origin: left center; margin: var(--space-12) 0; }
   .chips { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }
   .ring { position: relative; display: flex; justify-content: center; padding: var(--space-16) 0; }
   .spark { position: absolute; color: var(--celebrate-spark); animation: spark var(--motion-duration-celebrate) var(--motion-easing-spring) both; }

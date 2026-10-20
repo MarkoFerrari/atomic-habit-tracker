@@ -2,7 +2,7 @@
 // Names follow the Figma Components board (Icon/*); where Figma renamed a Lucide icon, the map says which.
 // Only the icons ATOMIC uses are bundled. Adding one: add it to UI or HABIT_ICONS, then to this list.
 const files = import.meta.glob(
-  '/node_modules/lucide-static/icons/{apple,armchair,award,bed,bell,biceps-flexed,bike,book,book-open,book-open-text,brain,brick-wall,brush,calendar,camera,chart-column,check,chef-hat,chevron-left,chevron-right,circle-check,clock,coffee,cooking-pot,crown,cup-soda,download,dumbbell,flower-2,footprints,gamepad-2,gem,glass-water,graduation-cap,hammer,headphones,heart,heart-pulse,hourglass,info,laugh,link,lock,milk,moon,moon-star,mountain,music,notebook-pen,palette,party-popper,pen-line,pencil,person-standing,pill,plus,refresh-cw,salad,sandwich,settings-2,shield-check,smile,sofa,soup,sparkles,sprout,stethoscope,sun,timer,trash-2,trees,triangle-alert,undo-2,upload,utensils,video,waves,x}.svg',
+  '/node_modules/lucide-static/icons/{apple,armchair,award,bed,bell,biceps-flexed,bike,book,book-open,book-open-text,brain,brick-wall,brush,calendar,camera,chart-column,check,chef-hat,chevron-left,chevron-right,circle-check,clock,coffee,cooking-pot,crown,cup-soda,download,dumbbell,flower-2,footprints,gamepad-2,gem,glass-water,graduation-cap,hammer,headphones,heart,heart-pulse,hourglass,info,laugh,link,lock,milk,moon,moon-star,mountain,music,notebook-pen,palette,party-popper,pen-line,pencil,person-standing,pill,plus,refresh-cw,salad,sandwich,search,settings-2,pause,minus,shield-check,smile,sofa,soup,sparkles,sprout,stethoscope,sun,timer,trash-2,trees,triangle-alert,wrench,undo-2,upload,utensils,video,waves,x}.svg',
   { query: '?raw', import: 'default', eager: true },
 ) as Record<string, string>;
 
@@ -12,7 +12,7 @@ const UI = {
   calendar: 'calendar', stats: 'chart-column', settings: 'settings-2', today: 'sun', bell: 'bell', clock: 'clock',
   video: 'video', link: 'link', award: 'award', download: 'download', upload: 'upload', lock: 'lock',
   alert: 'triangle-alert', refresh: 'refresh-cw', spark: 'sparkles', 'perfect-day': 'circle-check', undo: 'undo-2',
-  trash: 'trash-2', edit: 'pencil', info: 'info',
+  trash: 'trash-2', edit: 'pencil', info: 'info', search: 'search', pause: 'pause', minus: 'minus', wrench: 'wrench',
   'rank-starter': 'footprints', 'rank-builder': 'brick-wall', 'rank-keeper': 'shield-check', 'rank-artisan': 'gem', 'rank-master': 'crown',
 } as const;
 

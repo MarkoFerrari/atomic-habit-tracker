@@ -9,6 +9,9 @@ import type { CalendarEvent } from './schema';
 import type { IsoDay } from '../domain/day';
 import { addMinutes, type Wall } from '../domain/zone';
 import type { HabitIcon } from '../ui/icons';
+import { suggestTimes } from '../domain/timed';
+import { createTimed } from './timed';
+import type { TimedReminder } from './schema';
 
 export type Often = 'daily' | 'days' | 'week';
 export interface HabitDraft {
@@ -23,12 +26,17 @@ export interface HabitDraft {
   after: string; // 085, optional
   smallest: string;
   identity: string;
+  /** 130: off = a reminder, not a habit: a nudge at each time, nothing to tick, never counted. */
+  count: boolean;
+  perDay: number;
+  remindTimes: string[];
 }
 
 export const SUGGESTIONS = ['Walk 20 min', 'Breakfast 30 min', 'Train 45 min', 'Stretch 10 min', 'Read 20 min'] as const;
 
 export function blankHabit(): HabitDraft {
-  return { title: '', icon: 'sprout', often: 'daily', days: [0, 1, 2, 3, 4], times: 3, start: '07:30', minutes: 20, nudge: true, after: '', smallest: '', identity: '' };
+  return { title: '', icon: 'sprout', often: 'daily', days: [0, 1, 2, 3, 4], times: 3, start: '07:30', minutes: 20, nudge: true, after: '', smallest: '', identity: '',
+    count: true, perDay: 6, remindTimes: suggestTimes('09:00', 6) };
 }
 
 /** 004: the end point in the title sets the length ("Read 20 min" lasts 20 minutes). */
@@ -37,7 +45,12 @@ export function withTitle(d: HabitDraft, title: string): HabitDraft {
   return { ...d, title, minutes: m && m > 0 && m < 24 * 60 ? m : d.minutes };
 }
 
-export const canSave = (d: HabitDraft) => d.title.trim().length > 0 && (d.often === 'daily' || d.days.length > 0);
+export const canSave = (d: HabitDraft) => d.title.trim().length > 0 && (d.often !== 'days' || d.days.length > 0) && (d.count || d.remindTimes.length > 0);
+
+/** 130: the draft as a reminder (Count it as a habit off): daily or on chosen days, never per week. */
+export async function createReminder(d: HabitDraft): Promise<TimedReminder> {
+  return createTimed({ title: d.title, icon: d.icon, times: d.remindTimes, ...(d.often === 'days' ? { days: d.days } : {}) });
+}
 
 export function toDraft(d: HabitDraft, calendarId: string, today: IsoDay): EventDraft {
   const start = `${today}T${d.start}` as Wall;

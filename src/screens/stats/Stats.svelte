@@ -13,6 +13,9 @@
   import WeekStrip from '../../ui/WeekStrip.svelte';
   import AwardStar from '../../ui/AwardStar.svelte';
   import ProgressBar from '../../ui/ProgressBar.svelte';
+  import HabitObject from '../../ui/HabitObject.svelte';
+  import MonthCalendar from '../../ui/MonthCalendar.svelte';
+  import { allHabitDays } from '../../ui/calendar';
   import { perfectDays, weekStrip } from '../../domain/award';
   import { addDays } from '../../domain/day';
   import YearBar from '../../ui/YearBar.svelte';
@@ -89,17 +92,23 @@
   const weekTracked = $derived(strip.filter((d) => !d.today ? d.state !== 'future' && d.state !== 'empty' : d.due > 0).length);
   const monthPerfect = $derived(ctx && monthly ? perfectDays(ctx, monthly.first, addDays(monthly.first, monthly.cells.length - 1)).length : 0);
   const yearPerfect = $derived(ctx && yearly ? perfectDays(ctx, `${yearly.year}-01-01` as IsoDay, `${yearly.year}-12-31` as IsoDay).length : 0);
+  const iconOf = (id: string) => ctx?.habits.find((h) => h.id === id)?.icon;
+  const monthStars = $derived(ctx && monthly ? new Set(perfectDays(ctx, monthly.first, addDays(monthly.first, monthly.cells.length - 1))) : new Set<string>());
+  const monthCount = $derived(monthly ? (() => { const r = monthly.cells.reduce((a, c) => ({ done: a.done + (c.kind === 'ahead' ? 0 : c.rate.done), due: a.due + (c.kind === 'ahead' ? 0 : c.rate.due) }), { done: 0, due: 0 }); return r.due ? `${r.done} of ${r.due} · ${percent(r.done / r.due)}` : undefined; })() : undefined);
   const weekByHabit = $derived(week ? week.rows.map((r) => ({ eventId: r.eventId, title: r.title, rate: rateOf(r.cells.filter((c): c is HabitDay => !!c)) })).filter((r) => r.rate.due > 0) : []);
 </script>
 
 {#snippet byHabit(rows: { eventId: string; title: string; rate: { done: number; due: number; rate: number | null } }[])}
   {#if rows.length}
-    <section class="by">
-      <SectionLabel text="By habit · done of due" />
+    <section class="by card">
+      <h2 class="t-label-section secondary">By habit · done of due</h2>
       {#each rows as h (h.eventId)}
         <button class="habit" onclick={() => onhabit(h.eventId)}>
-          <span class="line"><span class="t-body-default name">{h.title}</span><span class="t-number-small secondary">{pct(h.rate.rate)} · {h.rate.done} of {h.rate.due}</span></span>
-          <ProgressBar value={h.rate.done} of={h.rate.due} label="{h.title}, done of due" count={false} />
+          <HabitObject icon={iconOf(h.eventId)} size="sm" />
+          <span class="bar">
+            <span class="line"><span class="t-body-default name">{h.title}</span><span class="t-number-small done">{pct(h.rate.rate)} · {h.rate.done} of {h.rate.due}</span></span>
+            <ProgressBar value={h.rate.done} of={h.rate.due} label="{h.title}, done of due" count={false} />
+          </span>
         </button>
       {/each}
     </section>
@@ -123,7 +132,7 @@
       <SegmentedControl options={OPTIONS} selected={mode} label="Period" onselect={(id) => pick(id)} />
 
       {#if mode === 'week' && week && today}
-        <section class="perfect">
+        <section class="perfect card">
           <div class="count"><AwardStar size="icon" />
             <span><span class="t-heading-small block">{weekPerfect} perfect {weekPerfect === 1 ? 'day' : 'days'}</span>
             <span class="t-body-small secondary">Out of {weekTracked} {weekTracked === 1 ? 'day' : 'days'} tracked this week</span></span>
@@ -134,18 +143,19 @@
           <p class="t-body-small tertiary">Nothing has been decided yet this week. Days before the start stay empty, never missed (033).</p>
         {/if}
         {@render byHabit(weekByHabit)}
-        <ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} />
+        <div class="card-list"><ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} /></div>
       {:else if mode === 'month' && monthly && today}
-        <section class="perfect">
+        <section class="perfect card">
           <div class="count"><AwardStar size="icon" />
             <span><span class="t-heading-small block">{monthPerfect} perfect {monthPerfect === 1 ? 'day' : 'days'}</span>
             <span class="t-body-small secondary">In {monthLabel(monthly.first)} so far</span></span>
           </div>
         </section>
+        <MonthCalendar title={monthLabel(monthly.first)} leading={monthly.leading} days={allHabitDays(monthly, monthStars)} count={monthCount} />
         {@render byHabit(monthly.byHabit)}
-        <ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} />
+        <div class="card-list"><ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} /></div>
       {:else if mode === 'year' && yearly}
-        <section class="perfect">
+        <section class="perfect card">
           <div class="count"><AwardStar size="icon" />
             <span><span class="t-heading-small block">{yearPerfect} perfect {yearPerfect === 1 ? 'day' : 'days'}</span>
             <span class="t-body-small secondary">In {yearly.year} so far</span></span>
@@ -153,11 +163,11 @@
         </section>
         {#if yearSky}
           <section class="weeks">
-            <SectionLabel text="Perfect weeks · {yearSky.perfect}" />
+            <h2 class="t-heading-small">{yearSky.perfect} perfect {yearSky.perfect === 1 ? 'week' : 'weeks'}</h2>
             <Sky sky={yearSky} />
           </section>
         {/if}
-        <div class="year" role="group" aria-label="Year {yearly.year}">
+        <div class="year card" role="group" aria-label="Year {yearly.year}">
           {#each yearly.bars as b (b.month)}
             <YearBar letter={b.letter} rate={b.rate.rate} due={b.rate.due} ahead={b.ahead}
               mark={yearly.best?.month === b.month ? 'BEST' : yearly.low?.month === b.month ? 'LOW' : null}
@@ -166,7 +176,7 @@
           {/each}
         </div>
         <p class="t-body-small secondary">{yearly.sentence} Tap a month to open it.</p>
-        <ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} />
+        <div class="card-list"><ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} /></div>
       {/if}
     {/if}
   </main>
@@ -175,21 +185,24 @@
 
 <style>
   .page { min-height: 100dvh; display: flex; flex-direction: column; }
-  .stats { flex: 1; display: flex; flex-direction: column; gap: var(--layout-block-gap); padding-bottom: var(--space-24); }
+  .stats { flex: 1; display: flex; flex-direction: column; gap: var(--space-12); padding-bottom: var(--space-24); }
   .perfect { display: grid; gap: var(--space-16); }
   .count { display: flex; align-items: center; gap: var(--space-12); }
   .block { display: block; }
-  .by { display: grid; gap: var(--space-16); }
-  .habit { display: grid; gap: var(--space-8); width: 100%; text-align: left; }
+  .by { display: grid; gap: var(--space-12); }
+  .habit { display: flex; align-items: center; gap: var(--space-12); width: 100%; text-align: left; }
+  .bar { flex: 1; min-width: 0; display: grid; gap: var(--space-8); }
+  .done { color: var(--text-done); }
   .line { display: flex; justify-content: space-between; gap: var(--space-8); }
   .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .spacer { flex: 1; }
-  .page :global(nav) { position: sticky; bottom: 0; }
   .tertiary { color: var(--text-tertiary); }
   .secondary { color: var(--text-secondary); }
 
 
 
-  .weeks { display: grid; }
+  /* 109: the year's sky on the dark stage, as the perfect-week award */
+  .weeks { display: grid; gap: var(--space-12); padding: var(--space-16); border-radius: var(--radius-card); background: var(--bg-inverse); color: var(--text-inverse); }
+  .weeks :global(.secondary) { color: var(--text-disabled); }
   .year { display: flex; gap: var(--space-4); justify-content: space-between; }
 </style>

@@ -16,8 +16,8 @@
 <style>
   .banner {
     display: flex; gap: var(--space-12); align-items: flex-start;
-    padding: var(--space-12) var(--space-16) var(--space-12) var(--space-12);
-    background: var(--bg-subtle); border-radius: var(--radius-control); color: var(--icon-default);
+    padding: var(--space-16);
+    background: var(--bg-card); border-radius: var(--radius-card); color: var(--icon-default);
   }
   .text { display: grid; gap: var(--space-4); min-width: 0; }
   p { color: var(--text-primary); }

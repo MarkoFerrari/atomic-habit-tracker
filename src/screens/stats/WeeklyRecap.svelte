@@ -87,7 +87,7 @@
       <h1 class="t-heading-large">{recap.title}</h1>
     </header>
     <Stat value={pct(recap.rate.rate)} caption="{recap.rate.done} of {recap.rate.due} due{recap.previous.due ? ` · week ${recap.number - 1} was ${pct(recap.previous.rate)}` : ''}" />
-    <div class="rows">
+    <div class="rows card-list">
       {#if recap.best}<ListRow label="Best habit" value="{shortName(recap.best.title)} · {pct(recap.best.rate.rate)}" onclick={() => onhabit(recap!.best!.eventId)} />{/if}
       {#if recap.weakest}<ListRow label="Weakest" value="{shortName(recap.weakest.title)} · {pct(recap.weakest.rate.rate)}" onclick={() => onhabit(recap!.weakest!.eventId)} />{/if}
       {#if recap.bestDay}<KvRow label="Best day" value="{fullDate(recap.bestDay.day).split(' ')[0]} · {recap.bestDay.rate.done} of {recap.bestDay.rate.due}" />{/if}
@@ -167,11 +167,12 @@
 </Sheet>
 
 <style>
-  .recap { display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: var(--space-32); }
+  .recap { display: flex; flex-direction: column; gap: var(--space-12); padding-bottom: var(--space-32); }
   .tertiary { color: var(--text-tertiary); }
   .secondary { color: var(--text-secondary); }
   .rows { display: grid; }
-  .card { display: flex; gap: var(--space-12); padding: var(--space-16); background: var(--bg-subtle); border-radius: var(--radius-control); }
+  .rows :global(.row) { border-bottom: none; }
+  .card { display: flex; gap: var(--space-12); }
   .text { display: grid; gap: var(--space-4); min-width: 0; }
   .actions { display: grid; gap: var(--space-8); }
   .spacer { flex: 1; min-height: var(--space-16); }

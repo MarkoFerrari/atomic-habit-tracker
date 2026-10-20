@@ -4,7 +4,9 @@
 import { db } from '../data/db';
 import type { ReminderKey } from '../data/schema';
 import { habitDayOf } from '../domain/day';
-import { planReminders } from '../domain/reminders';
+import { MAX_REMINDERS, planReminders, REMINDER_DAYS } from '../domain/reminders';
+import { planTimed } from '../domain/timed';
+import type { Settings } from '../data/schema';
 import { call, permission, pushDevice, PUSH_URL, recapWanted, turnOnPush } from './notifications';
 
 /** What a reminder carries once decrypted. Short keys keep the ciphertext small. */
@@ -82,12 +84,15 @@ async function syncOnce(now: Date): Promise<number | null> {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const today = habitDayOf(now, zone);
   const database = await db();
-  const [events, cals, answers, key] = await Promise.all([database.getAll('events'), database.getAll('calendars'), database.getAll('answers'), reminderKey()]);
+  const [events, cals, answers, key, settings] = await Promise.all([database.getAll('events'), database.getAll('calendars'), database.getAll('answers'), reminderKey(),
+    database.get('settings', 'settings') as Promise<Settings | undefined>]);
   const answered = new Set(answers.filter((a) => a.occurrence >= today).map((a) => a.key));
   const habitCalendars = new Set(cals.filter((c) => c.trackAsHabits).map((c) => c.id));
   // 104: only habits remind. Other calendars' events stay in the database (and in backups) but no longer push.
   const habits = events.filter((e) => habitCalendars.has(e.calendarId));
-  const plan = planReminders(habits, habitCalendars, answered, today, now, zone);
+  // 130: reminders that aren't habits join the same queue; soonest first, so the far end is what a full queue drops
+  const plan = [...planReminders(habits, habitCalendars, answered, today, now, zone), ...planTimed(settings?.timedReminders ?? [], today, now, zone, REMINDER_DAYS)]
+    .sort((a, b) => a.fireAt.localeCompare(b.fireAt)).slice(0, MAX_REMINDERS).map((r, i) => ({ ...r, id: `r${i}` }));
   const items = await Promise.all(plan.map(async (r) => ({
     id: r.id,
     fireAt: r.fireAt,

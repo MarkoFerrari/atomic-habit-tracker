@@ -68,3 +68,24 @@ describe('New habit asks to allow notifications (121)', () => {
     expect(push.askPermission).not.toHaveBeenCalled();
   });
 });
+
+describe('Count it as a habit off saves a reminder, not a habit (130)', () => {
+  it('suggests times every 2 hours, saves them, and makes no habit', async () => {
+    const { db } = await import('../../data/db');
+    const { listTimed } = await import('../../data/timed');
+    const onsaved = vi.fn();
+    render(NewHabit, { oncancel: () => {}, onsaved });
+    await fireEvent.click(screen.getByRole('switch', { name: 'Count it as a habit' }));
+    expect(screen.getByText(/Never counted in your day, runs or ranks/)).toBeTruthy();
+    expect(screen.queryByText('Lasts')).toBeNull();
+    expect(screen.queryByText('Make it stick')).toBeNull();
+    await fireEvent.input(screen.getByLabelText('Reminder'), { target: { value: 'Drink water' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'More' }));
+    expect(screen.getByText(/Every 2 hours from the start/)).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await vi.waitFor(() => expect(onsaved).toHaveBeenCalled());
+    const [r] = await listTimed();
+    expect(r).toMatchObject({ title: 'Drink water', times: ['07:30', '09:30', '11:30', '13:30', '15:30', '17:30', '19:30'] });
+    expect(await (await db()).getAll('events')).toHaveLength(0);
+  });
+});

@@ -92,8 +92,8 @@
 <Sheet open={editing !== null} title="Edit habit" showClose onclose={() => (editing = null)}>
   {#if editing}
     <div class="sheet">
-      <TextField bind:value={name} autocapitalize="sentences" spellcheck />
-      <SectionLabel text="Icon · 44 in 8 groups" />
+      <TextField bind:value={name} label="Habit" autocapitalize="sentences" spellcheck filled />
+      <SectionLabel text="Object" />
       <IconPicker bind:selected={icon} />
       <Button disabled={busy || !name.trim()} onclick={() => run(() => saveHabit(editing!, { title: name, icon }))}>Save</Button>
       {#if editing.archivedOn && editing.archivedOn <= today}
@@ -106,7 +106,8 @@
 </Sheet>
 
 <style>
-  .habits { display: flex; flex-direction: column; gap: var(--space-8); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
-  .note { color: var(--text-tertiary); }
+  .habits { display: flex; flex-direction: column; gap: var(--space-12); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
+  .note { color: var(--text-secondary); }
+  ul { display: grid; gap: var(--space-12); }
   .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-40); }
 </style>

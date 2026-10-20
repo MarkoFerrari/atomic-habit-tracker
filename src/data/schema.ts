@@ -101,6 +101,24 @@ export interface Settings {
   weekAwardShown?: IsoDay;
   /** 115: habits split by an edit before 0.8.2 have been joined back (one-time repair, joinSplitHabits). */
   seriesJoined?: boolean;
+  /** 130: reminders that aren't habits ("Drink water, 6 times a day"). Never counted; here so a backup carries them. */
+  timedReminders?: TimedReminder[];
+  /** 131: the last version whose "Welcome to the new ATOMIC" was shown. Missing on a fresh install: nothing to tell. */
+  whatsNewSeen?: string;
+}
+
+/**
+ * 130: a reminder, not a habit. A nudge at each time, nothing to tick, never in the day's count, rates, runs or
+ * ranks (005: water stays untracked). Clock time, like habits (028). `days`: 0 = Monday … 6 = Sunday; missing = every day.
+ */
+export interface TimedReminder {
+  id: string;
+  title: string;
+  icon: string;
+  times: string[]; // 'HH:mm', sorted
+  days?: number[];
+  paused?: boolean;
+  createdAt: string;
 }
 
 /** This phone's identity with the push function (059). Lives in the settings store, under its own key. */

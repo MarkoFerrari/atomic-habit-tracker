@@ -51,7 +51,7 @@
   .action {
     display: grid; place-items: center; flex: none;
     width: var(--size-touch); height: var(--size-touch);
-    border-radius: var(--radius-control); box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-control);
+    border-radius: var(--radius-tile); background: var(--bg-card); box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-control);
   }
   .quick { min-height: var(--size-touch); padding: 0 var(--space-8); color: var(--text-accent); }
   .bar { display: flex; align-items: center; min-height: var(--size-touch); }

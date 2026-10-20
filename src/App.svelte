@@ -14,6 +14,8 @@
   import HabitsTab, { type HabitsMode } from './screens/habits/HabitsTab.svelte';
   import NewHabit from './screens/habits/NewHabit.svelte';
   import HabitDetail from './screens/stats/HabitDetail.svelte';
+  import ReminderDetail from './screens/habits/ReminderDetail.svelte';
+  import type { TimedReminder } from './data/schema';
   import Badges from './screens/stats/Badges.svelte';
   import WeeklyRecap from './screens/stats/WeeklyRecap.svelte';
   import Settings from './screens/settings/Settings.svelte';
@@ -32,12 +34,16 @@
   import { expand, type AgendaItem } from './domain/agenda';
   import { addDays, habitDayOf, type IsoDay } from './domain/day';
   import Toast from './ui/Toast.svelte';
+  import WhatsNew from './ui/WhatsNew.svelte';
+  import { updateSettings } from './data/settings';
   import { joinSplitHabits, restoreHabit, type DeletedHabit } from './data/habits';
   import { syncReminders } from './push/reminders';
 
   type View = 'loading' | 'gallery' | 'build-test' | 'onboarding' | 'app' | 'recap';
   type Pushed =
     | { kind: 'new-habit' }
+    | { kind: 'reminder'; id: string; from: string }
+    | { kind: 'edit-reminder'; reminder: TimedReminder }
     | { kind: 'edit'; event: CalendarEvent; item: AgendaItem }
     | { kind: 'habit'; eventId: string; from: string }
     | { kind: 'badges' }
@@ -46,6 +52,8 @@
     | { kind: 'restore'; preview: BackupPreview; fileName: string; from: 'onboarding' | 'data' };
 
   let view = $state<View>('loading');
+  let whatsNew = $state(false);
+  function seenNews() { whatsNew = false; void updateSettings({ whatsNewSeen: __APP_VERSION__ }); }
   let tab = $state<Tab>('today');
   let stack = $state.raw<Pushed[]>([]); // raw: events go back to IndexedDB, which can't store Svelte proxies
   let statsMode = $state<'week' | 'month' | 'year'>('week');
@@ -70,8 +78,10 @@
     if (location.hash === '#build-test') { view = 'build-test'; return; }
     // In a browser tab the build test (with its install banner) stays until H02/H03 are built.
     if (!isInstalled() && import.meta.env.PROD) { view = 'build-test'; return; }
-    const done = (await getSettings()).onboardingDone;
-    if (!done) { view = 'onboarding'; return; }
+    const settings = await getSettings();
+    if (!settings.onboardingDone) { view = 'onboarding'; return; }
+    // 131: a phone that ran an earlier version sees what's new once; a fresh install has nothing to compare
+    whatsNew = settings.whatsNewSeen !== __APP_VERSION__;
     await joinSplitHabits().catch(() => 0); // 115: once per phone, before any screen reads runs
     if (location.hash === '#recap') { view = 'recap'; return; }
     view = 'app';
@@ -125,13 +135,17 @@
 {:else if view === 'build-test'}<BuildTest />
 {:else if view === 'onboarding' && top?.kind === 'restore'}
   <RestorePreview preview={top.preview} fileName={top.fileName} oncancel={() => (stack = [])} ondone={restored} />
-{:else if view === 'onboarding'}<Onboarding ondone={() => { view = 'app'; tab = 'today'; }}
+{:else if view === 'onboarding'}<Onboarding ondone={() => { view = 'app'; tab = 'today'; void updateSettings({ whatsNewSeen: __APP_VERSION__ }); }}
   onrestore={(preview, fileName) => (stack = [{ kind: 'restore', preview, fileName, from: 'onboarding' }])} />
 {:else if view === 'recap'}<Recap onclose={closeRecap} />
 {:else if view === 'app'}
   {#key refresh}
   {#if top?.kind === 'habit'}
     {#key top}<HabitDetail eventId={top.eventId} backLabel={top.from} onback={pop} onedit={editHabit} ondeleted={habitDeleted} />{/key}
+  {:else if top?.kind === 'reminder'}
+    {#key top}<ReminderDetail id={top.id} backLabel={top.from} onback={pop} onedit={(reminder) => push({ kind: 'edit-reminder', reminder })} />{/key}
+  {:else if top?.kind === 'edit-reminder'}
+    <NewHabit reminder={top.reminder} oncancel={pop} onsaved={() => { stack = stack.slice(0, -2); }} />
   {:else if top?.kind === 'badges'}
     <Badges onback={pop} onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Badges' })} />
   {:else if top?.kind === 'week-recap'}
@@ -157,12 +171,15 @@
       onrecap={(weekStart) => push({ kind: 'week-recap', weekStart })} />
   {:else if tab === 'habits'}
     <HabitsTab ontab={(t) => (tab = t)} initialMode={habitsMode} onview={(m) => (habitsMode = m)}
-      onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Habits' })} onnew={newHabit} />
+      onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Habits' })} onnew={newHabit}
+      onreminder={(id) => push({ kind: 'reminder', id, from: 'Habits' })} />
   {:else}
     <Today ontab={(t) => (tab = t)} onnewhabit={newHabit} onrecap={() => (view = 'recap')}
-      onbadges={() => push({ kind: 'badges' })} onnotifications={() => push({ kind: 'settings', screen: 'notifications' })} />
+      onbadges={() => push({ kind: 'badges' })} onnotifications={() => push({ kind: 'settings', screen: 'notifications' })}
+      onreminder={(id) => push({ kind: 'reminder', id, from: 'Today' })} />
   {/if}
   {/key}
+  <WhatsNew open={whatsNew && !stack.length} version={__APP_VERSION__} onclose={seenNews} />
   {#if deleted}
     {#key deleted}
       <div class="toast-slot">

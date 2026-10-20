@@ -86,8 +86,8 @@ describe('Stats (F6)', () => {
 describe('Badges, habit detail and recap', () => {
   it('Badges: a medal per habit, locked until day 10, with the next medal named (H38c)', async () => {
     render(Badges, { onback: noop, onhabit: noop });
-    expect(await screen.findByText('Your medals · 2')).toBeTruthy();
-    expect(screen.getAllByText(/No medal yet/).length).toBe(2);
+    expect(await screen.findByText('2 habits · 0 medals')).toBeTruthy();
+    expect(screen.getAllByText('No rank yet').length).toBe(2);
     expect(screen.getByText(/^Next · Apprentice/)).toBeTruthy();
     expect((await (await db()).getAll('ranks'))).toEqual([]); // nothing reached, nothing written
   });
@@ -96,7 +96,7 @@ describe('Badges, habit detail and recap', () => {
     const database = await db();
     for (let d = 1; d <= 12; d += 1) await database.put('answers', ans('r', `2027-11-${String(d).padStart(2, '0')}`, 'done'));
     render(Badges, { onback: noop, onhabit: noop });
-    expect(await screen.findByText(/^Apprentice · run of/)).toBeTruthy();
+    expect(await screen.findByText('Apprentice')).toBeTruthy();
     await vi.waitFor(async () => expect((await database.getAll('ranks')).map((r) => r.rank)).toEqual(['starter']));
   });
 
@@ -107,12 +107,13 @@ describe('Badges, habit detail and recap', () => {
     expect(screen.getByText('No time')).toBeTruthy();
   });
 
-  it('habit detail: done of due as a ring, this run and the best run as two bars (113)', async () => {
+  it('habit detail (D1): This run and Rank side by side, and the month week by week (129)', async () => {
     render(HabitDetail, { eventId: 'b', onback: noop });
-    const ring = await screen.findByRole('img', { name: /^\d+ of \d+ due done, \d+%, last \d+ days$/ });
-    const [, done, due] = /^(\d+) of (\d+)/.exec(ring.getAttribute('aria-label')!)!;
-    expect(screen.getByText(`${done}/${due}`)).toBeTruthy();
-    expect(screen.getByRole('img', { name: /^This run .* best run / })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'This run' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Rank' })).toBeTruthy();
+    expect(screen.getByRole('grid')).toBeTruthy();
+    expect(screen.getAllByRole('gridcell', { name: /: (done|not done)$/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Some done')).toBeNull(); // one habit: a day is done or not (129)
   });
 
   it('habit detail: a habit with no rank is deleted after one plain question, and Undo brings it all back (112, B)', async () => {

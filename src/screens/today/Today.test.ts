@@ -70,7 +70,9 @@ describe('Today (F4)', () => {
     expect(await screen.findByText('Why skip Sample read?')).toBeTruthy();
     await fireEvent.click(screen.getByRole('button', { name: 'Low energy' }));
     expect(await screen.findByText('Answered')).toBeTruthy();
-    expect(within(row('Sample read 30 min')).getByText('Low energy')).toBeTruthy();
+    // 126: the row shows one skip marker, whatever the reason; the reason stays in the data
+    expect(within(row('Sample read 30 min')).queryByText('Low energy')).toBeNull();
+    expect(within(row('Sample read 30 min')).getByRole('button', { name: /skipped/ })).toBeTruthy();
     const [a] = await (await db()).getAll('answers');
     expect(a).toMatchObject({ eventId: 'read', occurrence: '2026-10-06', status: 'skipped', reason: 'low-energy' });
   });

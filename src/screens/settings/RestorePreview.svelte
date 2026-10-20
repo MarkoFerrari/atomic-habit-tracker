@@ -49,7 +49,7 @@
 
 <style>
   .restore { display: flex; flex-direction: column; gap: var(--space-12); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
-  .file { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-16); border-radius: var(--radius-control); background: var(--bg-subtle); }
+  .file { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-16); border-radius: var(--radius-card); background: var(--bg-card); }
   .text { flex: 1; min-width: 0; }
   .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .block { display: block; }
