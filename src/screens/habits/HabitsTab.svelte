@@ -12,11 +12,13 @@
   import TopBar from '../../ui/TopBar.svelte';
   import TabBar from '../../ui/TabBar.svelte';
   import SegmentedControl from '../../ui/SegmentedControl.svelte';
-  import RankMedal from '../../ui/RankMedal.svelte';
+  import HabitObject from '../../ui/HabitObject.svelte';
+  import MonthCalendar from '../../ui/MonthCalendar.svelte';
+  import { allHabitDays } from '../../ui/calendar';
+  import { fieldColor } from '../../ui/objects';
   import ProgressBar from '../../ui/ProgressBar.svelte';
   import WeekStrip from '../../ui/WeekStrip.svelte';
   import WeekCell from '../../ui/WeekCell.svelte';
-  import HeatCell from '../../ui/HeatCell.svelte';
   import Icon from '../../ui/Icon.svelte';
   import EmptyState from '../../ui/EmptyState.svelte';
   import type { IconName } from '../../ui/icons';
@@ -29,17 +31,22 @@
   import { addDays, type IsoDay } from '../../domain/day';
   import { activeIds, loadStats, medals, type StatsData } from '../../data/stats';
   import { activeHabits } from '../../data/habits';
+  import { listTimed } from '../../data/timed';
+  import { timedLine } from '../../domain/timed';
+  import type { TimedReminder } from '../../data/schema';
+  import TimedCard from '../../ui/TimedCard.svelte';
 
   export type HabitsMode = 'list' | 'week' | 'month';
-  interface Props { ontab?: (tab: Tab) => void; initialMode?: HabitsMode; onview?: (m: HabitsMode) => void; onhabit: (eventId: string) => void; onnew?: () => void }
-  let { ontab, initialMode = 'list', onview, onhabit, onnew }: Props = $props();
+  interface Props { ontab?: (tab: Tab) => void; initialMode?: HabitsMode; onview?: (m: HabitsMode) => void; onhabit: (eventId: string) => void; onnew?: () => void; onreminder?: (id: string) => void }
+  let { ontab, initialMode = 'list', onview, onhabit, onnew, onreminder }: Props = $props();
+  let timed = $state.raw<TimedReminder[]>([]); // 130: listed apart, under Reminders · not counted
 
   let data = $state.raw<StatsData | null>(null);
   let list = $state.raw<Medal[]>([]);
   // svelte-ignore state_referenced_locally
   let mode = $state<HabitsMode>(initialMode);
   let series = $state.raw<Set<string>>(new Set()); // H45: running series only; Proton splits a series at every edit
-  async function load() { const d = await loadStats(); list = await medals(d); series = new Set((await activeHabits(d.ctx.today)).active.map((e) => e.id)); data = d; }
+  async function load() { timed = await listTimed(); const d = await loadStats(); list = await medals(d); series = new Set((await activeHabits(d.ctx.today)).active.map((e) => e.id)); data = d; }
   onMount(() => {
     load();
     const onVisible = () => document.visibilityState === 'visible' && load();
@@ -80,12 +87,24 @@
   const rankName = (m: Medal | undefined) => (m?.rank ? RANKS.find((r) => r.id === m.rank)!.label : 'No medal yet');
 </script>
 
+{#snippet reminders()}
+  <div class="group">
+    <SectionLabel text="Reminders · not counted" />
+    <ul class="list">
+      {#each timed as r (r.id)}
+        <li><TimedCard title={r.title} icon={r.icon} eyebrow="" line={r.paused ? `Paused · ${timedLine(r)}` : timedLine(r)} onopen={() => onreminder?.(r.id)} /></li>
+      {/each}
+    </ul>
+  </div>
+{/snippet}
+
 <div class="page">
   <main class="screen habits">
     <TopBar {eyebrow} {title} action={onnew ? { icon: 'plus', label: 'New habit' } : undefined} onaction={onnew} />
     {#if !data}
       <!-- first read -->
     {:else if !habits.length}
+      {#if timed.length}{@render reminders()}{/if}
       <div class="spacer"></div>
       <EmptyState title="No habits yet" body="Pick what you want to do and when. Each day you keep them all lights a star." action={onnew ? 'New habit' : undefined} onaction={onnew} />
       <div class="spacer"></div>
@@ -96,11 +115,11 @@
         {#snippet habitItem(h: (typeof habits)[number])}
           {@const m = medalOf.get(h.id)}
           <li>
-            <button class="habit" onclick={() => onhabit(h.id)} aria-label="{h.title}, {rankName(m)}, {line(h)}">
-              <RankMedal rank={m?.rank ?? null} icon={(h.icon ?? 'sprout') as IconName} />
+            <button class="habit" style:--field={fieldColor(h.icon)} onclick={() => onhabit(h.id)} aria-label="{h.title}, {rankName(m)}, {line(h)}">
+              <HabitObject icon={h.icon} size="lg" />
               <span class="text">
                 <span class="t-body-strong name">{h.title}</span>
-                <span class="t-body-small secondary meta">{line(h)}</span>
+                <span class="t-label-small secondary meta">{line(h)}</span>
                 {#if m?.next}<ProgressBar value={m.held} of={m.next.days} label="Toward {RANKS.find((r) => r.id === m.next!.rank)!.label}" />{/if}
               </span>
               <span class="chev"><Icon name="chevron-right" /></span>
@@ -123,13 +142,14 @@
         {:else}
           <ul class="list">{#each habits as h (h.id)}{@render habitItem(h)}{/each}</ul>
         {/if}
+        {#if timed.length}{@render reminders()}{/if}
 
       {:else if mode === 'week' && week}
-        <div class="grid" role="table" aria-label="This week">
+        <div class="grid card" role="table" aria-label="This week">
           <div class="head" role="row"><span></span><WeekStrip days={strip} /></div>
           {#each week.rows.filter((r) => active.has(r.eventId)) as row (row.eventId)}
             <div class="row" role="row">
-              <button class="t-body-small rowname" onclick={() => onhabit(row.eventId)}>{row.title}</button>
+              <button class="rowname" onclick={() => onhabit(row.eventId)} aria-label={row.title}><HabitObject icon={habits.find((h) => h.id === row.eventId)?.icon} size="sm" /></button>
               <span class="cells">
                 {#each row.cells as cell, i (i)}
                   <span class="cell" role="cell">{#if cell && cell.state !== 'before'}<WeekCell state={cell.state} label="{row.title}, {fullDate(cell.day)}: {cell.state === 'ahead' ? 'not yet' : cell.state}" />{/if}</span>
@@ -140,16 +160,8 @@
         </div>
 
       {:else if mode === 'month' && month}
-        <div class="month" role="group" aria-label="{monthName(month.first)} {month.first.slice(0, 4)}">
-          {#each ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as l, i (i)}<span class="t-label-small wd">{l}</span>{/each}
-          {#each Array.from({ length: month.leading }) as _, i (i)}<span></span>{/each}
-          {#each month.cells as c (c.day)}
-            <span class="day">
-              <HeatCell day={Number(c.day.slice(8, 10))} level={c.level} kind={c.kind}
-                label="{fullDate(c.day)}: {c.kind === 'ahead' ? 'ahead' : c.rate.due ? `${percent(c.rate.rate)}, ${c.rate.done} of ${c.rate.due} done` : 'nothing due'}{monthStars.has(c.day) ? ', perfect day' : ''}" />
-            </span>
-          {/each}
-        </div>
+        <MonthCalendar title="{monthName(month.first)} {month.first.slice(0, 4)}" leading={month.leading} days={allHabitDays(month, monthStars)}
+          count={(() => { const r = month.cells.reduce((a, c) => ({ done: a.done + (c.kind === 'ahead' ? 0 : c.rate.done), due: a.due + (c.kind === 'ahead' ? 0 : c.rate.due) }), { done: 0, due: 0 }); return r.due ? `${r.done} of ${r.due} · ${percent(r.done / r.due)}` : undefined; })()} />
       {/if}
     {/if}
   </main>
@@ -158,27 +170,25 @@
 
 <style>
   .page { min-height: 100dvh; display: flex; flex-direction: column; }
-  .habits { flex: 1; display: flex; flex-direction: column; gap: var(--layout-block-gap); padding-bottom: var(--space-24); }
-  .page :global(nav) { position: sticky; bottom: 0; }
+  .habits { flex: 1; display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: var(--space-24); }
   .spacer { flex: 1; }
   .secondary { color: var(--text-secondary); }
-  .list { display: grid; gap: var(--space-24); }
-  .group { display: grid; }
-  .habit { display: flex; align-items: center; gap: var(--space-12); width: 100%; text-align: left; }
+  .list { display: grid; gap: var(--space-12); }
+  .group { display: grid; gap: var(--space-12); }
+  .habit {
+    display: flex; align-items: center; gap: var(--space-16); width: 100%; text-align: left;
+    padding: var(--space-16); background: var(--field); border-radius: var(--radius-card);
+  }
   .text { flex: 1; min-width: 0; display: grid; gap: var(--space-4); }
   .name, .meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* E21 */
   .text :global(.row) { padding-top: var(--space-4); }
-  .chev { color: var(--icon-muted); display: flex; }
+  .chev { color: var(--icon-default); display: flex; }
 
   .grid { display: grid; }
   .head { padding-bottom: var(--space-8); }
-  .row { border-top: var(--stroke-hairline) solid var(--border-divider); padding: var(--space-4) 0; } /* a divider between habits (owner, 8 Oct 2026) */
-  .head, .row { display: grid; grid-template-columns: calc(var(--space-64) + var(--space-16)) 1fr; align-items: center; }
-  .rowname { text-align: left; color: var(--text-primary); min-height: var(--size-touch); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; padding-right: var(--space-4); }
+  .row { padding: var(--space-4) 0; }
+  .head, .row { display: grid; grid-template-columns: calc(var(--space-48) + var(--space-4)) 1fr; align-items: center; }
+  .rowname { display: flex; min-height: var(--size-touch); align-items: center; }
   .cells { display: flex; justify-content: space-between; }
-  .cell { width: var(--space-40); height: var(--space-32); display: grid; place-items: center; }
-
-  .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-8); }
-  .wd { text-align: center; color: var(--text-tertiary); }
-  .day { position: relative; }
+  .cell { width: var(--space-40); height: var(--space-40); display: grid; place-items: center; }
 </style>

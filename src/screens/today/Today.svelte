@@ -4,6 +4,10 @@
   // rank (098); the morning after a miss, one line says today keeps the run (099). The last habit of the day plays
   // the perfect-day award (093), once a day; a rank reached opens H5 the next time Today loads (E15, never a push).
   import { onMount, tick } from 'svelte';
+  import TimedCard from '../../ui/TimedCard.svelte';
+  import stillLife from '../../assets/still-life.webp';
+  import { todayOf } from '../../domain/timed';
+  import type { TimedReminder } from '../../data/schema';
   import TopBar from '../../ui/TopBar.svelte';
   import TabBar from '../../ui/TabBar.svelte';
   import type { Tab } from '../../ui/tabs';
@@ -61,8 +65,8 @@
   import { greeting, rowKey, showCloseTheDay, todayView, type TodayRow, type TodayView } from '../../domain/today';
   import { runLine } from '../../domain/stats';
 
-  interface Props { onrecap?: () => void; onnewhabit?: () => void; ontab?: (tab: Tab) => void; onbadges?: () => void; onnotifications?: () => void }
-  let { onrecap, onnewhabit, ontab, onbadges, onnotifications }: Props = $props();
+  interface Props { onrecap?: () => void; onnewhabit?: () => void; ontab?: (tab: Tab) => void; onbadges?: () => void; onnotifications?: () => void; onreminder?: (id: string) => void }
+  let { onrecap, onnewhabit, ontab, onbadges, onnotifications, onreminder }: Props = $props();
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let now = $state(new Date());
@@ -97,6 +101,12 @@
 
   const habitDay = $derived(habitDayOf(now, zone));
   const hour = $derived(localParts(now, zone).hour);
+  // 130: reminders that aren't habits, on white cards above the habits, outside the day's count
+  let timed = $state.raw<TimedReminder[]>([]);
+  const clockNow = $derived(wallOf(now, zone).slice(11, 16));
+  const timedToday = $derived(timed.map((r) => ({ r, t: todayOf(r, habitDay, clockNow) })).filter((x) => x.t.on || x.r.paused));
+  const timedLineOf = (x: { r: TimedReminder; t: ReturnType<typeof todayOf> }) => x.r.paused ? 'Paused · no nudges'
+    : x.t.next ? `Next at ${x.t.next} · ${x.t.passed} of ${x.t.total} so far` : `All ${x.t.total} for today`;
   const view = $derived<TodayView>(todayView(events.map(toSource), answers, habitDay, now, zone, false, weekAnswers, trackingStart));
   const dateLabel = $derived(new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
     .format(new Date(`${habitDay}T12:00:00Z`)));
@@ -122,6 +132,7 @@
     ]);
     events = evs;
     answers = ans;
+    timed = settings.timedReminders ?? [];
     weekAnswers = week;
     trackingStart = settings.trackingStart as IsoDay | null;
     trial = activeAdjustment(settings.adjustments ?? []);
@@ -134,7 +145,7 @@
       : '';
     habitCalendarName = calendars.find((c) => c.trackAsHabits)?.name ?? '';
     const perm = permission();
-    remindersOff = !!PUSH_URL && pushSupported() && evs.length > 0 && perm !== 'denied' && !(perm === 'granted' && (await pushDevice()).subscribedAt);
+    remindersOff = !!PUSH_URL && pushSupported() && (evs.length > 0 || timed.length > 0) && perm !== 'denied' && !(perm === 'granted' && (await pushDevice()).subscribedAt);
     awardShown = settings.awardShown ?? null;
     // 096, 098, 099: the week strip, every habit's medal, and a run at risk. Medals write ranks reached (084).
     const stats = await loadStats(now);
@@ -296,7 +307,7 @@
   };
   const left = $derived(view.due - view.done);
   const subLine = $derived(perfect ? `Perfect day · ${perfectThisWeek} this week`
-    : view.done === 0 ? `${view.due} due today` : left === 1 ? 'One more for a perfect day' : `${left} more for a perfect day`);
+    : view.done === 0 ? `${view.due} due today${timedToday.length ? ' · reminders aren’t counted' : ''}` : left === 1 ? 'One more for a perfect day' : `${left} more for a perfect day`);
   function trailing(r: TodayRow): string | undefined {
     if (r.state === 'done' && r.answer) {
       if (r.answer.small) return '2-min';
@@ -317,17 +328,21 @@
     {#if !loaded}
       <!-- first read from IndexedDB: a frame or two -->
     {:else if events.length === 0}
-      <div class="spacer"></div>
-      <!-- 079: the first action is a habit, not a calendar; New habit makes the HABITS calendar if there is none -->
-      <EmptyState title="Start with one habit" body="Give it an end and a time, like “Read 20 min” at 21:30. One is enough to begin."
-        action={onnewhabit ? 'New habit' : undefined} onaction={onnewhabit} />
-      <div class="spacer"></div>
+      {#each timedToday as x (x.r.id)}<TimedCard title={x.r.title} icon={x.r.icon} line={timedLineOf(x)} onopen={() => onreminder?.(x.r.id)} />{/each}
+      <!-- 079: the first action is a habit, not a calendar; New habit makes the HABITS calendar if there is none.
+           N0 (style B): one white card with the still life; the one card that keeps a shadow (owner, 20 Oct 2026). -->
+      <section class="start card">
+        <img src={stillLife} alt="" />
+        <h2 class="t-heading-small">Start with one habit</h2>
+        <p class="t-body-small secondary">Pick what you want to do and when. Each day you keep them all lights a star.</p>
+        {#if onnewhabit}<span class="start-action"><Button onclick={onnewhabit}>New habit</Button></span>{/if}
+      </section>
     {:else}
       {#if onrecap && showCloseTheDay(hour) && view.open.length}
-        <ListRow label="Close the day" value="{view.open.length} left" onclick={onrecap} />
+        <div class="card-list"><ListRow label="Close the day" value="{view.open.length} left" onclick={onrecap} /></div>
       {/if}
 
-      <section class="progress">
+      <section class="progress card">
         <div class="ring-row">
           <span class="ring" bind:this={ringEl}><ProgressRing done={view.done} due={view.due} perfect={perfect} star={!flying} /></span>
           <div class="numbers">
@@ -365,6 +380,8 @@
         </div>
       {/each}
 
+      {#each timedToday as x (x.r.id)}<TimedCard title={x.r.title} icon={x.r.icon} line={timedLineOf(x)} onopen={() => onreminder?.(x.r.id)} />{/each}
+
       {#if view.due === 0}
         <EmptyState title="Nothing due today" body={view.thisWeek.length ? 'This week’s habits are below, for whenever suits.' : paused.length ? 'Paused habits come back on their own.' : 'No habit repeats on this day.'} />
       {/if}
@@ -387,6 +404,7 @@
           {#each looseOpen as r (`${r.eventId}|${r.occurrence}`)}
             <li>
               <HabitRow name={r.title} meta={meta(r)} status={r.state} icon={icon(r)} showMarkDone={r.markDone}
+                featured={r.markDone && !view.routines.length} eyebrow={r.markDone ? (r.state === 'running' ? 'Now' : `Next · ${r.allDay ? 'today' : clock(r.start)}`) : undefined}
                 onopen={() => openSheet(r)} ondone={() => set(r, 'done')} onskip={() => askSkip(r)} />
             </li>
           {/each}
@@ -481,29 +499,32 @@
 <style>
   .page { min-height: 100dvh; display: flex; flex-direction: column; }
   .today {
-    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--layout-block-gap); /* 092 */
+    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-12); /* 122: cards sit 12 apart */
     padding-bottom: var(--space-24);
   }
-  .spacer { flex: 1; }
-  .progress { display: grid; gap: var(--space-24); }
+  .progress { display: grid; gap: var(--space-16); }
+  .start { display: grid; justify-items: center; gap: var(--space-8); padding: var(--space-24) var(--space-24) var(--space-32); text-align: center;
+    box-shadow: 0 var(--space-8) var(--space-24) var(--shadow-card); }
+  .start img { width: 100%; max-width: calc(var(--space-64) * 4); height: auto; margin-bottom: var(--space-16); }
+  .start-action { margin-top: var(--space-16); min-width: calc(var(--space-64) * 3); display: grid; }
   .ring-row { display: flex; align-items: center; gap: var(--space-16); }
   .ring { display: flex; }
   .numbers { display: grid; gap: var(--space-4); }
   .done-line { color: var(--text-done); }
   .week-line { display: flex; align-items: center; gap: var(--space-8); color: var(--text-primary); }
-  .note { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-16); background: var(--bg-subtle); border-radius: var(--radius-control); color: var(--text-primary); }
-  .lists { display: grid; }
+  .note { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-16); background: var(--bg-card); border-radius: var(--radius-card); color: var(--text-primary); }
+  .lists { display: grid; gap: var(--space-12); }
+  .lists ul { display: grid; gap: var(--space-12); }
   .note-text { display: grid; gap: var(--space-8); justify-items: start; }
   .link { color: var(--text-accent); min-height: var(--size-touch); margin-block: calc((var(--space-24) - var(--size-touch)) / 2); }
   .tertiary { color: var(--text-tertiary); }
   .secondary { color: var(--text-secondary); }
   .block { display: block; }
-  .problem { color: var(--text-accent); }
+  .problem { color: var(--text-destructive); }
   .toast-slot {
     position: fixed; left: var(--layout-gutter); right: var(--layout-gutter); z-index: 1;
     bottom: calc(max(env(safe-area-inset-bottom), var(--space-12)) + var(--space-64) + var(--space-16)); /* above the tab bar (H12) */
   }
-  .page :global(nav) { position: sticky; bottom: 0; }
   .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-40); } /* the sheet already pads 8 on top and the gutter at the sides (Figma 46:2315) */
   .summary { display: flex; align-items: center; gap: var(--space-12); }
   .chips { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }

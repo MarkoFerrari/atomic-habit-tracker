@@ -6,7 +6,7 @@
   import type { IconName } from './icons';
 
   interface Props {
-    variant?: 'primary' | 'secondary' | 'tertiary';
+    variant?: 'primary' | 'secondary' | 'tertiary' | 'card'; // card: white, for a secondary action straight on the stone page (122)
     icon?: IconName;
     disabled?: boolean;
     type?: 'button' | 'submit';
@@ -24,17 +24,19 @@
 <style>
   .btn {
     display: flex; align-items: center; justify-content: center; gap: var(--space-8);
-    width: 100%; min-height: var(--size-control); padding: 0 var(--space-16);
-    border-radius: var(--radius-control);
+    width: 100%; min-height: calc(var(--size-control) + var(--space-8)); padding: 0 var(--space-16);
+    border-radius: var(--radius-round); /* 122: pills */
     transition: background-color var(--motion-press), transform var(--motion-press);
   }
   .btn:active:not(:disabled) { transform: scale(0.98); }
   .primary { background: var(--action-primary); color: var(--action-on-primary); }
   .primary:active:not(:disabled) { background: var(--action-primary-pressed); }
-  .secondary { background: var(--bg-subtle); color: var(--text-primary); } /* 035: a filled track, no outline (U02) */
+  .secondary { background: var(--bg-app); color: var(--text-primary); } /* 035: a filled track, no outline (U02) */
   .secondary:active:not(:disabled) { background: var(--border-divider); }
+  .card { background: var(--bg-card); color: var(--text-primary); }
+  .card:active:not(:disabled) { background: var(--border-divider); }
   .tertiary { color: var(--text-accent); }
   .tertiary:active:not(:disabled) { background: var(--bg-subtle); }
   .btn:disabled { color: var(--text-disabled); cursor: default; }
-  .primary:disabled { background: var(--bg-subtle); }
+  .primary:disabled { background: var(--bg-app); }
 </style>

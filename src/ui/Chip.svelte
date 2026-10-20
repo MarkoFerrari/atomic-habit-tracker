@@ -18,7 +18,7 @@
   .chip {
     display: flex; align-items: center; gap: var(--space-8);
     height: calc(var(--space-32) + var(--space-4)); padding: 0 var(--space-12);
-    border-radius: var(--radius-chip); background: var(--bg-subtle); color: var(--text-primary); white-space: nowrap;
+    border-radius: var(--radius-round); background: var(--bg-app); color: var(--text-primary); white-space: nowrap;
     transition: background-color var(--motion-duration-fast) var(--motion-easing-standard);
   }
   .reason.selected { background: var(--action-primary); color: var(--action-on-primary); }

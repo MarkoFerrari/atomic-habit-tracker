@@ -9,7 +9,7 @@
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overscroll-behavior: none; }
 body {
   margin: 0;
-  background: var(--bg-default);
+  background: var(--bg-app); /* 122: one stone background on every screen */
   color: var(--text-primary);
   font: var(--type-body-default);
   -webkit-font-smoothing: antialiased;
@@ -27,3 +27,11 @@ ul, ol { list-style: none; }
   padding: calc(env(safe-area-inset-top) + var(--space-32)) calc(env(safe-area-inset-right) + var(--layout-gutter))
     calc(env(safe-area-inset-bottom) + var(--space-32)) calc(env(safe-area-inset-left) + var(--layout-gutter));
 }
+/* A root screen shares the page with the dock (TabBar), so it fills what the dock leaves, not the whole height:
+   otherwise the sticky dock sits over the last lines, like the Settings footer. */
+.page > .screen { flex: 1; min-height: 0; padding-bottom: var(--space-16); }
+
+/* 122: ATOMIC's own boxes are white cards on the stone page; colour fields belong to habits (123). */
+.card { background: var(--bg-card); border-radius: var(--radius-card); padding: var(--space-16); }
+.card-list { background: var(--bg-card); border-radius: var(--radius-card); padding: 0 var(--space-16); }
+.card-list > * + * { border-top: var(--stroke-hairline) solid var(--border-divider); }

@@ -15,7 +15,7 @@
 <style>
   .segmented {
     display: flex; gap: var(--space-4); padding: var(--space-4); min-height: var(--size-touch);
-    background: var(--bg-subtle); border-radius: var(--radius-round); /* 111: fully rounded, like the app's other round elements */
+    background: var(--bg-card); border-radius: var(--radius-round); /* 111: fully rounded, like the app's other round elements */
   }
   button { flex: 1; border-radius: var(--radius-round); color: var(--text-tertiary); }
   .on { background: var(--action-primary); color: var(--action-on-primary); } /* 103: filled, no border (owner, 8 Oct 2026) */

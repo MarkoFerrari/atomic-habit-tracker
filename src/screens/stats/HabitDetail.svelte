@@ -1,16 +1,16 @@
 <script lang="ts">
-  // H4 Habit detail (Figma page 14, section 04; was H37): the star medal leads, then the next rank in plain numbers,
-  // done of due, the best run and twelve weeks of bars. Below: why it wasn't done (C4) and when it gets done.
+  // D1 Habit detail (style B, Playground section 17, 129; was H4/H37): the habit's field with its object leads, then
+  // This run and Rank side by side, the month week by week (the one Month calendar), the last milestone, and below
+  // why it wasn't done and the actions. One left edge, cards on stone. The ring, the 12 week bars and the time
+  // buckets of 113 left: the calendar shows the same thing bigger.
   // Kaizen (080): the trial in progress shows here. A pushed screen: no tab bar (044).
   // 107: the next-rank bar carries its milestone ticks, and the last milestone keeps its quote here.
-  // 108: runs saved, the current run drawn occurrence by occurrence with a mark on each comeback.
-  // 113 (Playground 05, V2): done of due is a ring, the current run and the best run two bars beside it.
+  // 108: runs saved, counted with the recent comebacks named. 113: the best run stays, as a line under This run.
   // 117 (Playground 08): Pause habit, set ahead for 3 days to 2 weeks, with a reason; the 2-min version is offered first.
   // 112 (Playground 04): at the bottom, Archive habit and Delete this habit. Delete asks first: a habit with a rank is
   // offered Archive instead (A); one without gets a plain question (B). Either way the toast keeps Undo for 5 s.
   import { onMount } from 'svelte';
   import TopBar from '../../ui/TopBar.svelte';
-  import ProgressRing from '../../ui/ProgressRing.svelte';
   import ListRow from '../../ui/ListRow.svelte';
   import Sheet from '../../ui/Sheet.svelte';
   import Button from '../../ui/Button.svelte';
@@ -24,23 +24,26 @@
   import { syncReminders } from '../../push/reminders';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import RankMedal from '../../ui/RankMedal.svelte';
-  import ProgressBar from '../../ui/ProgressBar.svelte';
-  import { bestRun, nextRankLine, twelveWeeks } from '../../domain/award';
+  import { bestRun, nextRankLine } from '../../domain/award';
+  import HabitObject from '../../ui/HabitObject.svelte';
+  import MonthCalendar from '../../ui/MonthCalendar.svelte';
+  import { habitMonthDays, monthCount } from '../../ui/calendar';
+  import { fieldColor } from '../../ui/objects';
+  import { monthName } from '../../domain/format';
   import { PAUSE_REASON_LABEL, SKIP_REASON_LABEL } from '../../ui/copy';
   import type { IconName } from '../../ui/icons';
   import { RANKS } from '../../domain/ranks';
   import { SKIP_REASONS } from '../../domain/states';
   import { parseRRule } from '../../domain/recurrence';
   import { fullDate, percent, plural, repeatLabel, timesAWeek } from '../../domain/format';
-  import { habitDetail, WHY_NONE, type HabitDetail } from '../../domain/stats';
+  import { habitDetail, monthView, WHY_NONE, type HabitDetail } from '../../domain/stats';
   import type { IsoDay } from '../../domain/day';
   import { activeAdjustment } from '../../domain/adjust';
   import { loadStats, type StatsData } from '../../data/stats';
   import { getSettings } from '../../data/settings';
   import { lastMilestone } from '../../data/moments';
-  import { milestoneDays, runsSaved } from '../../domain/moments';
+  import { runsSaved } from '../../domain/moments';
   import type { QuoteState } from '../../domain/quotes';
-  import Icon from '../../ui/Icon.svelte';
   import { dayAndNumber } from '../../domain/format';
 
   interface Props {
@@ -63,19 +66,13 @@
   const smallCount = $derived(data ? data.ctx.answers.filter((a) => a.eventId === eventId && a.status === 'done' && a.small).length : 0);
   const doneCount = $derived(data ? data.ctx.answers.filter((a) => a.eventId === eventId && a.status === 'done').length : 0);
   const rankLabel = $derived(detail?.medal.rank ? RANKS.find((r) => r.id === detail.medal.rank)!.label : 'No rank yet');
-  const runLine = $derived(detail ? (detail.medal.held > 0 ? `${rankLabel} · run of ${plural(detail.medal.held, 'day')}` : `${rankLabel} · no run now`) : '');
-  const nextLine = $derived(detail?.medal.next ? `${RANKS.find((r) => r.id === detail.medal.next!.rank)!.label} at ${detail.medal.next.days} days` : 'Master');
-  const schedule = $derived(habit ? `${habit.perWeek ? timesAWeek(habit.perWeek) : repeatLabel(habit.rrule ? parseRRule(habit.rrule) : null, habit.start.slice(0, 10) as IsoDay)} · ${detail?.slot} · ${nextLine}` : '');
-  const weeks = $derived(data && habit ? twelveWeeks(data.ctx, habit) : []);
+  const schedule = $derived(habit ? `${habit.perWeek ? timesAWeek(habit.perWeek) : repeatLabel(habit.rrule ? parseRRule(habit.rrule) : null, habit.start.slice(0, 10) as IsoDay)} · ${detail?.slot}` : '');
   // bestRun counts answered days; the current run also counts today (060), so the run in progress can be the best.
   const best = $derived(data && habit ? Math.max(bestRun(data.ctx, habit), detail?.medal.held ?? 0) : 0);
-  const nextLabel = $derived(detail?.medal.next ? RANKS.find((r) => r.id === detail.medal.next!.rank)!.label : '');
-  const starsToGo = $derived(detail?.medal.next ? ({ starter: 1, builder: 2, keeper: 3, artisan: 3, master: 3 } as const)[detail.medal.next.rank] : 0);
-  const ticks = $derived(detail?.medal.next ? milestoneDays(detail.medal.next.rank) : []);
+  const rankSub = $derived(detail ? (detail.medal.rank ? `Since day ${RANKS.find((r) => r.id === detail.medal.rank)!.days}` : `Apprentice at day ${RANKS[0]!.days}`) : '');
+  const month = $derived(data && habit ? monthView({ ...data.ctx, habits: [habit] }, data.ctx.today) : null);
   const milestone = $derived(lastMilestone(quotes, eventId));
   const saved = $derived(data && habit ? runsSaved(data.ctx, habit) : null);
-  const maxTime = $derived(Math.max(1, ...(detail?.times ?? []).map((t) => t.count)));
-  const runMax = $derived(Math.max(1, best, detail?.medal.held ?? 0));
   const answerCount = $derived(data ? data.ctx.answers.filter((a) => a.eventId === eventId).length : 0);
   const archived = $derived(!!habit?.archivedOn && !!data && habit.archivedOn <= data.ctx.today);
 
@@ -129,121 +126,83 @@
 <main class="screen detail">
   <TopBar type="navigation" title="" leftLabel={backLabel} onleft={onback} rightLabel={onedit ? 'Edit' : undefined} onright={() => onedit?.(eventId)} />
   {#if habit && detail}
-    <section class="head">
-      <RankMedal rank={detail.medal.rank} icon={(habit.icon ?? 'sprout') as IconName} size="medium" label="{rankLabel} medal" />
+    <section class="hero" style:--field={fieldColor(habit.icon ?? 'sprout')}>
+      <HabitObject icon={(habit.icon ?? 'sprout') as IconName} size="lg" />
       <div class="text">
-        <h1 class="t-heading-medium title">{habit.title}</h1>
-        <p class="t-body-small secondary">{runLine}</p>
-        <p class="t-label-small tertiary">{schedule}</p>
+        <h1 class="t-heading-small title">{habit.title}</h1>
+        <p class="t-body-small secondary">{schedule}</p>
       </div>
     </section>
 
-    {#if detail.medal.next}
-      <section class="next">
-        <p class="line"><span class="t-body-strong">{nextRankLine(detail.medal)}</span><span class="t-number-default secondary">{detail.medal.held}/{detail.medal.next.days}</span></p>
-        <ProgressBar value={detail.medal.held} of={detail.medal.next.days} label="Toward {nextLabel}" count={false} {ticks} />
-        <p class="t-body-small secondary">Don’t miss it twice in a row and {starsToGo === 1 ? 'the first star joins' : `${starsToGo} more stars join`} the ring.</p>
+    <div class="pair">
+      <section class="card stat" aria-label="This run">
+        <h2 class="t-label-section secondary">This run</h2>
+        <p class="t-number-large">{plural(detail.medal.held, 'day')}</p>
+        <p class="t-body-small secondary">{detail.medal.next ? nextRankLine(detail.medal) : 'Mastered, still counting'}{best > detail.medal.held ? ` · best ${best}` : ''}</p>
       </section>
+      <section class="card stat" aria-label="Rank">
+        <h2 class="t-label-section secondary">Rank</h2>
+        <div class="rank">
+          <RankMedal rank={detail.medal.rank} icon={(habit.icon ?? 'sprout') as IconName} size="tiny" />
+          <div class="text">
+            <p class="t-body-strong">{rankLabel}</p>
+            <p class="t-body-small secondary">{rankSub}</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    {#if month}
+      <MonthCalendar title="{monthName(month.first)} {month.first.slice(0, 4)}" count={monthCount(month)} leading={month.leading} days={habitMonthDays(month)} showPartial={false} />
     {/if}
 
     {#if milestone}
-      <section class="milestone" aria-label="Last milestone">
-        <SectionLabel text="Last milestone · day {milestone.day}" />
-        <figure>
-          <blockquote class="t-heading-small">“{milestone.quote.text}”</blockquote>
-          <figcaption class="t-label-small tertiary">{milestone.quote.source}</figcaption>
-        </figure>
+      <section class="card note" aria-label="Last milestone">
+        <h2 class="t-label-section secondary">Milestone · day {milestone.day}</h2>
+        <p class="t-body-default">“{milestone.quote.text}” <span class="secondary">{milestone.quote.source}</span></p>
       </section>
-    {/if}
-
-    <section class="numbers">
-      <div role="img" aria-label={detail.rate.due ? (detail.unit === 'weeks' ? `${detail.rate.done} of ${detail.rate.due} weeks held, last 12 weeks` : `${detail.rate.done} of ${detail.rate.due} due done, ${percent(detail.rate.rate)}, last ${plural(detail.windowDays, 'day')}`) : 'Nothing due yet'}>
-        <ProgressRing done={detail.rate.done} due={detail.rate.due} size="large">
-          <p class="t-number-large">{detail.rate.done}/{detail.rate.due}</p>
-          <p class="t-label-small tertiary">{detail.rate.due ? `${percent(detail.rate.rate)} · ${detail.unit === 'weeks' ? 'weeks held, last 12' : `last ${plural(detail.windowDays, 'day')}`}` : 'Nothing due yet'}</p>
-        </ProgressRing>
-      </div>
-      <div class="runs" role="img" aria-label="This run {plural(detail.medal.held, 'day')}, best run {plural(best, 'day')}">
-        {#each [{ label: 'This run', n: detail.medal.held, best: false }, { label: 'Best run', n: best, best: true }] as r (r.label)}
-          <div class="run-bar">
-            <p class="line"><span class="t-body-small secondary">{r.label}</span><span class="t-number-default">{r.n}</span></p>
-            <span class="track">{#if r.n > 0}<span class="bar" class:best={r.best} style:width="{Math.round((r.n / runMax) * 100)}%"></span>{/if}</span>
-          </div>
-        {/each}
-      </div>
-    </section>
-
-    <section class="weeks">
-      <SectionLabel text="Last 12 weeks" />
-      <div class="bars" role="img" aria-label="Done share by week, last 12 weeks">
-        {#each weeks as w (w.from)}
-          <span class="bar-col">{#if w.share === null}<span class="bar before"></span>{:else}<span class="bar" class:full={w.share >= 1} style:height="{Math.max(4, Math.round(w.share * 100))}%"></span>{/if}</span>
-        {/each}
-      </div>
-      <p class="t-label-small tertiary">Outlined weeks are before you started. Full green: {habit.perWeek ? 'the week held' : 'every due day done'}.</p>
-    </section>
-
-    {#if saved && saved.total > 0}
-      <section class="saved">
-        <SectionLabel text="Runs saved · {saved.total}" />
-        {#if saved.cells.length}
-          <div class="run" role="img" aria-label="Current run: {saved.cells.length} due days, {saved.cells.filter((c) => c.comeback).length} saved after a miss">
-            {#each saved.cells as c (c.day)}
-              <span class="run-cell {c.status}">{#if c.comeback}<span class="mark"><Icon name="refresh" size="small" /></span>{/if}</span>
-            {/each}
-          </div>
-        {/if}
-        <p class="t-body-small secondary">{saved.recent.map((r) => `Missed ${dayAndNumber(r.missedOn)}, back ${dayAndNumber(r.backOn)}.`).join(' ')} Each mark is a run saved: done right after a miss.</p>
-      </section>
-    {/if}
-
-    {#if smallCount > 0}
-      <p class="t-body-small secondary">Done {doneCount}: {doneCount - smallCount} in full, {smallCount} as the 2-min version.</p>
     {/if}
 
     {#if mine}
-      <section class="trial">
-        <p class="t-body-strong">Trying until {fullDate(mine.reviewOn)}</p>
-        <p class="t-body-small secondary">{mine.text}</p>
+      <section class="card note">
+        <h2 class="t-label-section secondary">Trying until {fullDate(mine.reviewOn)}</h2>
+        <p class="t-body-default">{mine.text}</p>
+      </section>
+    {/if}
+
+    {#if (saved && saved.total > 0) || smallCount > 0}
+      <section class="card note">
+        {#if saved && saved.total > 0}
+          <h2 class="t-label-section secondary">Runs saved · {saved.total}</h2>
+          <p class="t-body-small">{saved.recent.map((r) => `Missed ${dayAndNumber(r.missedOn)}, back ${dayAndNumber(r.backOn)}.`).join(' ')} Each one: done right after a miss.</p>
+        {/if}
+        {#if smallCount > 0}<p class="t-body-small secondary">Done {doneCount}: {doneCount - smallCount} in full, {smallCount} as the 2-min version.</p>{/if}
       </section>
     {/if}
 
     {#if detail.whyTotal > 0}
-      <SectionLabel text="Why it wasn’t done · {detail.whyTotal}" />
-      <ul class="why">
-        {#each rows as r (r.key)}
-          <li><span class="t-body-default">{r.label}</span><span class="t-number-small count">{r.n}</span></li>
-        {/each}
-      </ul>
-    {:else}
-      <p class="t-body-small secondary">Nothing was missed or skipped in this time.</p>
-    {/if}
-
-    {#if detail.times && detail.times.some((t) => t.count > 0)}
-      <SectionLabel text="When it gets done · last 30 days" />
-      <ul class="times">
-        {#each detail.times as t (t.label)}
-          <li>
-            <span class="t-body-small label">{t.label}</span>
-            <span class="track"><span class="bar" style:width="{Math.round((t.count / maxTime) * 100)}%"></span></span>
-            <span class="t-number-small count">{t.count}</span>
-          </li>
-        {/each}
-      </ul>
+      <section class="card why-card">
+        <h2 class="t-label-section secondary">Why it wasn’t done · {detail.whyTotal}</h2>
+        <ul class="why">
+          {#each rows.filter((r) => r.n > 0) as r (r.key)}
+            <li><span class="t-body-default">{r.label}</span><span class="t-number-default">{r.n}</span></li>
+          {/each}
+        </ul>
+      </section>
     {/if}
 
     <section class="actions">
-      <div>
+      <div class="card-list">
         {#if !archived && pause && pauseLast}
-          <p class="t-body-small secondary paused">Paused {pause.from > data!.ctx.today ? `from ${fullDate(pause.from)} ` : ''}until {fullDate(pauseLast)} · {PAUSE_REASON_LABEL[pause.reason]}{pause.note ? `: ${pause.note}` : ''}</p>
-          <ListRow label={pause.from > data!.ctx.today ? 'Cancel the pause' : 'Bring it back today'} onclick={bringBack} />
+          <ListRow label={pause.from > data!.ctx.today ? 'Cancel the pause' : 'Bring it back today'} value="Paused until {fullDate(pauseLast)}" onclick={bringBack} />
         {:else if !archived}
           <ListRow label="Pause habit" onclick={openPause} />
         {/if}
         {#if !archived}<ListRow label="Archive habit" onclick={() => (sheet = 'archive')} />{/if}
         <ListRow type="destructive" label="Delete this habit" onclick={() => (sheet = 'delete')} />
       </div>
-      <p class="t-label-small tertiary">{archived ? 'Delete removes its history and medal from this phone.' : 'Archive keeps its history and medal. Delete removes them from this phone.'}</p>
+      {#if !archived && pause}<p class="t-label-small secondary">Paused · {PAUSE_REASON_LABEL[pause.reason]}{pause.note ? `: ${pause.note}` : ''}</p>{/if}
+      <p class="t-label-small secondary">{archived ? 'Delete removes its history and medal from this phone.' : 'Archive keeps its history and medal. Delete removes them from this phone.'}</p>
     </section>
   {:else if data}
     <p class="t-body-default secondary">This habit isn’t in the calendar any more.</p>
@@ -300,46 +259,22 @@
 {/if}
 
 <style>
-  .detail { display: flex; flex-direction: column; gap: var(--layout-block-gap); padding-bottom: var(--space-40); }
+  .detail { display: flex; flex-direction: column; gap: var(--space-12); padding-bottom: var(--space-40); }
   .title { overflow-wrap: anywhere; }
-  .head { display: flex; align-items: center; gap: var(--space-16); }
+  .hero { display: flex; align-items: center; gap: var(--space-16); padding: var(--space-16); background: var(--field); border-radius: var(--radius-card); }
   .text { display: grid; gap: var(--space-4); min-width: 0; }
-  .next { display: grid; gap: var(--space-8); }
-  .line { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
-  .milestone figure { display: grid; gap: var(--space-4); margin: 0; }
-  .milestone blockquote { margin: 0; }
-  .saved { display: grid; gap: var(--space-8); }
-  .run { display: flex; gap: var(--space-4); align-items: center; height: var(--space-16); }
-  .run-cell { position: relative; flex: 1; max-width: var(--space-16); height: var(--space-8); border-radius: var(--radius-control-inner); background: var(--state-done); }
-  .run-cell.missed, .run-cell.skipped { background: none; border: var(--stroke-hairline) solid var(--border-control); }
-  .mark { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: var(--space-16); height: var(--space-16); display: grid; place-items: center;
-    border-radius: var(--radius-round); background: var(--state-done); color: var(--icon-inverse); outline: var(--stroke-illustration) solid var(--bg-default); }
-  .mark :global(svg) { width: var(--space-12); height: var(--space-12); }
-  .numbers { display: flex; align-items: center; gap: var(--space-16); }
-  .runs { flex: 1; min-width: 0; display: grid; gap: var(--space-16); }
-  .run-bar { display: grid; gap: var(--space-4); }
-  .run-bar .bar.best { background: var(--border-control); } /* the best run: a reference, not an achievement colour (008) */
-  .actions { display: grid; gap: var(--space-8); }
-  .paused { padding-top: var(--space-12); }
-  .chips { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }
-  .travel { padding: var(--space-12) var(--space-16); background: var(--bg-subtle); border-radius: var(--radius-control); color: var(--text-primary); }
-  .problem { color: var(--text-accent); }
-  .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-40); }
-  .weeks { display: grid; gap: var(--space-8); }
-  .bars { display: flex; justify-content: space-between; align-items: flex-end; height: calc(var(--space-64) + var(--space-24)); }
-  .bar-col { width: var(--space-20); height: 100%; display: flex; align-items: flex-end; }
-  .bar { width: 100%; background: var(--heat-3); border-radius: var(--radius-chip) var(--radius-chip) 0 0; }
-  .bar.full { background: var(--state-done); }
-  .bar.before { height: 100%; background: none; border: var(--stroke-hairline) dashed var(--border-control); }
-  .tertiary { color: var(--text-tertiary); }
-  .secondary { color: var(--text-secondary); }
-  .trial { display: grid; gap: var(--space-4); padding: var(--space-12) var(--space-16); background: var(--bg-subtle); border-radius: var(--radius-control); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }
+  .stat { display: grid; align-content: start; gap: var(--space-8); }
+  .rank { display: flex; align-items: center; gap: var(--space-12); }
+  .note { display: grid; gap: var(--space-8); }
+  .why-card { display: grid; gap: var(--space-4); }
   .why li { display: flex; justify-content: space-between; align-items: center; min-height: var(--size-control); border-bottom: var(--stroke-hairline) solid var(--border-divider); }
   .why li:last-child { border-bottom: none; }
-  .count { color: var(--text-tertiary); min-width: var(--space-16); text-align: right; }
-  .times { display: grid; gap: var(--space-8); }
-  .times li { display: grid; grid-template-columns: calc(var(--space-64) + var(--space-24) + var(--space-16)) 1fr var(--space-24); align-items: center; gap: var(--space-12); }
-  .label { color: var(--text-secondary); white-space: nowrap; }
-  .track { height: var(--space-8); background: var(--bg-subtle); border-radius: var(--radius-round); overflow: hidden; }
-  .bar { display: block; height: 100%; min-width: var(--space-4); background: var(--state-done); border-radius: var(--radius-round); }
+  .actions { display: grid; gap: var(--space-8); padding-top: var(--space-12); }
+  .chips { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }
+  .travel { padding: var(--space-12) var(--space-16); background: var(--bg-app); border-radius: var(--radius-tile); color: var(--text-primary); }
+  .problem { color: var(--text-destructive); }
+  .sheet { display: grid; gap: var(--space-12); padding-bottom: var(--space-40); }
+  .tertiary { color: var(--text-tertiary); }
+  .secondary { color: var(--text-secondary); }
 </style>

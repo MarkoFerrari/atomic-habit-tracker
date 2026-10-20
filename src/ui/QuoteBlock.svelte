@@ -30,7 +30,7 @@
 </section>
 
 <style>
-  .quote-block { display: grid; gap: var(--space-8); }
+  .quote-block { display: grid; gap: var(--space-8); background: var(--bg-card); border-radius: var(--radius-card); padding: var(--space-16); }
   figure { display: grid; gap: var(--space-4); margin: 0; }
   blockquote { margin: 0; color: var(--text-primary); }
   .source { color: var(--text-tertiary); }

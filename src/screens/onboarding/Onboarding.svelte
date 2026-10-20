@@ -1,4 +1,5 @@
 <script lang="ts">
+  import stillLife from '../../assets/still-life.webp';
   // 01 Start (Figma page 14, habits first, 097; 114): Welcome (S1) → Get started → the empty Today, which asks for
   // the first habit (E17, 079). No reminders step and no invite code on the way in: Today offers reminders once a
   // habit exists (114), and the iPhone asks when a habit with Nudge on is saved (121, no invite code). The .ics import keeps its own flow (`from="bring"`), opened from Settings → Calendars:
@@ -10,7 +11,6 @@
   import StepRow from '../../ui/StepRow.svelte';
   import Stepper from '../../ui/Stepper.svelte';
   import BackLink from '../../ui/BackLink.svelte';
-  import AwardStar from '../../ui/AwardStar.svelte';
   import Icon from '../../ui/Icon.svelte';
   import Banner from '../../ui/Banner.svelte';
   import TextField from '../../ui/TextField.svelte';
@@ -171,22 +171,23 @@
 
 <main class="screen flow">
   {#if step === 'welcome'}
-    <div class="spacer"></div>
+    <!-- W1 (style B, 122): the wordmark, the still life of habit objects, three promises as soft chips, then what ATOMIC is -->
     <img class="wordmark" src={wordmark} alt="ATOMIC" />
+    <img class="still" src={stillLife} alt="" />
+    <ul class="promises">
+      <li class="t-label-small" style:--chip="var(--field-move)">A nudge at the start</li>
+      <li class="t-label-small" style:--chip="var(--field-drink)">A star for every perfect day</li>
+      <li class="t-label-small" style:--chip="var(--field-learn)">Stays on this phone</li>
+    </ul>
     <div class="intro">
       <h1 class="t-heading-large">Small habits, kept.</h1>
       <p class="t-body-default secondary">Pick a habit and a time. ATOMIC nudges you when it starts, and every day you keep them all lights a star.</p>
     </div>
-    <ul class="promises">
-      <li><span class="mark"><Icon name="bell" /></span><span class="t-body-small">A nudge when each habit starts</span></li>
-      <li><span class="mark"><AwardStar size="tiny" /></span><span class="t-body-small">A star for every perfect day, a medal for every run</span></li>
-      <li><span class="mark"><Icon name="lock" /></span><span class="t-body-small">Everything stays on this phone</span></li>
-    </ul>
     <div class="spacer"></div>
     <div class="actions">
     <Button onclick={finish}>Get started</Button>
     {#if onrestore}
-      <Button variant="tertiary" icon="download" onclick={() => restoreInput?.click()}>Restore from a backup</Button>
+      <Button variant="tertiary" onclick={() => restoreInput?.click()}>Restore from a backup</Button>
       <input bind:this={restoreInput} type="file" accept=".json,application/json" hidden onchange={pickBackup} />
       {#if restoreProblem}<p class="t-body-small error" role="alert">{restoreProblem}</p>{/if}
     {/if}
@@ -304,21 +305,21 @@
   .progress { gap: var(--space-8); }
   .actions { display: grid; gap: var(--space-8); }
   /* U13: the welcome reads as three groups: the mark, what ATOMIC is, what you get */
-  .intro { display: grid; gap: var(--space-12); }
-  .promises { display: grid; gap: var(--space-12); }
-  .promises li { display: grid; grid-template-columns: var(--size-icon) 1fr; column-gap: var(--space-12); align-items: start; }
-  .mark { height: var(--space-20); display: grid; place-items: center; color: var(--icon-default); } /* one text line (14/20): the icon centres on the first line */
+  .intro { display: grid; gap: var(--space-12); text-align: center; }
+  .promises { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-8); }
+  .promises li { padding: var(--space-8) var(--space-12); border-radius: var(--radius-round); background: var(--chip); color: var(--text-primary); }
+  .still { display: block; width: 100%; max-width: calc(var(--space-64) * 5); height: auto; margin: 0 auto; }
   .spacer { flex: 1; }
   .hidden { display: none; }
-  .wordmark { width: calc(var(--space-64) * 2); height: auto; align-self: flex-start; margin-bottom: var(--space-8); } /* U13: a signature, not a headline */
+  .wordmark { width: calc(var(--space-64) + var(--space-32)); height: auto; align-self: center; } /* U13: a signature, not a headline */
   .secondary { color: var(--text-secondary); }
   .tertiary { color: var(--text-tertiary); }
-  .error { color: var(--text-accent); }
+  .error { color: var(--text-destructive); }
   .file {
     display: flex; align-items: center; gap: var(--space-12);
-    padding: var(--space-12) var(--space-16) var(--space-12) var(--space-12); background: var(--bg-subtle);
+    padding: var(--space-12) var(--space-16) var(--space-12) var(--space-12); background: var(--bg-card);
   }
-  .file { border-radius: var(--radius-control); }
+  .file { border-radius: var(--radius-card); }
   .file > span { flex: 1; min-width: 0; display: grid; }
   .list > li + li { border-top: var(--stroke-hairline) solid var(--border-divider); }
   .notes { display: grid; gap: var(--space-4); }
