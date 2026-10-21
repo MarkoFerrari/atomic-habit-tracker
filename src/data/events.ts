@@ -43,6 +43,7 @@ export interface EventDraft {
   smallest: string;
   identity: string;
   perWeek?: number; // 119: habits only; set, the repeat is every day and the habit counts per week
+  icon?: string; // 133: a habit's object, chosen in the editor; empty, it follows the name (guessHabitIcon)
 }
 
 const day = (w: string) => w.slice(0, 10) as IsoDay;
@@ -78,6 +79,7 @@ export function draftOf(e: CalendarEvent, item: AgendaItem): EventDraft {
     reminders: [...e.reminders], place: e.place ?? '', notes: e.notes ?? '',
     after: e.after ?? '', smallest: e.smallest ?? '', identity: e.identity ?? '',
     ...(e.perWeek ? { perWeek: e.perWeek } : {}),
+    ...(e.icon ? { icon: e.icon } : {}),
   };
 }
 
@@ -100,7 +102,7 @@ function base(draft: EventDraft, cal: Calendar | undefined, zone: string, start:
     reminders: [...new Set(draft.reminders)].sort((a, b) => a - b),
     ...(draft.place.trim() ? { place: draft.place.trim() } : {}),
     ...(draft.notes.trim() ? { notes: draft.notes.trim() } : {}),
-    ...(cal?.trackAsHabits ? { icon: guessHabitIcon(title) } : {}),
+    ...(cal?.trackAsHabits ? { icon: draft.icon || guessHabitIcon(title) } : {}), // 133: the chosen object wins
     // 085: only habits carry these; undefined clears an old value when an edit empties it
     after: cal?.trackAsHabits ? draft.after.trim() || undefined : undefined,
     smallest: cal?.trackAsHabits ? draft.smallest.trim() || undefined : undefined,
@@ -132,8 +134,9 @@ function firstFrom(e: CalendarEvent, from: IsoDay, zone: string): AgendaItem | n
  * E16: changing "all events" of a habit that already has answers keeps the past as it was: the series
  * is split at today, so past answers keep their original time and title.
  */
-export async function saveEdit(e: CalendarEvent, item: AgendaItem, draft: EventDraft, scope: Scope, zone: string, today: IsoDay): Promise<void> {
+export async function saveEdit(e: CalendarEvent, item: AgendaItem, input: EventDraft, scope: Scope, zone: string, today: IsoDay): Promise<void> {
   const database = await db();
+  const draft: EventDraft = { ...input, icon: input.icon || e.icon }; // 133: no choice made keeps the stored object
   const cal = await database.get('calendars', draft.calendarId);
   const oldCal = await database.get('calendars', e.calendarId);
   const shift = minutesBetween(item.start, draft.start); // how far the opened occurrence moved
@@ -144,9 +147,11 @@ export async function saveEdit(e: CalendarEvent, item: AgendaItem, draft: EventD
   if (scope === 'this' && e.rrule) {
     const clock = e.timeMode === 'clock' || e.allDay;
     // 115: an occurrence from before a schedule change lives in a past version of the habit
-    await database.put('events', onVersionOf(e, item.occurrence, (v) => overrideOne(v, item.occurrence, {
+    const one = onVersionOf(e, item.occurrence, (v) => overrideOne(v, item.occurrence, {
       start: stored(draft.start, clock, zone), end: stored(draft.end, clock, zone), title,
-    })));
+    }));
+    // 133: the object belongs to the habit, not to one day, so a change reaches the series whatever the scope
+    await database.put('events', cal?.trackAsHabits && draft.icon ? { ...one, icon: draft.icon } : one);
     return;
   }
 
@@ -188,12 +193,11 @@ export async function saveEdit(e: CalendarEvent, item: AgendaItem, draft: EventD
   await database.put('events', tidy(e, { ...e, ...base(draft, cal, zone, start, addMinutes(start, length)), ...(rrule ? { rrule } : {}) }, rrule, !!cal?.trackAsHabits));
 }
 
-/** Loose ends after a change: a removed repeat, a zone that no longer applies, a habit's chosen icon. */
+/** Loose ends after a change: a removed repeat, a zone that no longer applies, a non-habit's icon. */
 function tidy(old: CalendarEvent, next: CalendarEvent, rrule: string | undefined, habit: boolean): CalendarEvent {
   const out = { ...next };
   if (!rrule) delete out.rrule;
   if (out.timeMode === 'clock') delete out.tz;
-  if (habit && old.icon) out.icon = old.icon; // keep an icon chosen in the habit editor
   if (!habit) delete out.icon;
   // Moved occurrences are stored in the old time mode; after a change of mode they can't be read back.
   if (old.timeMode !== out.timeMode) delete out.overrides;

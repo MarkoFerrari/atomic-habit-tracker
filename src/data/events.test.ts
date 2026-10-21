@@ -105,6 +105,21 @@ describe('changing a repeating event (H31, E16)', () => {
     expect(expand(after, '2026-10-07', '2026-10-08', ZONE).map((i) => i.start)).toEqual(['2026-10-07T08:00', '2026-10-08T19:00']);
   });
 
+  it('a habit’s object can be changed while editing it, whatever the scope, and stays when it is not touched (133)', async () => {
+    await (await db()).put('events', { ...train, icon: 'dumbbell' });
+    const item = occ(train, '2026-10-07');
+    // untouched: a rename keeps the chosen object instead of guessing a new one from the name
+    await saveEdit(await stored('train'), item, { ...draftOf(await stored('train'), item), title: 'Sample read - 20 min' }, 'all', ZONE, '2026-10-07');
+    expect((await stored('train')).icon).toBe('dumbbell');
+    // chosen: the new object wins over the guess
+    await saveEdit(await stored('train'), item, { ...draftOf(await stored('train'), item), icon: 'book-open' }, 'all', ZONE, '2026-10-07');
+    expect((await stored('train')).icon).toBe('book-open');
+    // even "only this event" changes the object of the whole habit: it never belongs to one day
+    const again = await stored('train');
+    await saveEdit(again, item, { ...draftOf(again, item), icon: 'footprints', start: '2026-10-07T19:00', end: '2026-10-07T19:30' }, 'this', ZONE, '2026-10-07');
+    expect((await stored('train')).icon).toBe('footprints');
+  });
+
   it('only this event on a day before the change edits the past version (115)', async () => {
     await answer('train', '2026-10-05', 'done', '2026-10-07');
     const item = occ(train, '2026-10-09');
