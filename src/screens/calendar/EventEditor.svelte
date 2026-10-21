@@ -24,7 +24,12 @@
   import { MAX_EVERY, ruleFromRepeat, type RepeatKind, type Scope } from '../../domain/series';
   import { syncReminders } from '../../push/reminders';
   import { habitEvents } from '../../data/answers';
+  import { saveHabit } from '../../data/habits';
   import SectionLabel from '../../ui/SectionLabel.svelte';
+  import HabitObject from '../../ui/HabitObject.svelte';
+  import IconPicker from '../../ui/IconPicker.svelte';
+  import { guessHabitIcon } from '../../ui/habit-icon-guess';
+  import type { HabitIcon } from '../../ui/icons';
 
   type Mode = { kind: 'new'; day: IsoDay; habit?: boolean } | { kind: 'edit'; event: CalendarEvent; item: AgendaItem } | { kind: 'duplicate'; event: CalendarEvent; item: AgendaItem };
   interface Props { mode: Mode; oncancel: () => void; onsaved: (day: IsoDay) => void }
@@ -48,6 +53,11 @@
   });
 
   const cal = $derived(cals.find((c) => c.id === draft?.calendarId));
+  // 133: editing a habit also edits its object, so changing it no longer means a trip to Settings. Until one is chosen
+  // it follows the name, as when the habit was made (116).
+  const habitEdit = $derived(mode.kind === 'edit' && !!cal?.trackAsHabits);
+  const shownIcon = $derived((draft?.icon || guessHabitIcon(draft?.title ?? '')) as HabitIcon);
+  let pick = $state<HabitIcon>('sprout');
   const minutesBetween = (a: string, b: string) => Math.round((Date.parse(`${b}:00Z`) - Date.parse(`${a}:00Z`)) / 60_000);
   const shortDate = (d: string) => `${weekdayShort(d)} ${Number(d.slice(8, 10))} ${new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' }).format(new Date(`${d.slice(0, 10)}T12:00:00Z`))}`;
 
@@ -149,7 +159,7 @@
   const REMINDERS: number[][] = [[], [0], [5], [10], [15], [30], [60], [1440]];
 
   // --- sheets and saving ----------------------------------------------------------------------------
-  let sheet = $state<'calendar' | 'repeat' | 'reminder' | 'place' | 'notes' | 'scope' | 'after' | 'smallest' | 'identity' | 'times' | null>(null);
+  let sheet = $state<'calendar' | 'repeat' | 'reminder' | 'place' | 'notes' | 'scope' | 'after' | 'smallest' | 'identity' | 'times' | 'object' | null>(null);
   let titleError = $state('');
   let timeError = $state('');
   let problem = $state('');
@@ -165,8 +175,23 @@
     if (!timeError && !problem && mode.kind === 'duplicate' && original && draft.start === original.start && draft.end === original.end) timeError = 'Pick a new date or time for the copy.';
     return !titleError && !timeError && !problem;
   }
+  /** 133: only the object changed. It belongs to the habit, so there is no "this event or all events" to ask. */
+  const onlyObjectChanged = $derived.by(() => {
+    if (!draft || !original || mode.kind !== 'edit' || !habitEdit || (draft.icon ?? '') === (original.icon ?? '')) return false;
+    const plain = $state.snapshot(draft) as EventDraft;
+    return JSON.stringify({ ...plain, icon: undefined }) === JSON.stringify({ ...original, icon: undefined });
+  });
   async function save() {
     if (!draft || !validate()) return;
+    if (mode.kind === 'edit' && onlyObjectChanged) {
+      saving = true;
+      try {
+        await saveHabit(mode.event, { title: mode.event.title, icon: draft.icon! });
+        syncReminders().catch(() => {});
+        onsaved(mode.item.occurrence);
+      } catch { problem = 'Couldn’t save it. Try again.'; } finally { saving = false; }
+      return;
+    }
     if (mode.kind === 'edit' && mode.event.rrule) { sheet = 'scope'; return; }
     await commit('all');
   }
@@ -188,7 +213,17 @@
 <main class="screen editor">
   <TopBar type="modal" title={mode.kind === 'new' ? (mode.habit ? 'New habit' : 'New event') : mode.kind === 'duplicate' ? 'Duplicate event' : cal?.trackAsHabits ? 'Edit habit' : 'Edit event'} leftLabel="Cancel" rightLabel={saving ? 'Saving…' : 'Save'} onleft={oncancel} onright={save} />
   {#if draft}
-    <TextField bind:value={draft.title} placeholder="Title, like “Read - 20 min”" error={titleError || undefined} autocapitalize="sentences" spellcheck />
+    {#if habitEdit}
+      <div class="what card">
+        <button class="object" aria-label="Change the object" onclick={() => { pick = shownIcon; sheet = 'object'; }}>
+          <HabitObject icon={shownIcon} size="lg" />
+          <span class="t-label-small change">Change</span>
+        </button>
+        <div class="name"><TextField bind:value={draft.title} label="Habit" placeholder="Title, like “Read - 20 min”" error={titleError || undefined} autocapitalize="sentences" spellcheck filled /></div>
+      </div>
+    {:else}
+      <TextField bind:value={draft.title} placeholder="Title, like “Read - 20 min”" error={titleError || undefined} autocapitalize="sentences" spellcheck />
+    {/if}
     {#if !cal?.trackAsHabits}
       <!-- 104: a habit stays a habit; the Calendar row is only for other events (unrouted since 104) -->
       <div class="group">
@@ -244,6 +279,13 @@
         </li>
       {/each}
     </ul>
+  </Sheet>
+
+  <Sheet open={sheet === 'object'} title="Choose an object" onclose={() => (sheet = null)}>
+    <div class="sheet">
+      <IconPicker bind:selected={pick} />
+      <Button onclick={() => { if (draft) draft.icon = pick; sheet = null; }}>Use this object</Button>
+    </div>
   </Sheet>
 
   <Sheet open={sheet === 'times'} title="Times a week" onclose={() => (sheet = null)}>
@@ -366,6 +408,10 @@
 {/if}
 
 <style>
+  .what { display: flex; align-items: flex-start; gap: var(--space-16); }
+  .object { display: grid; justify-items: center; gap: var(--space-4); flex: none; }
+  .change { color: var(--text-primary); text-decoration: underline; text-underline-offset: var(--space-4); }
+  .name { flex: 1; min-width: 0; }
   .chips-wrap { display: flex; flex-wrap: wrap; column-gap: var(--space-8); }
   .editor { display: flex; flex-direction: column; gap: var(--space-8); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
   .group { border-bottom: var(--stroke-hairline) solid var(--border-divider); padding-bottom: var(--space-8); }

@@ -23,7 +23,7 @@
 
   onMount(async () => {
     const [settings, device, active] = await Promise.all([getSettings(), pushDevice(), activeHabits()]);
-    habits = `${active.active.length} active`;
+    habits = String(active.archived.length); // 133: this row now only leads to the archived habits
     notifications = permission() !== 'granted' || !device.subscribedAt ? 'Off' : settings.recapPush ? 'At each start · 22:30' : 'At each start';
     data = backupAge(settings.lastBackupAt, new Date());
   });
@@ -33,7 +33,7 @@
   <main class="screen settings">
     <TopBar eyebrow="ATOMIC {version}" title="Settings" />
     <section class="card-list">
-      <ListRow icon="sprout" tile="var(--field-learn)" label="Habits" value={habits} onclick={() => onopen('habits')} />
+      <ListRow icon="sprout" tile="var(--field-learn)" label="Archived habits" value={habits} onclick={() => onopen('habits')} />
       <ListRow icon="bell" tile="var(--field-move)" label="Notifications" value={notifications} onclick={() => onopen('notifications')} />
       <ListRow icon="lock" tile="var(--field-drink)" label="Your data" value={data} onclick={() => onopen('data')} />
       <ListRow icon="info" tile="var(--field-joy)" label="About" onclick={() => onopen('about')} />

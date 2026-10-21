@@ -64,18 +64,22 @@ describe('Restore (H48)', () => {
   });
 });
 
-describe('Habits (H45, H45b)', () => {
-  it('renames a habit and archives it', async () => {
+describe('Archived habits (H45, 133)', () => {
+  it('lists only archived habits and brings one back from today', async () => {
+    const { rerender } = render(Habits, { onback: () => {} });
+    expect(await screen.findByText('No archived habits.')).toBeTruthy();
+    expect(screen.queryByText('Sample train - 30 min')).toBeNull(); // active habits are edited in Habits, not here
+    cleanup();
+    await (await db()).put('events', { ...train, archivedOn: '2026-01-01' });
     render(Habits, { onback: () => {} });
-    await fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
-    const field = await screen.findByDisplayValue('Sample train - 30 min');
-    await fireEvent.input(field, { target: { value: 'Sample run - 30 min' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await vi.waitFor(async () => expect((await (await db()).get('events', 'train'))!.title).toBe('Sample run - 30 min'));
-    await fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
-    await fireEvent.click(await screen.findByRole('button', { name: 'Archive habit' }));
-    await vi.waitFor(async () => expect((await (await db()).get('events', 'train'))!.archivedOn).toBeTruthy());
-    expect(await screen.findByText('Archived · 1')).toBeTruthy(); // the list reloads before the test ends
+    expect(await screen.findByText('Sample train - 30 min')).toBeTruthy();
+    expect(screen.getByText('Archived · 1')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Archive habit' })).toBeNull();
+    await fireEvent.click(await screen.findByRole('button', { name: 'Bring back' }));
+    await fireEvent.click(await screen.findByRole('button', { name: 'Bring back from today' }));
+    await vi.waitFor(async () => expect((await (await db()).get('events', 'train'))!.archivedOn).toBeUndefined());
+    expect(await screen.findByText('Archived · 0')).toBeTruthy();
+    void rerender;
   });
 });
 

@@ -118,3 +118,25 @@ describe('Duplicate an event (077)', () => {
     expect(onsaved).not.toHaveBeenCalled();
   });
 });
+
+describe('Edit habit: the object (133)', () => {
+  const read: CalendarEvent = {
+    id: 'read', calendarId: 'hab', title: 'Sample read - 20 min', start: '2026-10-05T21:00', end: '2026-10-05T21:20',
+    allDay: false, timeMode: 'clock', rrule: 'FREQ=DAILY', exdates: [], reminders: [0], icon: 'book-open',
+  };
+  it('changes the object from the habit editor, without asking which events', async () => {
+    await (await db()).put('events', read);
+    const item = expand(read, '2026-10-06', '2026-10-06', ZONE)[0]!;
+    const onsaved = vi.fn();
+    render(EventEditor, { mode: { kind: 'edit', event: read, item }, oncancel: () => {}, onsaved });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Change the object' }));
+    await fireEvent.click(await screen.findByRole('radio', { name: 'dumbbell' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Use this object' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await vi.waitFor(() => expect(onsaved).toHaveBeenCalled());
+    expect(screen.queryByText('Change a repeating event')).toBeNull(); // only the object changed: nothing to scope
+    const saved = (await allEvents()).find((e) => e.id === 'read')!;
+    expect(saved).toMatchObject({ icon: 'dumbbell', title: 'Sample read - 20 min', start: '2026-10-05T21:00', rrule: 'FREQ=DAILY' });
+    expect(saved.past).toBeUndefined();
+  });
+});
