@@ -72,7 +72,8 @@
   {#if problem}<p class="t-body-small problem" role="alert">{problem}</p>{/if}
   {#if !canSave(draft) && draft.often === 'days' && !draft.days.length}<p class="t-body-small tertiary">Pick at least one day.</p>{/if}
   <!-- 137: Save is the screen's one action, at the bottom where the thumb is (Playground 19, S2) -->
-  <div class="save"><Button disabled={!canSave(draft) || busy} onclick={save}>{draft.count ? 'Save habit' : 'Save reminder'}</Button></div>
+  <div class="save"><!-- a disabled primary would melt into the stone page: a white pill keeps it a button -->
+    <Button variant={canSave(draft) && !busy ? 'primary' : 'card'} disabled={!canSave(draft) || busy} onclick={save}>{draft.count ? 'Save habit' : 'Save reminder'}</Button></div>
 </main>
 
 <HabitHelp bind:topic={help} topics={['stick']} />

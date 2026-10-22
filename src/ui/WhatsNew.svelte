@@ -1,12 +1,13 @@
 <script lang="ts" module>
-  // U1 Welcome to the new ATOMIC (131): after an update, once per version, a sheet over Today. Generic on purpose: four
-  // short lines, the version, Continue. Few people read release notes; the sheet says something changed, nothing more.
+  // U1 What's new (131, amended by 138): after an update, once per version, a sheet over Today. Generic on purpose:
+  // one short line per KIND of change this release holds, and only the kinds it holds. A release with only fixes
+  // lists only Bug fixes. Kinds, in this order: Visual improvements, Usability improvements, Reminders, Bug fixes.
   import type { IconName } from './icons';
-  /** The lines for this version. Change them with each release that deserves the sheet. */
+  /** The lines for this version. Rewrite them with each release that deserves the sheet; never carry old ones over. */
   export const NEWS: { icon: IconName; text: string }[] = [
-    { icon: 'palette', text: 'New visual style' },
-    { icon: 'bell', text: 'Reminders' },
+    { icon: 'palette', text: 'Visual improvements' },
     { icon: 'smile', text: 'Usability improvements' },
+    { icon: 'bell', text: 'Reminders' },
     { icon: 'wrench', text: 'Bug fixes' },
   ];
 </script>
@@ -18,7 +19,7 @@
   let { open, version, onclose }: { open: boolean; version: string; onclose: () => void } = $props();
 </script>
 
-<Sheet {open} title="Welcome to the new ATOMIC" {onclose}>
+<Sheet {open} title="What’s new in ATOMIC" {onclose}>
   <div class="news">
     <ul>
       {#each NEWS as n (n.text)}

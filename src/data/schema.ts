@@ -105,7 +105,7 @@ export interface Settings {
   seriesJoined?: boolean;
   /** 130: reminders that aren't habits ("Drink water, 6 times a day"). Never counted; here so a backup carries them. */
   timedReminders?: TimedReminder[];
-  /** 131: the last version whose "Welcome to the new ATOMIC" was shown. Missing on a fresh install: nothing to tell. */
+  /** 131: the last version whose "What’s new" was shown. Missing on a fresh install: nothing to tell. */
   whatsNewSeen?: string;
 }
 
