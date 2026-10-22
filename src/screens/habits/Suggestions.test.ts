@@ -25,7 +25,7 @@ describe('136 suggested habits', () => {
     const onblank = vi.fn();
     render(Suggestions, { onback: () => {}, onpick: () => {}, onblank });
     expect(SUGGESTED).toHaveLength(8);
-    expect(screen.getByText('Pick one to start from. You can change everything.')).toBeTruthy();
+    expect(screen.getByText('Pick one to start from or start from scratch. You have full control.')).toBeTruthy();
     await fireEvent.click(screen.getByRole('button', { name: 'Create new habit' }));
     expect(onblank).toHaveBeenCalled();
   });

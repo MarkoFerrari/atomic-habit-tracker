@@ -42,7 +42,7 @@ describe('New habit asks to allow notifications (121)', () => {
     const onsaved = vi.fn();
     render(NewHabit, { oncancel: () => {}, onsaved });
     await fill();
-    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Save habit' }));
     await vi.waitFor(() => expect(onsaved).toHaveBeenCalled());
     expect(push.askPermission).toHaveBeenCalledTimes(1);
     expect(push.enablePush).toHaveBeenCalledTimes(1);
@@ -53,7 +53,7 @@ describe('New habit asks to allow notifications (121)', () => {
     const onsaved = vi.fn();
     render(NewHabit, { oncancel: () => {}, onsaved });
     await fill();
-    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Save habit' }));
     await vi.waitFor(() => expect(onsaved).toHaveBeenCalled());
     expect(push.askPermission).not.toHaveBeenCalled();
   });
@@ -63,7 +63,7 @@ describe('New habit asks to allow notifications (121)', () => {
     render(NewHabit, { oncancel: () => {}, onsaved });
     await fill();
     await fireEvent.click(screen.getByRole('switch', { name: 'Nudge at the start' }));
-    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Save habit' }));
     await vi.waitFor(() => expect(onsaved).toHaveBeenCalled());
     expect(push.askPermission).not.toHaveBeenCalled();
   });
@@ -82,7 +82,7 @@ describe('Count it as a habit off saves a reminder, not a habit (130)', () => {
     await fireEvent.input(screen.getByLabelText('Reminder'), { target: { value: 'Drink water' } });
     await fireEvent.click(screen.getByRole('button', { name: 'More' }));
     expect(screen.getByText(/Every 2 hours from the start/)).toBeTruthy();
-    await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Save reminder' }));
     await vi.waitFor(() => expect(onsaved).toHaveBeenCalled());
     const [r] = await listTimed();
     expect(r).toMatchObject({ title: 'Drink water', times: ['07:30', '09:30', '11:30', '13:30', '15:30', '17:30', '19:30'] });

@@ -14,7 +14,7 @@
 
 <main class="screen suggest">
   <TopBar type="navigation" title="New habit" leftLabel="Back" onleft={onback} />
-  <p class="t-body-default secondary">Pick one to start from. You can change everything.</p>
+  <p class="t-body-default secondary">Pick one to start from or start from scratch. You have full control.</p>
   <ul class="grid">
     {#each SUGGESTED as s (s.id)}
       <li>

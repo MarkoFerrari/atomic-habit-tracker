@@ -62,7 +62,7 @@
 </script>
 
 <main class="screen editor">
-  <TopBar type="modal" title={reminder ? 'Edit reminder' : 'New habit'} leftLabel="Cancel" rightLabel="Save" onleft={oncancel} onright={save} />
+  <TopBar type="modal" title={reminder ? 'Edit reminder' : 'New habit'} leftLabel="Cancel" onleft={oncancel} />
   <section class="group"><HabitWhat bind:draft suggestions={false} label={draft.count ? 'Habit' : 'Reminder'} /></section>
   <section class="group">
     <HabitWhen bind:draft>
@@ -71,6 +71,8 @@
   </section>
   {#if problem}<p class="t-body-small problem" role="alert">{problem}</p>{/if}
   {#if !canSave(draft) && draft.often === 'days' && !draft.days.length}<p class="t-body-small tertiary">Pick at least one day.</p>{/if}
+  <!-- 137: Save is the screen's one action, at the bottom where the thumb is (Playground 19, S2) -->
+  <div class="save"><Button disabled={!canSave(draft) || busy} onclick={save}>{draft.count ? 'Save habit' : 'Save reminder'}</Button></div>
 </main>
 
 <HabitHelp bind:topic={help} topics={['stick']} />
@@ -87,6 +89,7 @@
 <style>
   .editor { display: flex; flex-direction: column; gap: var(--space-12); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-40)); }
   .group { display: grid; gap: var(--space-12); }
+  .save { position: sticky; bottom: 0; margin-top: auto; padding: var(--space-12) 0 calc(env(safe-area-inset-bottom) + var(--space-8)); background: var(--bg-app); }
   .tertiary { color: var(--text-tertiary); }
   .problem { color: var(--text-destructive); }
   .sheet { display: grid; gap: var(--space-16); padding-bottom: var(--space-40); }
