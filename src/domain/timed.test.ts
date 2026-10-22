@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planTimed, remindsOn, spacingLine, suggestTimes, timedLine, todayOf } from './timed';
+import { nudgeCard, planTimed, remindsOn, spacingLine, suggestTimes, timedLine, todayOf } from './timed';
 import type { IsoDay } from './day';
 
 const water = { id: 'w1', title: 'Drink water', times: ['09:00', '11:00', '13:00', '15:00', '17:00', '19:00'] };
@@ -40,5 +40,20 @@ describe('130 reminders, not habits', () => {
   it('names the times in one line (H1)', () => {
     expect(timedLine(water)).toBe('6 times a day · 09:00 to 19:00');
     expect(timedLine({ ...water, times: ['10:00', '15:00'] }, 'Weekdays')).toBe('Weekdays · 2 times a day · 10:00 and 15:00');
+  });
+});
+
+describe('134 the card opened from a reminder push', () => {
+  const day = '2026-10-20' as IsoDay;
+  it('lists the times so far and the next one', () => {
+    expect(nudgeCard(water, day, '13:00')).toEqual({ passed: ['09:00', '11:00', '13:00'], next: '15:00', total: 6, line: '3 of 6 so far · next at 15:00' });
+  });
+  it('says that is all after the last time', () => {
+    expect(nudgeCard(water, day, '19:00').line).toBe('6 of 6 · that’s all for today');
+    expect(nudgeCard(water, day, '19:00').next).toBeNull();
+  });
+  it('has nothing for a paused reminder or a day not chosen', () => {
+    expect(nudgeCard({ ...water, paused: true }, day, '13:00')).toMatchObject({ passed: [], line: 'Nothing more today' });
+    expect(nudgeCard({ ...water, days: [0] }, day, '13:00').passed).toEqual([]); // 20 Oct 2026 is a Tuesday
   });
 });

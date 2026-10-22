@@ -76,3 +76,16 @@ export function timedLine(r: TimedSource, daysLabel?: string): string {
   const span = times.length === 2 ? `${times[0]} and ${times[1]}` : `${times[0]} to ${times.at(-1)}`;
   return [daysLabel, `${times.length} times a day`, times.length ? span : null].filter(Boolean).join(' · ');
 }
+
+/** 134: what the card opened from a reminder push shows: the times nudged so far (the last is the one that just came), and what is left. */
+export interface NudgeCard { passed: string[]; next: string | null; total: number; line: string }
+export function nudgeCard(r: TimedSource, day: IsoDay, now: string): NudgeCard {
+  const times = sortTimes(r.times);
+  const on = remindsOn(r, day);
+  const passed = on ? times.filter((t) => t <= now) : [];
+  const next = on ? times.find((t) => t > now) ?? null : null;
+  const total = times.length;
+  const line = !on ? 'Nothing more today'
+    : next ? `${passed.length} of ${total} so far · next at ${next}` : `${passed.length} of ${total} · that’s all for today`;
+  return { passed, next, total, line };
+}

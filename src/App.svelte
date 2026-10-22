@@ -13,6 +13,10 @@
   import Stats from './screens/stats/Stats.svelte';
   import HabitsTab, { type HabitsMode } from './screens/habits/HabitsTab.svelte';
   import NewHabit from './screens/habits/NewHabit.svelte';
+  import Suggestions from './screens/habits/Suggestions.svelte';
+  import ReminderCard from './screens/habits/ReminderCard.svelte';
+  import { draftFrom } from './data/suggestions';
+  import type { HabitDraft } from './data/newHabit';
   import HabitDetail from './screens/stats/HabitDetail.svelte';
   import ReminderDetail from './screens/habits/ReminderDetail.svelte';
   import type { TimedReminder } from './data/schema';
@@ -41,7 +45,9 @@
 
   type View = 'loading' | 'gallery' | 'build-test' | 'onboarding' | 'app' | 'recap';
   type Pushed =
-    | { kind: 'new-habit' }
+    | { kind: 'suggest' }
+    | { kind: 'new-habit'; prefill?: HabitDraft }
+    | { kind: 'nudge'; id: string }
     | { kind: 'reminder'; id: string; from: string }
     | { kind: 'edit-reminder'; reminder: TimedReminder }
     | { kind: 'edit'; event: CalendarEvent; item: AgendaItem }
@@ -62,7 +68,7 @@
   const top = $derived(stack.at(-1) ?? null);
   const push = (p: Pushed) => { stack = [...stack, p]; };
   function restored() { stack = []; view = 'app'; tab = 'today'; }
-  function newHabit() { stack = [...stack, { kind: 'new-habit' }]; } // E1: makes the HABITS calendar if missing (079)
+  function newHabit() { stack = [...stack, { kind: 'suggest' }]; } // 136: suggestions first; E1 follows, and makes the HABITS calendar if missing (079)
   /** H4 Edit: the full editor (H30) on the habit's next occurrence, so repeats and past answers are handled (E16). */
   async function editHabit(eventId: string) {
     const event = await getEvent(eventId);
@@ -87,6 +93,8 @@
     view = 'app';
     const m = /^#event=(.+)$/.exec(location.hash);
     if (m) { clearHash(); await openTag(decodeURIComponent(m[1]!)); }
+    const n = /^#nudge=(.+)$/.exec(location.hash);
+    if (n) { clearHash(); openNudge(decodeURIComponent(n[1]!)); }
   }
 
   function clearHash() { history.replaceState(null, '', location.pathname + location.search); }
@@ -95,6 +103,12 @@
   async function openTag(_tag: string) {
     tab = 'today';
     stack = [];
+  }
+
+  /** 134: a reminder's push opens its own card, not Today. Close goes to Today. */
+  function openNudge(id: string) {
+    tab = 'today';
+    stack = [{ kind: 'nudge', id }];
   }
 
   function closeRecap() {
@@ -124,6 +138,7 @@
     const onMessage = (e: MessageEvent) => {
       if (view === 'onboarding') return;
       if (e.data?.type === 'open-recap') view = 'recap';
+      if (e.data?.type === 'open-nudge' && typeof e.data.id === 'string') { view = 'app'; openNudge(e.data.id); }
       if (e.data?.type === 'open-event' && typeof e.data.tag === 'string') { view = 'app'; void openTag(e.data.tag); }
     };
     navigator.serviceWorker?.addEventListener('message', onMessage);
@@ -150,8 +165,12 @@
     <Badges onback={pop} onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Badges' })} />
   {:else if top?.kind === 'week-recap'}
     <WeeklyRecap weekStart={top.weekStart} onback={pop} onhabit={(eventId) => push({ kind: 'habit', eventId, from: 'Recap' })} />
+  {:else if top?.kind === 'nudge'}
+    <ReminderCard id={top.id} onclose={() => { stack = []; tab = 'today'; }} />
+  {:else if top?.kind === 'suggest'}
+    <Suggestions onback={pop} onpick={(s) => push({ kind: 'new-habit', prefill: draftFrom(s) })} onblank={() => push({ kind: 'new-habit' })} />
   {:else if top?.kind === 'new-habit'}
-    <NewHabit oncancel={pop} onsaved={() => { stack = []; }} />
+    {#key top}<NewHabit prefill={top.prefill} oncancel={pop} onsaved={() => { stack = []; }} />{/key}
   {:else if top?.kind === 'edit'}
     <EventEditor mode={{ kind: 'edit', event: top.event, item: top.item }} oncancel={pop} onsaved={saved} />
   {:else if top?.kind === 'settings' && top.screen === 'habits'}<Habits onback={pop} />

@@ -1,10 +1,10 @@
 <script lang="ts">
   // D1 Habit detail (style B, Playground section 17, 129; was H4/H37): the habit's field with its object leads, then
-  // This run and Rank side by side, the month week by week (the one Month calendar), the last milestone, and below
+  // This run and Rank side by side, the next rank with its bar (135), the month week by week (the one Month calendar), and below
   // why it wasn't done and the actions. One left edge, cards on stone. The ring, the 12 week bars and the time
   // buckets of 113 left: the calendar shows the same thing bigger.
   // Kaizen (080): the trial in progress shows here. A pushed screen: no tab bar (044).
-  // 107: the next-rank bar carries its milestone ticks, and the last milestone keeps its quote here.
+  // 107: the next-rank bar carries its milestone ticks. 135: the last milestone's quote left this screen.
   // 108: runs saved, counted with the recent comebacks named. 113: the best run stays, as a line under This run.
   // 117 (Playground 08): Pause habit, set ahead for 3 days to 2 weeks, with a reason; the 2-min version is offered first.
   // 112 (Playground 04): at the bottom, Archive habit and Delete this habit. Delete asks first: a habit with a rank is
@@ -24,6 +24,7 @@
   import { syncReminders } from '../../push/reminders';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import RankMedal from '../../ui/RankMedal.svelte';
+  import NextRankCard from '../../ui/NextRankCard.svelte';
   import { bestRun, nextRankLine } from '../../domain/award';
   import HabitObject from '../../ui/HabitObject.svelte';
   import MonthCalendar from '../../ui/MonthCalendar.svelte';
@@ -40,10 +41,7 @@
   import type { IsoDay } from '../../domain/day';
   import { activeAdjustment } from '../../domain/adjust';
   import { loadStats, type StatsData } from '../../data/stats';
-  import { getSettings } from '../../data/settings';
-  import { lastMilestone } from '../../data/moments';
   import { runsSaved } from '../../domain/moments';
-  import type { QuoteState } from '../../domain/quotes';
   import { dayAndNumber } from '../../domain/format';
 
   interface Props {
@@ -54,8 +52,7 @@
   let { eventId, backLabel = 'Stats', onback, onedit, ondeleted }: Props = $props();
 
   let data = $state.raw<StatsData | null>(null);
-  let quotes = $state.raw<QuoteState | undefined>(undefined);
-  onMount(async () => { const [d, settings] = await Promise.all([loadStats(), getSettings()]); quotes = settings.quotes; data = d; });
+  onMount(async () => { data = await loadStats(); });
 
   const habit = $derived(data?.ctx.habits.find((h) => h.id === eventId) ?? null);
   const detail = $derived<HabitDetail | null>(data && habit ? habitDetail(data.ctx, habit, data.stored.get(habit.id) ?? null, data.zone) : null);
@@ -71,7 +68,6 @@
   const best = $derived(data && habit ? Math.max(bestRun(data.ctx, habit), detail?.medal.held ?? 0) : 0);
   const rankSub = $derived(detail ? (detail.medal.rank ? `Since day ${RANKS.find((r) => r.id === detail.medal.rank)!.days}` : `Apprentice at day ${RANKS[0]!.days}`) : '');
   const month = $derived(data && habit ? monthView({ ...data.ctx, habits: [habit] }, data.ctx.today) : null);
-  const milestone = $derived(lastMilestone(quotes, eventId));
   const saved = $derived(data && habit ? runsSaved(data.ctx, habit) : null);
   const answerCount = $derived(data ? data.ctx.answers.filter((a) => a.eventId === eventId).length : 0);
   const archived = $derived(!!habit?.archivedOn && !!data && habit.archivedOn <= data.ctx.today);
@@ -152,15 +148,12 @@
       </section>
     </div>
 
-    {#if month}
-      <MonthCalendar title="{monthName(month.first)} {month.first.slice(0, 4)}" count={monthCount(month)} leading={month.leading} days={habitMonthDays(month)} showPartial={false} />
+    {#if detail.medal.next}
+      <NextRankCard rank={detail.medal.rank} next={detail.medal.next} held={detail.medal.held} icon={(habit.icon ?? 'sprout') as IconName} />
     {/if}
 
-    {#if milestone}
-      <section class="card note" aria-label="Last milestone">
-        <h2 class="t-label-section secondary">Milestone · day {milestone.day}</h2>
-        <p class="t-body-default">“{milestone.quote.text}” <span class="secondary">{milestone.quote.source}</span></p>
-      </section>
+    {#if month}
+      <MonthCalendar title="{monthName(month.first)} {month.first.slice(0, 4)}" count={monthCount(month)} leading={month.leading} days={habitMonthDays(month)} showPartial={false} />
     {/if}
 
     {#if mine}

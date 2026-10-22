@@ -23,14 +23,15 @@
   import { askPermission } from '../../push/notifications';
   import { canAsk, enablePush } from '../../push/enable';
 
-  let { oncancel, onsaved, reminder }: { oncancel: () => void; onsaved: () => void; reminder?: TimedReminder } = $props();
+  // 136: `prefill` is a suggestion from the picker; every row of the form stays editable.
+  let { oncancel, onsaved, reminder, prefill }: { oncancel: () => void; onsaved: () => void; reminder?: TimedReminder; prefill?: HabitDraft } = $props();
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const fromReminder = (r: TimedReminder): HabitDraft => ({
     ...blankHabit(), title: r.title, icon: r.icon as HabitIcon, count: false, remindTimes: [...r.times], perDay: r.times.length, start: r.times[0] ?? '09:00',
     often: r.days?.length ? 'days' : 'daily', days: r.days?.length ? [...r.days] : [0, 1, 2, 3, 4],
   });
   // svelte-ignore state_referenced_locally
-  let draft = $state<HabitDraft>(reminder ? fromReminder(reminder) : blankHabit());
+  let draft = $state<HabitDraft>(reminder ? fromReminder(reminder) : prefill ? { ...prefill, days: [...prefill.days], remindTimes: [...prefill.remindTimes] } : blankHabit());
   let stick = $state(false);
   let help = $state<HelpTopic | null>(null);
   let others = $state<string[]>([]);

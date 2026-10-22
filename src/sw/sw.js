@@ -113,18 +113,22 @@ self.addEventListener('push', (event) => {
 });
 
 // The recap notification opens the recap (F5); the app builds it from local data (025).
-// A reminder opens its event (H29: "from any event or a reminder push"); a habit's opens Today.
+// A reminder opens its event (H29: "from any event or a reminder push"); a habit's opens Today; a reminder that
+// isn't a habit opens its card (134).
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const data = event.notification.data ?? {};
   const recap = data.kind === 'recap';
   const tag = data.kind === 'reminder' && typeof data.tag === 'string' && data.tag.includes('|') ? data.tag : null;
-  const hash = recap ? '#recap' : tag ? `#event=${encodeURIComponent(tag)}` : '';
+  // 134: a reminder that isn't a habit (tag `nudge.<id>`) opens its own card
+  const nudge = data.kind === 'reminder' && typeof data.tag === 'string' && data.tag.startsWith('nudge.') ? data.tag.slice('nudge.'.length) : null;
+  const hash = recap ? '#recap' : nudge ? `#nudge=${encodeURIComponent(nudge)}` : tag ? `#event=${encodeURIComponent(tag)}` : '';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       const open = wins.find((w) => w.url.startsWith(self.registration.scope));
       if (open) {
         if (recap) open.postMessage({ type: 'open-recap' });
+        if (nudge) open.postMessage({ type: 'open-nudge', id: nudge });
         if (tag) open.postMessage({ type: 'open-event', tag });
         return open.focus();
       }

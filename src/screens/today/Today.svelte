@@ -94,6 +94,11 @@
     try { if ((await enablePush()) === 'granted') { remindersOff = false; return; } } catch { /* fall through */ }
     onnotifications?.();
   }
+  // 135: the x removes the card for good; Settings → Data keeps the backup
+  async function closeBackupNote() {
+    backupNote = '';
+    await updateSettings({ backupNudgeClosedAt: new Date().toISOString() });
+  }
   async function backUpNow() {
     try { await shareBackup(); } catch { /* the banner stays */ }
     await load();
@@ -140,7 +145,7 @@
     // and tracking has run that long. Everything since the last backup is lost if the app is removed (E2).
     const nudge = settings.backupNudgeDays;
     const since = settings.lastBackupAt ?? (trackingStart ? `${trackingStart}T00:00:00Z` : null);
-    backupNote = since && Date.now() - Date.parse(since) >= nudge * 86_400_000
+    backupNote = !settings.backupNudgeClosedAt && since && Date.now() - Date.parse(since) >= nudge * 86_400_000
       ? `${settings.lastBackupAt ? `Last backup ${backupAge(settings.lastBackupAt, new Date(), '').toLowerCase()}` : 'No backup yet'}. If ATOMIC is removed, everything since is gone.`
       : '';
     habitCalendarName = calendars.find((c) => c.trackAsHabits)?.name ?? '';
@@ -323,7 +328,7 @@
   <main class="screen today">
     <TopBar eyebrow={dateLabel} title={greeting(hour)} action={onnewhabit ? { icon: 'plus', label: 'New habit' } : undefined} onaction={onnewhabit} />
     {#if remindersOff && onnotifications}<Banner tone="info" message="Turn on reminders and ATOMIC nudges you when each habit starts." action="Turn on reminders" onaction={turnOnHere} />{/if}
-    {#if backupNote}<Banner message={backupNote} action="Back up now" onaction={backUpNow} />{/if}
+    {#if backupNote}<Banner message={backupNote} action="Back up now" onaction={backUpNow} onclose={closeBackupNote} closeLabel="Close backup reminder" />{/if}
 
     {#if !loaded}
       <!-- first read from IndexedDB: a frame or two -->

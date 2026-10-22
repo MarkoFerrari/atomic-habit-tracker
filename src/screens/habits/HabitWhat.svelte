@@ -14,7 +14,9 @@
 
   let { draft = $bindable(), suggestions = true, label = 'Habit' }: { draft: HabitDraft; suggestions?: boolean; label?: string } = $props();
   let title = $state(draft.title);
-  let iconTouched = $state(false);
+  // 136: a prefilled object (a suggestion, an edited reminder) is kept; only a blank form follows the name
+  // svelte-ignore state_referenced_locally
+  let iconTouched = $state(draft.icon !== 'sprout');
   let more = $state(false);
   let pick = $state<HabitIcon>(draft.icon);
   $effect(() => {

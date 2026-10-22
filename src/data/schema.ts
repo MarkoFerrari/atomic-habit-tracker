@@ -79,6 +79,8 @@ export interface Settings {
   timezone: string;
   backupNudgeDays: number; // O7: 7 or 14, still open
   lastBackupAt: string | null;
+  /** 135: when the backup card on Today was closed with its x. Set: the card stays away. Lives here so a backup carries it. */
+  backupNudgeClosedAt?: string;
   trackingStart: IsoDay | null;
   onboardingDone: boolean;
   /** 069: the 22:30 recap push, off unless switched on in Notifications (H46). */
