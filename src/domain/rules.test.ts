@@ -84,23 +84,23 @@ describe('runs (051: never miss twice; a skip is a miss)', () => {
 
 describe('ranks (047, 055)', () => {
   it('maps days held to ranks', () => {
-    expect(rankForDays(9)).toBeNull();
-    expect(rankForDays(10)).toBe('starter');
-    expect(rankForDays(181)).toBe('keeper');
-    expect(rankForDays(182)).toBe('artisan');
+    expect(rankForDays(4)).toBeNull();
+    expect(rankForDays(5)).toBe('starter');
+    expect(rankForDays(44)).toBe('keeper');
+    expect(rankForDays(45)).toBe('artisan');
     expect(rankForDays(400)).toBe('master');
   });
   it('never takes a rank back', () => {
     expect(reachedRank('keeper', 3)).toBe('keeper');
-    expect(reachedRank('starter', 30)).toBe('builder');
+    expect(reachedRank('starter', 15)).toBe('builder');
   });
   it('reports a rank only on the day it is first reached', () => {
-    expect(newlyReached(null, 10)).toBe('starter');
-    expect(newlyReached('starter', 11)).toBeNull();
+    expect(newlyReached(null, 5)).toBe('starter');
+    expect(newlyReached('starter', 6)).toBeNull();
   });
   it('points at the next rank, and nothing after Master (H22b)', () => {
-    expect(nextRank(null, 4)).toEqual({ rank: 'starter', daysLeft: 6 });
-    expect(nextRank('keeper', 12)).toEqual({ rank: 'artisan', daysLeft: 170 });
+    expect(nextRank(null, 4)).toEqual({ rank: 'starter', daysLeft: 1 });
+    expect(nextRank('keeper', 12)).toEqual({ rank: 'artisan', daysLeft: 33 });
     expect(nextRank('master', 500)).toBeNull();
   });
   it('fills one ring segment per rank', () => {

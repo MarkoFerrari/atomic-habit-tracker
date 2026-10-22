@@ -46,7 +46,7 @@ describe('Today (F4)', () => {
     expect(await screen.findByText('0 of 3')).toBeTruthy();
     expect(screen.getByText('3 due today')).toBeTruthy();
     expect(screen.getByRole('list', { name: 'This week' })).toBeTruthy(); // the week strip (096)
-    expect(screen.getByText(/08:00 · Apprentice in 10 days/)).toBeTruthy(); // the next rank on the row (098)
+    expect(screen.getByText(/08:00 · Apprentice in 5 days/)).toBeTruthy(); // the next rank on the row (098)
     expect(within(row('Sample breakfast 30 min')).getByRole('button', { name: 'Mark as done' })).toBeTruthy();
     expect(within(row('Sample read 30 min')).queryByRole('button', { name: 'Mark as done' })).toBeNull();
   });
@@ -165,30 +165,30 @@ describe('Today (F4)', () => {
 
   it('the morning after a miss, one line says today keeps the run (099)', async () => {
     const database = await db();
-    // Breakfast held 3 days (2–4 Oct), then slipped on 5 Oct: one miss is forgiven, today decides. 3 held + today = 4 (120)
-    await updateSettings({ trackingStart: '2026-10-02' });
-    await database.put('events', habit('breakfast', 'Sample breakfast 30 min', '2026-10-02T08:00', '2026-10-02T08:30', 'FREQ=DAILY', 'coffee'));
-    for (const d of ['2026-10-02', '2026-10-03', '2026-10-04']) await database.put('answers', { key: `breakfast|${d}`, eventId: 'breakfast', occurrence: d as `${number}-${number}-${number}`, status: 'done', answeredAt: `${d}T05:10:00Z`, history: [] });
+    // Breakfast done on 4 Oct, then slipped on 5 Oct: one miss is forgiven, today decides. 1 held + today = 2 (120)
+    await updateSettings({ trackingStart: '2026-10-04' });
+    await database.put('events', habit('breakfast', 'Sample breakfast 30 min', '2026-10-04T08:00', '2026-10-04T08:30', 'FREQ=DAILY', 'coffee'));
+    for (const d of ['2026-10-04']) await database.put('answers', { key: `breakfast|${d}`, eventId: 'breakfast', occurrence: d as `${number}-${number}-${number}`, status: 'done', answeredAt: `${d}T05:10:00Z`, history: [] });
     render(Today, {});
-    expect(await screen.findByText('Sample breakfast slipped yesterday. Do it today and your 4-day run holds.')).toBeTruthy();
+    expect(await screen.findByText('Sample breakfast slipped yesterday. Do it today and your 2-day run holds.')).toBeTruthy();
     expect(screen.getByText('“Fall seven times, stand up eight.”')).toBeTruthy(); // 108: the quote above the line (110)
-    // Done today: 4 days held (120: the miss isn't held), so no milestone yet; the comeback shows instead (108)
+    // Done today: 2 days held (120: the miss isn't held), short of the first milestone (3); the comeback shows (108)
     await fireEvent.click(await within(row('Sample breakfast 30 min')).findByRole('button', { name: 'Mark as done' }));
     expect(await screen.findByText('Comeback · Sample breakfast')).toBeTruthy();
-    expect(screen.getByText('Back after a miss: your 4-day run holds.')).toBeTruthy();
+    expect(screen.getByText('Back after a miss: your 2-day run holds.')).toBeTruthy();
     expect(screen.queryByText('Milestone · day 5')).toBeNull();
     expect(screen.queryByText(/slipped yesterday/)).toBeNull();
   });
 
   it('done the day after a miss: the comeback, its quote, and a mark in the week strip (108)', async () => {
     const database = await db();
-    await updateSettings({ trackingStart: '2026-10-03' });
-    await database.put('events', habit('breakfast', 'Sample breakfast 30 min', '2026-10-03T08:00', '2026-10-03T08:30', 'FREQ=DAILY', 'coffee'));
-    for (const d of ['2026-10-03', '2026-10-04']) await database.put('answers', { key: `breakfast|${d}`, eventId: 'breakfast', occurrence: d as `${number}-${number}-${number}`, status: 'done', answeredAt: `${d}T05:10:00Z`, history: [] });
+    await updateSettings({ trackingStart: '2026-10-04' });
+    await database.put('events', habit('breakfast', 'Sample breakfast 30 min', '2026-10-04T08:00', '2026-10-04T08:30', 'FREQ=DAILY', 'coffee'));
+    for (const d of ['2026-10-04']) await database.put('answers', { key: `breakfast|${d}`, eventId: 'breakfast', occurrence: d as `${number}-${number}-${number}`, status: 'done', answeredAt: `${d}T05:10:00Z`, history: [] });
     render(Today, {});
     await fireEvent.click(await within(await screen.findByRole('group', { name: 'Sample breakfast 30 min' })).findByRole('button', { name: 'Mark as done' }));
     expect(await screen.findByText('Comeback · Sample breakfast')).toBeTruthy();
-    expect(screen.getByText('Back after a miss: your 3-day run holds.')).toBeTruthy(); // 120: the missed day isn't held
+    expect(screen.getByText('Back after a miss: your 2-day run holds.')).toBeTruthy(); // 120: the missed day isn't held
     expect(screen.getByText('“When thou hast failed, return back again.”')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Tuesday 6 October, today: .*a run saved/ })).toBeTruthy();
   });

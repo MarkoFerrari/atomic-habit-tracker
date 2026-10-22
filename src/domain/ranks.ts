@@ -1,10 +1,11 @@
 // 047, 055: consistency ranks, reached by days held in a run. Ranks are never lost.
+// 139: Apprentice 5, Builder 15, Keeper 30, Artisan 45, Master 90 (were 10, 30, 90, 182, 365).
 export const RANKS = [
-  { id: 'starter', label: 'Apprentice', days: 10 }, // 105: was Starter ("Starter in 6 days" read as a start date); the id stays
-  { id: 'builder', label: 'Builder', days: 30 },
-  { id: 'keeper', label: 'Keeper', days: 90 },
-  { id: 'artisan', label: 'Artisan', days: 182 },
-  { id: 'master', label: 'Master', days: 365 },
+  { id: 'starter', label: 'Apprentice', days: 5 }, // 105: was Starter ("Starter in 6 days" read as a start date); the id stays
+  { id: 'builder', label: 'Builder', days: 15 },
+  { id: 'keeper', label: 'Keeper', days: 30 },
+  { id: 'artisan', label: 'Artisan', days: 45 },
+  { id: 'master', label: 'Master', days: 90 },
 ] as const;
 
 export type RankId = (typeof RANKS)[number]['id'];

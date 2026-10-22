@@ -21,12 +21,10 @@
   import YearBar from '../../ui/YearBar.svelte';
   import Sky from '../../ui/Sky.svelte';
   import { sky as skyOf } from '../../domain/moments';
-  import ListRow from '../../ui/ListRow.svelte';
   import SectionLabel from '../../ui/SectionLabel.svelte';
   import EmptyState from '../../ui/EmptyState.svelte';
   import type { Tab } from '../../ui/tabs';
   import { READY_TABS } from '../../ui/tabs';
-  import { RANKS } from '../../domain/ranks';
   import { reviewIsDue, activeAdjustment } from '../../domain/adjust';
   import { fullDate, monthName, percent, shortName, weekdayLetter } from '../../domain/format';
   import { monthView, rateOf, recapWeekStart, sortMedals, weekView, weeklyRecap, yearView, type HabitDay, type Medal } from '../../domain/stats';
@@ -81,8 +79,6 @@
   const reviewDue = $derived(!!trial && !!today && reviewIsDue(trial, today));
   const banner = $derived(reviewDue && trial ? `Time to review: ${trial.text}` : recapUnseen && recap ? `${recap.title.replace(' recap', '')} recap is ready` : '');
 
-  const top = $derived(sortMedals(list).find((m) => m.rank));
-  const topLine = $derived(top ? `${shortName(top.title)} · ${RANKS.find((r) => r.id === top.rank)!.label}` : 'No medal yet');
   const eyebrow = $derived(today ? `${monthName(today)} ${today.slice(0, 4)}` : '');
   const pct = (r: number | null) => percent(r);
   const OPTIONS: { id: Mode; label: string }[] = [{ id: 'week', label: 'Week' }, { id: 'month', label: 'Month' }, { id: 'year', label: 'Year' }];
@@ -117,7 +113,7 @@
 
 <div class="page">
   <main class="screen stats">
-    <TopBar eyebrow={eyebrow} title="Stats" />
+    <TopBar eyebrow={eyebrow} title="Stats" link={{ label: 'Badges', icon: 'award' }} onlink={onbadges} />
 
     {#if !data}
       <!-- first read from IndexedDB: a frame or two -->
@@ -143,7 +139,6 @@
           <p class="t-body-small tertiary">Nothing has been decided yet this week. Days before the start stay empty, never missed (033).</p>
         {/if}
         {@render byHabit(weekByHabit)}
-        <div class="card-list"><ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} /></div>
       {:else if mode === 'month' && monthly && today}
         <section class="perfect card">
           <div class="count"><AwardStar size="icon" />
@@ -153,7 +148,6 @@
         </section>
         <MonthCalendar title={monthLabel(monthly.first)} leading={monthly.leading} days={allHabitDays(monthly, monthStars)} count={monthCount} />
         {@render byHabit(monthly.byHabit)}
-        <div class="card-list"><ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} /></div>
       {:else if mode === 'year' && yearly}
         <section class="perfect card">
           <div class="count"><AwardStar size="icon" />
@@ -176,7 +170,6 @@
           {/each}
         </div>
         <p class="t-body-small secondary">{yearly.sentence} Tap a month to open it.</p>
-        <div class="card-list"><ListRow icon="award" label="Badges" value={topLine} onclick={onbadges} /></div>
       {/if}
     {/if}
   </main>

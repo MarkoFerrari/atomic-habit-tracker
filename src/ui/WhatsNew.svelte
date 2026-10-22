@@ -5,10 +5,7 @@
   import type { IconName } from './icons';
   /** The lines for this version. Rewrite them with each release that deserves the sheet; never carry old ones over. */
   export const NEWS: { icon: IconName; text: string }[] = [
-    { icon: 'palette', text: 'Visual improvements' },
     { icon: 'smile', text: 'Usability improvements' },
-    { icon: 'bell', text: 'Reminders' },
-    { icon: 'wrench', text: 'Bug fixes' },
   ];
 </script>
 

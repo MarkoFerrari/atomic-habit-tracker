@@ -72,7 +72,7 @@ describe('medals (047, 051, 060)', () => {
   it('a 12-day run is Builder-bound: Apprentice reached, days held 12', () => {
     const c = { ...ctx(doneRun('2027-11-14', 12)), habits: [breakfast] };
     const m = medalOf(c, breakfast, null);
-    expect(m).toMatchObject({ rank: 'starter', held: 12, next: { rank: 'builder', days: 30, daysLeft: 18 } });
+    expect(m).toMatchObject({ rank: 'starter', held: 12, next: { rank: 'builder', days: 15, daysLeft: 3 } });
   });
   it('two misses in a row end the run, but the rank stays (E14)', () => {
     const answers = [...doneRun('2027-10-01', 12), ans('b', '2027-10-13', 'skipped'), ans('b', '2027-10-14', 'skipped')];

@@ -37,7 +37,7 @@
     return `In ${plural(days, 'day')}, on ${fullDate(addDays(data.ctx.today, days))}: each habit that is not missed twice in a row gets its first medal.`;
   });
   const sample = $derived(sorted.find((m) => m.icon)?.icon ?? 'sprout');
-  const WHEN: Record<string, string> = { starter: '10 days', builder: '30 days', keeper: '90 days', artisan: '6 months', master: '1 year' };
+  const WHEN: Record<string, string> = Object.fromEntries(RANKS.map((r) => [r.id, `${r.days} days`])) as Record<string, string>;
 </script>
 
 <main class="screen badges">

@@ -212,7 +212,7 @@ export function daysHeldFor(h: HabitSource, answers: readonly AnswerLike[], trac
   return daysHeld(history.reduce(step, EMPTY_RUN), today, h.pauses);
 }
 
-/** The run line on the habit sheet (H16): "Day 4 · Apprentice at 10 days". Days held per 060 (proposed). */
+/** The run line on the habit sheet (H16): "Day 4 · Apprentice at 5 days". Days held per 060 (proposed). */
 export function runLine(h: HabitSource, answers: readonly AnswerLike[], trackingStart: IsoDay, today: IsoDay, stored: RankId | null = null): string {
   const held = daysHeldFor(h, answers, trackingStart, today);
   const next = nextRank(reachedRank(stored, held), held);

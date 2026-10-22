@@ -14,26 +14,26 @@ const medal = (held: number, next: Medal['next']): Medal => ({ eventId: 'read', 
 
 describe('milestones (107)', () => {
   it('halfway on the first two ranks, every quarter on the long ones', () => {
-    expect(milestoneDays('starter')).toEqual([5]);
-    expect(milestoneDays('builder')).toEqual([20]);
-    expect(milestoneDays('keeper')).toEqual([45, 60, 75]);
-    expect(milestoneDays('artisan')).toEqual([113, 136, 159]);
-    expect(milestoneDays('master')).toEqual([228, 274, 319]);
+    expect(milestoneDays('starter')).toEqual([3]);
+    expect(milestoneDays('builder')).toEqual([10]);
+    expect(milestoneDays('keeper')).toEqual([19, 23, 26]);
+    expect(milestoneDays('artisan')).toEqual([34, 38, 41]);
+    expect(milestoneDays('master')).toEqual([56, 68, 79]);
   });
   it('is reached once done today, at or past the stop, for a week', () => {
-    const toBuilder = (held: number) => medal(held, { rank: 'builder', daysLeft: 30 - held, days: 30 });
-    expect(milestoneOf(toBuilder(19), true)).toBeNull();
-    expect(milestoneOf(toBuilder(20), false)).toBeNull(); // not done yet today
-    expect(milestoneOf(toBuilder(20), true)).toMatchObject({ rank: 'builder', day: 20, part: 1, parts: 2, of: 30 });
-    expect(milestoneOf(toBuilder(26), true)?.day).toBe(20); // a habit that isn't daily meets it on its next done
-    expect(milestoneOf(toBuilder(27), true)).toBeNull(); // stale after a week
+    const toBuilder = (held: number) => medal(held, { rank: 'builder', daysLeft: 15 - held, days: 15 });
+    expect(milestoneOf(toBuilder(9), true)).toBeNull();
+    expect(milestoneOf(toBuilder(10), false)).toBeNull(); // not done yet today
+    expect(milestoneOf(toBuilder(10), true)).toMatchObject({ rank: 'builder', day: 10, part: 1, parts: 2, of: 15 });
+    expect(milestoneOf(toBuilder(16), true)?.day).toBe(10); // a habit that isn't daily meets it on its next done
+    expect(milestoneOf(toBuilder(17), true)).toBeNull(); // stale after a week
   });
   it('names halfway and quarters plainly (E14: no exclamation marks)', () => {
-    const toKeeper = (held: number) => milestoneOf(medal(held, { rank: 'keeper', daysLeft: 90 - held, days: 90 }), true)!;
-    expect(milestoneLine(milestoneOf(medal(20, { rank: 'builder', daysLeft: 10, days: 30 }), true)!)).toBe('Sample read: halfway to Builder. Keep going.');
-    expect(milestoneLine(toKeeper(45))).toBe('Sample read: a quarter of the way to Keeper. Keep going.');
-    expect(milestoneLine(toKeeper(60))).toBe('Sample read: halfway to Keeper. Keep going.');
-    expect(milestoneLine(toKeeper(75))).toBe('Sample read: three quarters of the way to Keeper. Keep going.');
+    const toKeeper = (held: number) => milestoneOf(medal(held, { rank: 'keeper', daysLeft: 30 - held, days: 30 }), true)!;
+    expect(milestoneLine(milestoneOf(medal(10, { rank: 'builder', daysLeft: 5, days: 15 }), true)!)).toBe('Sample read: halfway to Builder. Keep going.');
+    expect(milestoneLine(toKeeper(19))).toBe('Sample read: a quarter of the way to Keeper. Keep going.');
+    expect(milestoneLine(toKeeper(23))).toBe('Sample read: halfway to Keeper. Keep going.');
+    expect(milestoneLine(toKeeper(26))).toBe('Sample read: three quarters of the way to Keeper. Keep going.');
   });
 });
 

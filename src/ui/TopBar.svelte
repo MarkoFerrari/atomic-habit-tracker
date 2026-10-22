@@ -13,9 +13,11 @@
     onleft?: () => void;
     onright?: () => void;
     onaction?: () => void;
+    link?: { label: string; icon?: IconName }; // 139: a text link on the right, like How it works, with an optional icon
+    onlink?: () => void;
     quick?: { label: string; onclick: () => void }; // 091: a text link beside the action, e.g. Today
   }
-  let { type = 'large', title, eyebrow, leftLabel = 'Back', rightLabel, action, onleft, onright, onaction, quick }: Props = $props();
+  let { type = 'large', title, eyebrow, leftLabel = 'Back', rightLabel, action, onleft, onright, onaction, quick, link, onlink }: Props = $props();
 </script>
 
 {#if type === 'large'}
@@ -25,6 +27,7 @@
       <h1 class="t-heading-large">{title}</h1>
     </div>
     {#if quick}<button class="quick t-body-strong" onclick={quick.onclick}>{quick.label}</button>{/if}
+    {#if link}<button class="link t-body-strong" onclick={onlink}>{#if link.icon}<Icon name={link.icon} />{/if}<span>{link.label}</span></button>{/if}
     {#if action}
       <button class="action" aria-label={action.label} onclick={onaction}><Icon name={action.icon} /></button>
     {/if}
@@ -54,6 +57,7 @@
     border-radius: var(--radius-tile); background: var(--bg-card); box-shadow: inset 0 0 0 var(--stroke-hairline) var(--border-control);
   }
   .quick { min-height: var(--size-touch); padding: 0 var(--space-8); color: var(--text-accent); }
+  .link { display: flex; align-items: center; gap: var(--space-8); min-height: var(--size-touch); color: var(--text-accent); }
   .bar { display: flex; align-items: center; min-height: var(--size-touch); }
   .side { flex: 1; display: flex; min-width: 0; }
   .right { justify-content: flex-end; }
