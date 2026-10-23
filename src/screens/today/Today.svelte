@@ -2,7 +2,7 @@
   // 03 Today (Figma 65:3816, redesigned on page 14 section 02, habits first): the ring, the week strip (096), then
   // Next and Done, 40 apart (092). Check-off with Undo, skip with a reason, the habit sheet. Each row names its next
   // rank (098); the morning after a miss, one line says today keeps the run (099). The last habit of the day plays
-  // the perfect-day award (093), once a day; a rank reached opens H5 the next time Today loads (E15, never a push).
+  // the perfect-day award (093), once a day; a rank reached opens H5 only on the tap on done that reaches it (141, never a push).
   import { onMount, tick } from 'svelte';
   import TimedCard from '../../ui/TimedCard.svelte';
   import stillLife from '../../assets/still-life.webp';
@@ -129,7 +129,8 @@
   const backLine = (e: CalendarEvent) => { const held = medalOf.get(e.id)?.held ?? 0; return `${shortName(e.title)} is back today.${held > 0 ? ` Its ${plural(held, 'day')} run carries on from here.` : ''}`; };
   async function bringBack(id: string) { await resumeHabit(id, habitDay); await load(); }
 
-  async function load() {
+  /** `tapped`: the habit just marked done. Only that tap may open the rank moment (141). */
+  async function load(tapped?: string) {
     now = new Date();
     const day = habitDayOf(now, zone);
     const [evs, ans, settings, calendars, week] = await Promise.all([
@@ -164,7 +165,7 @@
     moment = await todayMoment(stats, list, atRisk);
     weekLeft = weekCloses(stats.ctx);
     lastStats = stats;
-    await findReveals(list, settings.ranksSeen);
+    await findReveals(list, settings.ranksSeen, stats.ctx.today, tapped);
     loaded = true;
     void maybeAward();
     // 069: after every load (open, return to the app, answer, undo) the push function gets a fresh queue,
@@ -180,13 +181,30 @@
     return () => { clearInterval(tick); document.removeEventListener('visibilitychange', onVisible); };
   });
 
-  // --- H5: ranks reached since the last visit (E15: never a push) ----------------------------------------
-  async function findReveals(list: Medal[], seen: string[] | undefined) {
-    const keys = (await (await db()).getAllKeys('ranks')).map(String);
+  // --- H5: the rank moment (141) ------------------------------------------------------------------------
+  // A rank opens the full-screen moment ONLY when the tap on "done" is the day that reaches it: contingent
+  // reinforcement, the reward comes after the behaviour, never before. Opening the app, returning to it, a rank
+  // reached in the Recap, undo and redo play nothing: those ranks are marked seen and stay visible on the row and
+  // in Badges.
+  async function findReveals(list: Medal[], seen: string[] | undefined, today: IsoDay, tapped?: string) {
+    if (reveal.length) return; // the moment is on screen: it closes first
+    const recs = await (await db()).getAll('ranks');
+    const keys = recs.map((r) => r.key);
     seenKeys = keys;
     if (!seen) { await updateSettings({ ranksSeen: keys }); return; } // the first run with H5 owes nothing
-    const fresh = new Set(keys.filter((k) => !seen.includes(k)).map((k) => k.split('|')[0]));
-    reveal = list.filter((m) => m.rank && fresh.has(m.eventId));
+    const fresh = recs.filter((r) => !seen.includes(r.key));
+    if (!fresh.length) return;
+    // The rank record is written when Today opens on the threshold day (days held counts today, 060), before the
+    // tap. That key waits for its tap; the moment is that day, not any later one.
+    const onThreshold = (r: (typeof recs)[number]) => {
+      const m = list.find((x) => x.eventId === r.seriesId);
+      return r.reachedOn === today && !!m && m.held === RANKS.find((x) => x.id === r.rank)!.days;
+    };
+    const mine = tapped ? fresh.find((r) => r.seriesId === tapped && onThreshold(r)) : undefined;
+    const waiting = fresh.filter((r) => r !== mine && !(tapped && r.seriesId === tapped) && onThreshold(r)).map((r) => r.key);
+    seenKeys = keys.filter((k) => !waiting.includes(k));
+    if (mine) { reveal = [list.find((m) => m.eventId === mine.seriesId)!]; return; } // marked seen when it closes
+    if (waiting.length < fresh.length) await updateSettings({ ranksSeen: seenKeys });
   }
   async function closeReveal() { reveal = []; await updateSettings({ ranksSeen: seenKeys }); void maybeAward(); }
 
@@ -242,7 +260,7 @@
         message: status === 'done' ? `${name} ${small ? 'done, 2-min version' : 'done'}` : `${name} skipped`,
         undo: async () => { await undoAnswer(row.eventId, row.occurrence, before); await load(); },
       };
-      await load(); // load() plays the award if this answer made the day perfect (106)
+      await load(status === 'done' ? row.eventId : undefined); // plays the rank moment (141), then the award if the day is perfect (106)
     } catch (e) {
       problem = e instanceof ReadOnlyAnswerError ? e.message : 'Couldn’t save the answer. Try again.';
     }
@@ -458,7 +476,7 @@
 {:else if weekAward}
   <PerfectWeekAward days={weekAward.days} line={weekAward.line} quote={weekAward.quote} onend={() => (weekAward = null)} />
 {:else if reveal.length}
-  <RankReached items={reveal} onclose={closeReveal} onbadges={() => { closeReveal(); onbadges?.(); }} />
+  <RankReached item={reveal[0]!} onclose={closeReveal} onbadges={() => { closeReveal(); onbadges?.(); }} />
 {/if}
 
 <Sheet open={sheetRow !== null} title={sheetRow?.title ?? ''} onclose={() => (sheetRow = null)}>

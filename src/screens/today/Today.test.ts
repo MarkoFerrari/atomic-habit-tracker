@@ -206,3 +206,39 @@ describe('Today (F4)', () => {
     await vi.waitFor(async () => expect((await getSettings()).weekAwardShown).toBe('2026-10-05')); // once a week
   });
 });
+
+describe('Rank moment (141)', () => {
+  const days = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, k) => `2026-10-${String(from + k).padStart(2, '0')}`);
+  async function seed(first: number) {
+    const database = await db();
+    for (const id of ['train', 'breakfast', 'read']) await database.delete('events', id);
+    await database.put('events', habit('walk', 'Sample walk 30 min', `2026-10-${String(first).padStart(2, '0')}T08:00`, `2026-10-${String(first).padStart(2, '0')}T08:30`, 'FREQ=DAILY', 'footprints'));
+    for (const d of days(first, 5)) {
+      await database.put('answers', { key: `walk|${d}`, eventId: 'walk', occurrence: d as never, status: 'done', answeredAt: `${d}T09:00:00Z`, history: [{ ts: `${d}T09:00:00Z`, from: null, to: 'done' }] });
+    }
+    await updateSettings({ trackingStart: `2026-10-${String(first).padStart(2, '0')}` as never, ranksSeen: [] });
+  }
+
+  it('opens only on the tap on done that reaches the rank', async () => {
+    await seed(2); // 4 days held; today is the 5th
+    render(Today, {});
+    expect(await screen.findByText('0 of 1')).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await fireEvent.click(within(await screen.findByRole('group', { name: 'Sample walk 30 min' })).getByRole('button', { name: 'Mark as done' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: 'Apprentice' })).toBeTruthy();
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Continue' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect((await (await db()).get('settings', 'settings') as { ranksSeen?: string[] } | undefined)?.ranksSeen).toContain('walk|starter');
+  });
+
+  it('never opens when the app opens, even if the rank was already reached', async () => {
+    await seed(1); // 5 days held before today: the rank exists when Today loads
+    render(Today, {});
+    expect(await screen.findByText('0 of 1')).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await fireEvent.click(within(await screen.findByRole('group', { name: 'Sample walk 30 min' })).getByRole('button', { name: 'Mark as done' }));
+    expect(await screen.findByText('1 of 1')).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull(); // the 6th day reaches nothing new
+  });
+});
