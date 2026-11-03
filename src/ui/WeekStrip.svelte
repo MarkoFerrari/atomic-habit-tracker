@@ -8,8 +8,8 @@
   import type { StripDay } from '../domain/award';
   import { fullDate } from '../domain/format';
 
-  interface Props { days: readonly StripDay[]; hideToday?: boolean; onday?: (day: StripDay) => void }
-  let { days, hideToday = false, onday }: Props = $props();
+  interface Props { days: readonly StripDay[]; hideToday?: boolean; onday?: (day: StripDay) => void; label?: string }
+  let { days, hideToday = false, onday, label = 'This week' }: Props = $props();
   const R = 15; // drawn on a 32 grid with a 2 stroke
   const C = 2 * Math.PI * R;
   const said = (d: StripDay) => {
@@ -18,7 +18,7 @@
   };
 </script>
 
-<ol class="strip" aria-label="This week">
+<ol class="strip" aria-label={label}>
   {#each days as d (d.day)}
     {@const state = hideToday && d.today && d.state === 'perfect' ? 'open' : d.state}
     <li>

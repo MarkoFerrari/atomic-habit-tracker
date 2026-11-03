@@ -23,8 +23,12 @@ export function habitMonthDays(month: MonthView): CalendarDay[] {
   });
 }
 
-/** "16 of 19 · 84%" for the decided days of a month, or nothing when none was due yet. */
-export function monthCount(month: MonthView): string | undefined {
-  const r = month.cells.reduce((a, c) => (c.kind === 'ahead' ? a : { done: a.done + c.rate.done, due: a.due + c.rate.due }), { done: 0, due: 0 });
+/** "16 of 19 · 84%": done ÷ due with the number due beside it (006), or nothing when none was due yet. */
+export function rateCount(r: { done: number; due: number }): string | undefined {
   return r.due ? `${r.done} of ${r.due} · ${percent(r.done / r.due)}` : undefined;
+}
+
+/** The decided days of a month. */
+export function monthCount(month: MonthView): string | undefined {
+  return rateCount(month.cells.reduce((a, c) => (c.kind === 'ahead' ? a : { done: a.done + c.rate.done, due: a.due + c.rate.due }), { done: 0, due: 0 }));
 }

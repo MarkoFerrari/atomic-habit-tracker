@@ -27,9 +27,9 @@ export function dayVerdict(cells: readonly HabitDay[], day: IsoDay, today: IsoDa
   return { state: done > 0 ? 'partial' : 'missed', done, due, share };
 }
 
-/** Monday to Sunday of the week that holds `today`. */
-export function weekStrip(ctx: Context, comebacks?: ReadonlySet<IsoDay>): StripDay[] {
-  const from = mondayOf(ctx.today);
+/** Monday to Sunday of the week that holds `anchor` (today when left out). */
+export function weekStrip(ctx: Context, comebacks?: ReadonlySet<IsoDay>, anchor: IsoDay = ctx.today): StripDay[] {
+  const from = mondayOf(anchor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   const cells = habitDays(ctx, from, days[6]!);
   return days.map((day) => ({ day, letter: weekdayLetter(day), today: day === ctx.today, ...dayVerdict(cells, day, ctx.today), ...(comebacks?.has(day) ? { comeback: true } : {}) }));

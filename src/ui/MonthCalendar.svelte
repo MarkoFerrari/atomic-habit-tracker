@@ -7,9 +7,8 @@
   // The month, week by week, Monday first (decision 129, Figma components "Month calendar" and "Calendar day"). The
   // same card on the habit detail, Habits month and Stats month, so a day always looks the same: done green, some done
   // light green, missed or skipped orange outline, today ink ring, ahead dashed, before tracking dimmed (033).
-  // Optional month navigation (Habits month): onprev and onnext add a chevron each side of the title, and the count
-  // moves under it so the percentage keeps its own line. A chevron with nowhere to go is disabled, never hidden.
-  import Icon from './Icon.svelte';
+  // Optional month navigation (Habits month, 142): onprev and onnext swap the plain header for PeriodNav.
+  import PeriodNav from './PeriodNav.svelte';
   interface Props {
     title: string; count?: string; days: CalendarDay[]; leading: number; showPartial?: boolean; onday?: (day: string) => void;
     onprev?: () => void; onnext?: () => void; prevDisabled?: boolean; nextDisabled?: boolean;
@@ -24,14 +23,7 @@
 
 <section class="calendar card" aria-label={title}>
   {#if nav}
-    <header class="navigable">
-      <button class="step" aria-label="Previous month" disabled={prevDisabled} onclick={() => onprev?.()}><Icon name="chevron-left" /></button>
-      <div class="heading">
-        <h2 class="t-body-strong">{title}</h2>
-        {#if count}<span class="t-number-default count">{count}</span>{/if}
-      </div>
-      <button class="step" aria-label="Next month" disabled={nextDisabled} onclick={() => onnext?.()}><Icon name="chevron-right" /></button>
-    </header>
+    <PeriodNav {title} {count} unit="month" onprev={() => onprev?.()} onnext={() => onnext?.()} {prevDisabled} {nextDisabled} />
   {:else}
     <header>
       <h2 class="t-body-strong">{title}</h2>
@@ -60,10 +52,6 @@
   .calendar { display: grid; gap: var(--space-12); }
   header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
   .count { color: var(--text-done); }
-  .navigable { justify-content: space-between; }
-  .heading { display: grid; gap: var(--space-4); justify-items: center; text-align: center; }
-  .step { width: var(--size-touch); height: var(--size-touch); display: grid; place-items: center; border-radius: var(--radius-round); color: var(--icon-default); }
-  .step:disabled { color: var(--icon-muted); }
   .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-8); }
   .wd { text-align: center; color: var(--text-secondary); }
   .day {

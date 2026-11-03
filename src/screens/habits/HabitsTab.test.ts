@@ -81,4 +81,31 @@ describe('Habits tab (097)', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
     expect(await screen.findByText('This month')).toBeTruthy();
   });
+
+  it('week: step back through earlier weeks with their percentage, stopping at the week tracking started, never ahead (143, 033)', async () => {
+    const database = await db();
+    await database.delete('answers', 'b|2027-11-16'); // one slip, Tuesday of 15–21 November
+    render(HabitsTab, { onhabit: () => {} });
+    await screen.findByText('Sample breakfast 30 min');
+    await fireEvent.click(screen.getByRole('radio', { name: 'Week' }));
+    expect(await screen.findByText('This week')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Next week' }) as HTMLButtonElement).disabled).toBe(true); // nothing ahead
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous week' }));
+    expect(await screen.findByText('Last week')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '15–21 November' })).toBeTruthy();
+    expect(screen.getByText('13 of 14 · 93%')).toBeTruthy(); // done ÷ due, the number due beside the rate (006)
+    expect(screen.getByRole('list', { name: 'Last week' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Tuesday 16 November: 1 of 2 done/ })).toBeTruthy(); // the strip follows the week
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous week' }));
+    expect(screen.getByRole('heading', { name: '8–14 November' })).toBeTruthy();
+    expect(screen.getByText('14 of 14 · 100%')).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous week' }));
+    expect(screen.getByRole('heading', { name: '1–7 November' })).toBeTruthy(); // tracking began on 1 November
+    expect((screen.getByRole('button', { name: 'Previous week' }) as HTMLButtonElement).disabled).toBe(true);
+
+    for (let i = 0; i < 3; i++) await fireEvent.click(screen.getByRole('button', { name: 'Next week' }));
+    expect(await screen.findByText('This week')).toBeTruthy();
+  });
 });
