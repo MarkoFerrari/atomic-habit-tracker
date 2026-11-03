@@ -14,7 +14,8 @@
   import SegmentedControl from '../../ui/SegmentedControl.svelte';
   import HabitObject from '../../ui/HabitObject.svelte';
   import MonthCalendar from '../../ui/MonthCalendar.svelte';
-  import { allHabitDays, monthCount } from '../../ui/calendar';
+  import PeriodNav from '../../ui/PeriodNav.svelte';
+  import { allHabitDays, monthCount, rateCount } from '../../ui/calendar';
   import { fieldColor } from '../../ui/objects';
   import ProgressBar from '../../ui/ProgressBar.svelte';
   import WeekStrip from '../../ui/WeekStrip.svelte';
@@ -26,7 +27,7 @@
   import { RANKS } from '../../domain/ranks';
   import { parseRRule } from '../../domain/recurrence';
   import { fullDate, monthName, plural, repeatLabel, shortName, timesAWeek, weekRange } from '../../domain/format';
-  import { monthView, weekView, type Medal } from '../../domain/stats';
+  import { mondayOf, monthView, weekView, type Medal } from '../../domain/stats';
   import { nextRankLine, perfectDays, weekStrip } from '../../domain/award';
   import { addDays, shiftMonth, type IsoDay } from '../../domain/day';
   import { activeIds, loadStats, medals, type StatsData } from '../../data/stats';
@@ -53,18 +54,26 @@
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   });
-  // Month view: null is this month; a month back shows how those habits held (done ÷ due, with the percentage).
-  // Back stops at the month tracking started and forward at this month: days before the start and days ahead are never zero (033).
+  // Week and Month step back through the past (142, 143): null is this week or month; an earlier one shows how those
+  // habits held (done ÷ due, with the percentage). Back stops at the week or month tracking started and forward at the
+  // current one: days before the start and days ahead are never zero (033). Switching to a view starts at the current one.
   let monthFirst = $state<IsoDay | null>(null);
-  function pick(m: HabitsMode) { mode = m; if (m === 'month') monthFirst = null; onview?.(m); }
+  let weekFirst = $state<IsoDay | null>(null);
+  function pick(m: HabitsMode) { mode = m; if (m === 'month') monthFirst = null; if (m === 'week') weekFirst = null; onview?.(m); }
 
   const ctx = $derived(data?.ctx ?? null);
   const active = $derived(data ? activeIds(data) : new Set<string>());
   const habits = $derived(ctx ? ctx.habits.filter((h) => series.has(h.id)).sort((a, b) => a.start.slice(11).localeCompare(b.start.slice(11)) || a.title.localeCompare(b.title)) : []);
   const medalOf = $derived(new Map(list.map((m) => [m.eventId, m])));
   const tracked = $derived(!!ctx?.trackingStart);
-  const week = $derived(ctx && tracked ? weekView(ctx, ctx.today) : null);
-  const strip = $derived(ctx && tracked ? weekStrip(ctx) : []);
+  const week = $derived(ctx && tracked ? weekView(ctx, weekFirst ?? ctx.today) : null);
+  const strip = $derived(ctx && week ? weekStrip(ctx, undefined, week.from) : []);
+  const thisWeek = $derived(ctx ? mondayOf(ctx.today) : null);
+  const firstWeek = $derived(ctx?.trackingStart ? mondayOf(ctx.trackingStart) : null);
+  const canPrevWeek = $derived(!!week && !!firstWeek && week.from > firstWeek);
+  const canNextWeek = $derived(!!week && !!thisWeek && week.from < thisWeek);
+  const stepWeek = (by: number) => { if (week && (by < 0 ? canPrevWeek : canNextWeek)) weekFirst = addDays(week.from, by * 7); };
+  const weekTitle = $derived(!week || !thisWeek || week.from === thisWeek ? 'This week' : week.from === addDays(thisWeek, -7) ? 'Last week' : `Week ${week.number}`);
   const month = $derived(ctx && tracked ? monthView(ctx, monthFirst ?? ctx.today) : null);
   const thisMonth = $derived(ctx ? shiftMonth(ctx.today, 0) : null);
   const firstMonth = $derived(ctx?.trackingStart ? shiftMonth(ctx.trackingStart, 0) : null);
@@ -75,7 +84,7 @@
 
   const OPTIONS: { id: HabitsMode; label: string }[] = [{ id: 'list', label: 'List' }, { id: 'week', label: 'Week' }, { id: 'month', label: 'Month' }];
   const viewingThisMonth = $derived(!month || !thisMonth || month.first === thisMonth);
-  const title = $derived(mode === 'list' ? 'Habits' : mode === 'week' ? 'This week' : viewingThisMonth ? 'This month' : monthName(month!.first));
+  const title = $derived(mode === 'list' ? 'Habits' : mode === 'week' ? weekTitle : viewingThisMonth ? 'This month' : monthName(month!.first));
   const eyebrow = $derived(mode === 'list' ? plural(habits.length, 'habit') : mode === 'week' && week ? weekRange(week.from, week.to) : mode === 'month' && month ? `${monthName(month.first)} ${month.first.slice(0, 4)}` : ctx ? `${monthName(ctx.today)} ${ctx.today.slice(0, 4)}` : '');
   const sched = (h: (typeof habits)[number]) => {
     const rule = h.perWeek ? timesAWeek(h.perWeek) : repeatLabel(h.rrule ? parseRRule(h.rrule) : null, h.start.slice(0, 10) as IsoDay);
@@ -154,19 +163,22 @@
         {#if timed.length}{@render reminders()}{/if}
 
       {:else if mode === 'week' && week}
-        <div class="grid card" role="table" aria-label="This week">
-          <div class="head" role="row"><span></span><WeekStrip days={strip} /></div>
-          {#each week.rows.filter((r) => active.has(r.eventId)) as row (row.eventId)}
-            <div class="row" role="row">
-              <button class="rowname" onclick={() => onhabit(row.eventId)} aria-label={row.title}><HabitObject icon={habits.find((h) => h.id === row.eventId)?.icon} size="sm" /></button>
-              <span class="cells">
-                {#each row.cells as cell, i (i)}
-                  <span class="cell" role="cell">{#if cell && cell.state !== 'before'}<WeekCell state={cell.state} label="{row.title}, {fullDate(cell.day)}: {cell.state === 'ahead' ? 'not yet' : cell.state}" />{/if}</span>
-                {/each}
-              </span>
-            </div>
-          {/each}
-        </div>
+        <section class="weekcard card" aria-label={weekTitle}>
+          <PeriodNav title={weekRange(week.from, week.to)} count={rateCount(week.rate)} unit="week" onprev={() => stepWeek(-1)} onnext={() => stepWeek(1)} prevDisabled={!canPrevWeek} nextDisabled={!canNextWeek} />
+          <div class="grid" role="table" aria-label={weekTitle}>
+            <div class="head" role="row"><span></span><WeekStrip days={strip} label={weekTitle} /></div>
+            {#each week.rows.filter((r) => active.has(r.eventId)) as row (row.eventId)}
+              <div class="row" role="row">
+                <button class="rowname" onclick={() => onhabit(row.eventId)} aria-label={row.title}><HabitObject icon={habits.find((h) => h.id === row.eventId)?.icon} size="sm" /></button>
+                <span class="cells">
+                  {#each row.cells as cell, i (i)}
+                    <span class="cell" role="cell">{#if cell && cell.state !== 'before'}<WeekCell state={cell.state} label="{row.title}, {fullDate(cell.day)}: {cell.state === 'ahead' ? 'not yet' : cell.state}" />{/if}</span>
+                  {/each}
+                </span>
+              </div>
+            {/each}
+          </div>
+        </section>
 
       {:else if mode === 'month' && month}
         <MonthCalendar title="{monthName(month.first)} {month.first.slice(0, 4)}" leading={month.leading} days={allHabitDays(month, monthStars)}
@@ -193,6 +205,7 @@
   .text :global(.row) { padding-top: var(--space-4); }
   .chev { color: var(--icon-default); display: flex; }
 
+  .weekcard { display: grid; gap: var(--space-12); }
   .grid { display: grid; }
   .head { padding-bottom: var(--space-8); }
   .row { padding: var(--space-4) 0; }

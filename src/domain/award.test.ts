@@ -27,6 +27,14 @@ describe('week strip (096)', () => {
   it('days before tracking are empty, never missed (033)', () => {
     expect(weekStrip({ ...ctx([]), trackingStart: '2026-10-07' }).slice(0, 2).map((d) => d.state)).toEqual(['empty', 'empty']);
   });
+  it('an earlier week (143): any day of it picks the week; its days are settled, none open or today', () => {
+    const answers = [done('read', '2026-10-05'), done('walk', '2026-10-05'), done('read', '2026-10-06')];
+    const s = weekStrip(ctx(answers, '2026-10-15'), undefined, '2026-10-08');
+    expect(s[0]!.day).toBe('2026-10-05');
+    expect(s.map((d) => d.state)).toEqual(['perfect', 'partial', 'missed', 'missed', 'missed', 'missed', 'missed']);
+    expect(s.some((d) => d.today)).toBe(false);
+    expect(weekStrip(ctx(answers, '2026-10-15'))[0]!.day).toBe('2026-10-12'); // left out: the week that holds today
+  });
 });
 
 describe('perfect days (093)', () => {
