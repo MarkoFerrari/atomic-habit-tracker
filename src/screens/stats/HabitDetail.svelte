@@ -29,6 +29,7 @@
   import HabitObject from '../../ui/HabitObject.svelte';
   import MonthCalendar from '../../ui/MonthCalendar.svelte';
   import { habitMonthDays, monthCount } from '../../ui/calendar';
+  import { shiftMonth } from '../../domain/day';
   import { fieldColor } from '../../ui/objects';
   import { monthName } from '../../domain/format';
   import { PAUSE_REASON_LABEL, SKIP_REASON_LABEL } from '../../ui/copy';
@@ -67,7 +68,14 @@
   // bestRun counts answered days; the current run also counts today (060), so the run in progress can be the best.
   const best = $derived(data && habit ? Math.max(bestRun(data.ctx, habit), detail?.medal.held ?? 0) : 0);
   const rankSub = $derived(detail ? (detail.medal.rank ? `Since day ${RANKS.find((r) => r.id === detail.medal.rank)!.days}` : `Apprentice at day ${RANKS[0]!.days}`) : '');
-  const month = $derived(data && habit ? monthView({ ...data.ctx, habits: [habit] }, data.ctx.today) : null);
+  // 144: step back through the months of this one habit, from the month it began (or tracking started) to this one.
+  let monthFirst = $state<IsoDay | null>(null);
+  const month = $derived(data && habit ? monthView({ ...data.ctx, habits: [habit] }, monthFirst ?? data.ctx.today) : null);
+  const firstMonth = $derived(data && habit ? shiftMonth((data.ctx.trackingStart && data.ctx.trackingStart > habit.start.slice(0, 10) ? data.ctx.trackingStart : habit.start.slice(0, 10)) as IsoDay, 0) : null);
+  const thisMonth = $derived(data ? shiftMonth(data.ctx.today, 0) : null);
+  const canPrev = $derived(!!month && !!firstMonth && month.first > firstMonth);
+  const canNext = $derived(!!month && !!thisMonth && month.first < thisMonth);
+  const stepMonth = (by: number) => { if (month && (by < 0 ? canPrev : canNext)) monthFirst = shiftMonth(month.first, by); };
   const saved = $derived(data && habit ? runsSaved(data.ctx, habit) : null);
   const answerCount = $derived(data ? data.ctx.answers.filter((a) => a.eventId === eventId).length : 0);
   const archived = $derived(!!habit?.archivedOn && !!data && habit.archivedOn <= data.ctx.today);
@@ -153,7 +161,8 @@
     {/if}
 
     {#if month}
-      <MonthCalendar title="{monthName(month.first)} {month.first.slice(0, 4)}" count={monthCount(month)} leading={month.leading} days={habitMonthDays(month)} showPartial={false} />
+      <MonthCalendar title="{monthName(month.first)} {month.first.slice(0, 4)}" count={monthCount(month)} leading={month.leading} days={habitMonthDays(month)} showPartial={false}
+        onprev={() => stepMonth(-1)} onnext={() => stepMonth(1)} prevDisabled={!canPrev} nextDisabled={!canNext} />
     {/if}
 
     {#if mine}
