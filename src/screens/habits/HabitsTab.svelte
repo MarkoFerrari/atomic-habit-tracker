@@ -14,7 +14,7 @@
   import SegmentedControl from '../../ui/SegmentedControl.svelte';
   import HabitObject from '../../ui/HabitObject.svelte';
   import MonthCalendar from '../../ui/MonthCalendar.svelte';
-  import { allHabitDays } from '../../ui/calendar';
+  import { allHabitDays, monthCount } from '../../ui/calendar';
   import { fieldColor } from '../../ui/objects';
   import ProgressBar from '../../ui/ProgressBar.svelte';
   import WeekStrip from '../../ui/WeekStrip.svelte';
@@ -25,10 +25,10 @@
   import { READY_TABS, type Tab } from '../../ui/tabs';
   import { RANKS } from '../../domain/ranks';
   import { parseRRule } from '../../domain/recurrence';
-  import { fullDate, monthName, percent, plural, repeatLabel, shortName, timesAWeek, weekRange } from '../../domain/format';
+  import { fullDate, monthName, plural, repeatLabel, shortName, timesAWeek, weekRange } from '../../domain/format';
   import { monthView, weekView, type Medal } from '../../domain/stats';
   import { nextRankLine, perfectDays, weekStrip } from '../../domain/award';
-  import { addDays, type IsoDay } from '../../domain/day';
+  import { addDays, shiftMonth, type IsoDay } from '../../domain/day';
   import { activeIds, loadStats, medals, type StatsData } from '../../data/stats';
   import { activeHabits } from '../../data/habits';
   import { listTimed } from '../../data/timed';
@@ -53,7 +53,10 @@
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   });
-  function pick(m: HabitsMode) { mode = m; onview?.(m); }
+  // Month view: null is this month; a month back shows how those habits held (done ÷ due, with the percentage).
+  // Back stops at the month tracking started and forward at this month: days before the start and days ahead are never zero (033).
+  let monthFirst = $state<IsoDay | null>(null);
+  function pick(m: HabitsMode) { mode = m; if (m === 'month') monthFirst = null; onview?.(m); }
 
   const ctx = $derived(data?.ctx ?? null);
   const active = $derived(data ? activeIds(data) : new Set<string>());
@@ -62,12 +65,18 @@
   const tracked = $derived(!!ctx?.trackingStart);
   const week = $derived(ctx && tracked ? weekView(ctx, ctx.today) : null);
   const strip = $derived(ctx && tracked ? weekStrip(ctx) : []);
-  const month = $derived(ctx && tracked ? monthView(ctx, ctx.today) : null);
+  const month = $derived(ctx && tracked ? monthView(ctx, monthFirst ?? ctx.today) : null);
+  const thisMonth = $derived(ctx ? shiftMonth(ctx.today, 0) : null);
+  const firstMonth = $derived(ctx?.trackingStart ? shiftMonth(ctx.trackingStart, 0) : null);
+  const canPrev = $derived(!!month && !!firstMonth && month.first > firstMonth);
+  const canNext = $derived(!!month && !!thisMonth && month.first < thisMonth);
+  const stepMonth = (by: number) => { if (month && (by < 0 ? canPrev : canNext)) monthFirst = shiftMonth(month.first, by); };
   const monthStars = $derived(ctx && month ? new Set(perfectDays(ctx, month.first, addDays(month.first, month.cells.length - 1))) : new Set<string>());
 
   const OPTIONS: { id: HabitsMode; label: string }[] = [{ id: 'list', label: 'List' }, { id: 'week', label: 'Week' }, { id: 'month', label: 'Month' }];
-  const title = $derived(mode === 'list' ? 'Habits' : mode === 'week' ? 'This week' : 'This month');
-  const eyebrow = $derived(mode === 'list' ? plural(habits.length, 'habit') : mode === 'week' && week ? weekRange(week.from, week.to) : ctx ? `${monthName(ctx.today)} ${ctx.today.slice(0, 4)}` : '');
+  const viewingThisMonth = $derived(!month || !thisMonth || month.first === thisMonth);
+  const title = $derived(mode === 'list' ? 'Habits' : mode === 'week' ? 'This week' : viewingThisMonth ? 'This month' : monthName(month!.first));
+  const eyebrow = $derived(mode === 'list' ? plural(habits.length, 'habit') : mode === 'week' && week ? weekRange(week.from, week.to) : mode === 'month' && month ? `${monthName(month.first)} ${month.first.slice(0, 4)}` : ctx ? `${monthName(ctx.today)} ${ctx.today.slice(0, 4)}` : '');
   const sched = (h: (typeof habits)[number]) => {
     const rule = h.perWeek ? timesAWeek(h.perWeek) : repeatLabel(h.rrule ? parseRRule(h.rrule) : null, h.start.slice(0, 10) as IsoDay);
     const m = medalOf.get(h.id);
@@ -161,7 +170,7 @@
 
       {:else if mode === 'month' && month}
         <MonthCalendar title="{monthName(month.first)} {month.first.slice(0, 4)}" leading={month.leading} days={allHabitDays(month, monthStars)}
-          count={(() => { const r = month.cells.reduce((a, c) => ({ done: a.done + (c.kind === 'ahead' ? 0 : c.rate.done), due: a.due + (c.kind === 'ahead' ? 0 : c.rate.due) }), { done: 0, due: 0 }); return r.due ? `${r.done} of ${r.due} · ${percent(r.done / r.due)}` : undefined; })()} />
+          count={monthCount(month)} onprev={() => stepMonth(-1)} onnext={() => stepMonth(1)} prevDisabled={!canPrev} nextDisabled={!canNext} />
       {/if}
     {/if}
   </main>

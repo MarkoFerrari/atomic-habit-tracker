@@ -58,4 +58,27 @@ describe('Habits tab (097)', () => {
     expect(screen.getByRole('gridcell', { name: /Monday 22 November: 100%, 2 of 2 done, perfect day/ })).toBeTruthy();
     expect(screen.getByRole('gridcell', { name: /Tuesday 23 November: 50%/ })).toBeTruthy();
   });
+
+  it('month: step back to see how a past month held, stopping at the month tracking started, never ahead (033)', async () => {
+    const database = await db();
+    await database.put('events', habit('b', 'Sample breakfast 30 min', '2027-10-01T08:00', '2027-10-01T08:30', 'coffee')); // begun a month earlier
+    for (let d = 1; d <= 20; d++) await database.put('answers', done('b', `2027-10-${String(d).padStart(2, '0')}`)); // 20 of 31 held
+    await updateSettings({ trackingStart: '2027-10-01' });
+    render(HabitsTab, { onhabit: () => {} });
+    await screen.findByText('Sample breakfast 30 min');
+    await fireEvent.click(screen.getByRole('radio', { name: 'Month' }));
+    expect(await screen.findByText('This month')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Next month' }) as HTMLButtonElement).disabled).toBe(true); // nothing ahead
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(await screen.findByRole('heading', { name: 'October 2027' })).toBeTruthy();
+    expect(screen.queryByText('This month')).toBeNull();
+    expect(screen.getByText('20 of 31 · 65%')).toBeTruthy(); // done ÷ due, the number due beside the rate (006)
+    expect(screen.getByRole('gridcell', { name: /Wednesday 20 October: 100%, 1 of 1 done/ })).toBeTruthy();
+    expect(screen.getByRole('gridcell', { name: /Thursday 21 October: 0%, 0 of 1 done/ })).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Previous month' }) as HTMLButtonElement).disabled).toBe(true); // tracking began in October
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(await screen.findByText('This month')).toBeTruthy();
+  });
 });

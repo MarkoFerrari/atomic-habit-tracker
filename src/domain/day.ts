@@ -41,6 +41,13 @@ export function addDays(d: IsoDay, n: number): IsoDay {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}` as IsoDay;
 }
 
+/** The first day of the month `by` months from the month of `d` (negative goes back). Dates only, so no daylight-saving drift. */
+export function shiftMonth(d: IsoDay, by: number): IsoDay {
+  const [y, m] = d.split('-').map(Number) as [number, number];
+  const date = new Date(Date.UTC(y, m - 1 + by, 1));
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-01` as IsoDay;
+}
+
 /** R2 / E4: answers stay editable for 7 days (today and the 6 days before), then become read-only. */
 export const EDIT_WINDOW_DAYS = 7;
 export function isEditable(occurrence: IsoDay, today: IsoDay): boolean {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { habitDayOf } from './day';
+import { habitDayOf, shiftMonth, type IsoDay } from './day';
 
 const ATHENS = 'Europe/Athens';
 
@@ -28,5 +28,22 @@ describe('habitDayOf (R1: the day closes at 04:00)', () => {
     const instant = new Date('2026-10-07T02:00:00Z'); // 05:00 in Athens, 22:00 in New York
     expect(habitDayOf(instant, ATHENS)).toBe('2026-10-07');
     expect(habitDayOf(instant, 'America/New_York')).toBe('2026-10-06');
+  });
+});
+
+describe('shiftMonth (the Habits month navigation)', () => {
+  const d = (s: string) => s as IsoDay;
+  it('goes back and forward by whole months, always to the 1st', () => {
+    expect(shiftMonth(d('2026-11-25'), -1)).toBe('2026-10-01');
+    expect(shiftMonth(d('2026-10-01'), 1)).toBe('2026-11-01');
+    expect(shiftMonth(d('2026-10-31'), 0)).toBe('2026-10-01');
+  });
+  it('crosses a year in both directions', () => {
+    expect(shiftMonth(d('2027-01-15'), -1)).toBe('2026-12-01');
+    expect(shiftMonth(d('2026-12-01'), 1)).toBe('2027-01-01');
+  });
+  it('never lands on a shorter month by mistake (31 January back or forward)', () => {
+    expect(shiftMonth(d('2027-01-31'), 1)).toBe('2027-02-01');
+    expect(shiftMonth(d('2027-03-31'), -1)).toBe('2027-02-01');
   });
 });
