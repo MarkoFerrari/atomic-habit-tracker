@@ -138,6 +138,18 @@ describe('changing a repeating event (H31, E16)', () => {
     expect(items).toEqual(['2026-10-05 17:30 Sample train - 30 min', '2026-10-07 18:00 Sample run - 30 min', '2026-10-09 18:00 Sample run - 30 min']);
   });
 
+  it('a daily habit changed to chosen weekdays is not due on the day it was edited when that day is not chosen (U20)', async () => {
+    // Sample data: a daily habit from Mon 5 Oct, answered, edited on Tue 3 Nov to Mon, Wed and Fri.
+    const daily: CalendarEvent = { ...train, id: 'daily', title: 'Sample training - 30 min', start: '2026-10-05T17:30', end: '2026-10-05T18:00', rrule: 'FREQ=DAILY' };
+    await (await db()).put('events', daily);
+    await answer('daily', '2026-11-02', 'done', '2026-11-03');
+    const item = occ(daily, '2026-11-03');
+    await saveEdit(daily, item, { ...draftOf(daily, item), repeat: { kind: 'weekly', days: [0, 2, 4], until: null }, repeatChanged: true }, 'all', ZONE, '2026-11-03');
+    const events = (await allEvents()).filter((e) => e.id === 'daily');
+    const days = agenda(events, '2026-11-01', '2026-11-08', ZONE).map((i) => i.occurrence);
+    expect(days).toEqual(['2026-11-01', '2026-11-02', '2026-11-04', '2026-11-06']); // Tue 3, Thu 5, Sat 7 and Sun 8 are not chosen
+  });
+
   it('all events without answers changes the series in place', async () => {
     const item = occ(train, '2026-10-09');
     await saveEdit(train, item, { ...draftOf(train, item), start: '2026-10-09T06:00', end: '2026-10-09T06:30' }, 'all', ZONE, '2026-10-07');

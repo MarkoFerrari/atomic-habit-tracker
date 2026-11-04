@@ -125,8 +125,11 @@ function* periods(start: IsoDay, rule: Recurrence): Generator<{ anchor: IsoDay; 
 const MAX_YEARS = 100; // a safety stop for rules that never match (e.g. 31 February)
 
 /**
- * Every occurrence day from `start` up to `to` (inclusive), in order. The start itself always counts,
- * as RFC 5545 says DTSTART is the first instance. EXDATEs are removed after COUNT is applied.
+ * Every occurrence day from `start` up to `to` (inclusive), in order. The start itself counts,
+ * as RFC 5545 says DTSTART is the first instance, with one exception: a weekly rule that names its
+ * weekdays (BYDAY) never lands on a weekday it doesn't name (U20). Editing a habit from today on starts
+ * its new schedule today, and a habit set to Mon, Wed and Fri must not be due on that Tuesday.
+ * EXDATEs are removed after COUNT is applied.
  */
 export function occurrences(start: IsoDay, rule: Recurrence | null, exdates: readonly IsoDay[], to: IsoDay): IsoDay[] {
   const excluded = new Set(exdates);
@@ -136,7 +139,8 @@ export function occurrences(start: IsoDay, rule: Recurrence | null, exdates: rea
   let counted = 0;
   const stop = rule.until && rule.until < to ? rule.until : to;
   const take = (d: IsoDay) => { counted += 1; if (!excluded.has(d)) out.push(d); };
-  take(start);
+  const namesOtherWeekdays = rule.freq === 'WEEKLY' && !!rule.byDay && !rule.byDay.some((w) => w.weekday === weekdayOf(start));
+  if (!namesOtherWeekdays) take(start);
   for (const { anchor, days } of periods(start, rule)) {
     if (anchor > stop || daysBetween(start, anchor) > MAX_YEARS * 366) return out;
     for (const d of days) {
