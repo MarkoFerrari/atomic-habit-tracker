@@ -1,9 +1,9 @@
 <script lang="ts">
-  // The header of a period you can step through (Habits → Week and Month, 142–143): a chevron each side of the title and
+  // The header of a period you can step through (Habits → Week and Month, Stats, habit detail: 142–144): a chevron each side of the title and
   // the count under it, so the percentage keeps its own line. A chevron with nowhere to go is disabled, never hidden.
   import Icon from './Icon.svelte';
   interface Props {
-    title: string; count?: string; unit: 'week' | 'month';
+    title: string; count?: string; unit: 'week' | 'month' | 'year';
     onprev: () => void; onnext: () => void; prevDisabled?: boolean; nextDisabled?: boolean;
   }
   let { title, count, unit, onprev, onnext, prevDisabled = false, nextDisabled = false }: Props = $props();

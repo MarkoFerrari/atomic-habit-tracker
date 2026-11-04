@@ -15,9 +15,10 @@
   import ProgressBar from '../../ui/ProgressBar.svelte';
   import HabitObject from '../../ui/HabitObject.svelte';
   import MonthCalendar from '../../ui/MonthCalendar.svelte';
-  import { allHabitDays } from '../../ui/calendar';
+  import PeriodNav from '../../ui/PeriodNav.svelte';
+  import { allHabitDays, rateCount } from '../../ui/calendar';
   import { perfectDays, weekStrip } from '../../domain/award';
-  import { addDays } from '../../domain/day';
+  import { addDays, shiftMonth } from '../../domain/day';
   import YearBar from '../../ui/YearBar.svelte';
   import Sky from '../../ui/Sky.svelte';
   import { sky as skyOf } from '../../domain/moments';
@@ -26,8 +27,8 @@
   import type { Tab } from '../../ui/tabs';
   import { READY_TABS } from '../../ui/tabs';
   import { reviewIsDue, activeAdjustment } from '../../domain/adjust';
-  import { fullDate, monthName, percent, shortName, weekdayLetter } from '../../domain/format';
-  import { monthView, rateOf, recapWeekStart, sortMedals, weekView, weeklyRecap, yearView, type HabitDay, type Medal } from '../../domain/stats';
+  import { fullDate, monthName, percent, shortName, weekdayLetter, weekRange } from '../../domain/format';
+  import { mondayOf, monthView, rateOf, recapWeekStart, sortMedals, weekView, weeklyRecap, yearView, type HabitDay, type Medal } from '../../domain/stats';
   import type { IsoDay } from '../../domain/day';
   import { loadStats, medals, type StatsData } from '../../data/stats';
 
@@ -61,15 +62,18 @@
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   });
-  function pick(next: Mode, m?: IsoDay) { mode = next; month = m; onview?.(next, m); }
+  // 144: week, month and year step back like Habits does (142, 143); null = the current period.
+  let weekFirst = $state<IsoDay | null>(null);
+  let yearOf = $state<number | null>(null);
+  function pick(next: Mode, m?: IsoDay) { mode = next; month = m; weekFirst = null; yearOf = null; onview?.(next, m); }
 
   const ctx = $derived(data?.ctx ?? null);
   const today = $derived(ctx?.today ?? null);
   const hasData = $derived(!!ctx && !!ctx.trackingStart && ctx.habits.length > 0);
-  const week = $derived(ctx && hasData ? weekView(ctx, ctx.today) : null);
+  const week = $derived(ctx && hasData ? weekView(ctx, weekFirst ?? ctx.today) : null);
   const monthly = $derived(ctx && hasData ? monthView(ctx, month ?? ctx.today) : null);
-  const yearly = $derived(ctx && hasData ? yearView(ctx, ctx.today) : null);
-  const yearSky = $derived(ctx && hasData && mode === 'year' ? skyOf(ctx, Number(ctx.today.slice(0, 4))) : null); // 109 (W3)
+  const yearly = $derived(ctx && hasData ? yearView(ctx, `${yearOf ?? ctx.today.slice(0, 4)}-01-01` as IsoDay) : null);
+  const yearSky = $derived(ctx && hasData && mode === 'year' ? skyOf(ctx, yearly!.year) : null); // 109 (W3)
 
   // H34: the recap banner stays until it is opened. A trial due for review asks to be opened too (080).
   const recapStart = $derived(today ? recapWeekStart(today) : null);
@@ -83,7 +87,22 @@
   const pct = (r: number | null) => percent(r);
   const OPTIONS: { id: Mode; label: string }[] = [{ id: 'week', label: 'Week' }, { id: 'month', label: 'Month' }, { id: 'year', label: 'Year' }];
   const monthLabel = (first: IsoDay) => `${monthName(first)} ${first.slice(0, 4)}`;
-  const strip = $derived(ctx && hasData ? weekStrip(ctx) : []);
+  const strip = $derived(ctx && hasData && week ? weekStrip(ctx, undefined, week.from) : []);
+  const thisWeek = $derived(ctx ? mondayOf(ctx.today) : null);
+  const firstWeek = $derived(ctx?.trackingStart ? mondayOf(ctx.trackingStart) : null);
+  const canPrevWeek = $derived(!!week && !!firstWeek && week.from > firstWeek);
+  const canNextWeek = $derived(!!week && !!thisWeek && week.from < thisWeek);
+  const stepWeek = (by: number) => { if (week && (by < 0 ? canPrevWeek : canNextWeek)) weekFirst = addDays(week.from, by * 7); };
+  const weekTitle = $derived(!week || !thisWeek || week.from === thisWeek ? 'This week' : week.from === addDays(thisWeek, -7) ? 'Last week' : `Week ${week.number}`);
+  const weekWhen = $derived(weekTitle === 'This week' ? 'this week' : weekTitle === 'Last week' ? 'last week' : `in ${weekTitle.toLowerCase()}`);
+  const thisMonth = $derived(ctx ? shiftMonth(ctx.today, 0) : null);
+  const firstMonth = $derived(ctx?.trackingStart ? shiftMonth(ctx.trackingStart, 0) : null);
+  const canPrevMonth = $derived(!!monthly && !!firstMonth && monthly.first > firstMonth);
+  const canNextMonth = $derived(!!monthly && !!thisMonth && monthly.first < thisMonth);
+  const stepMonth = (by: number) => { if (monthly && (by < 0 ? canPrevMonth : canNextMonth)) { month = shiftMonth(monthly.first, by); onview?.('month', month); } };
+  const canPrevYear = $derived(!!yearly && !!ctx?.trackingStart && yearly.year > Number(ctx.trackingStart.slice(0, 4)));
+  const canNextYear = $derived(!!yearly && !!ctx && yearly.year < Number(ctx.today.slice(0, 4)));
+  const stepYear = (by: number) => { if (yearly && (by < 0 ? canPrevYear : canNextYear)) yearOf = yearly.year + by; };
   const weekPerfect = $derived(strip.filter((d) => d.state === 'perfect').length);
   const weekTracked = $derived(strip.filter((d) => !d.today ? d.state !== 'future' && d.state !== 'empty' : d.due > 0).length);
   const monthPerfect = $derived(ctx && monthly ? perfectDays(ctx, monthly.first, addDays(monthly.first, monthly.cells.length - 1)).length : 0);
@@ -128,12 +147,13 @@
       <SegmentedControl options={OPTIONS} selected={mode} label="Period" onselect={(id) => pick(id)} />
 
       {#if mode === 'week' && week && today}
-        <section class="perfect card">
+        <section class="perfect card" aria-label={weekTitle}>
+          <PeriodNav title={weekRange(week.from, week.to)} count={rateCount(week.rate)} unit="week" onprev={() => stepWeek(-1)} onnext={() => stepWeek(1)} prevDisabled={!canPrevWeek} nextDisabled={!canNextWeek} />
           <div class="count"><AwardStar size="icon" />
             <span><span class="t-heading-small block">{weekPerfect} perfect {weekPerfect === 1 ? 'day' : 'days'}</span>
-            <span class="t-body-small secondary">Out of {weekTracked} {weekTracked === 1 ? 'day' : 'days'} tracked this week</span></span>
+            <span class="t-body-small secondary">Out of {weekTracked} {weekTracked === 1 ? 'day' : 'days'} tracked {weekWhen}</span></span>
           </div>
-          <WeekStrip days={strip} />
+          <WeekStrip days={strip} label={weekTitle} />
         </section>
         {#if week.rate.due === 0}
           <p class="t-body-small tertiary">Nothing has been decided yet this week. Days before the start stay empty, never missed (033).</p>
@@ -143,18 +163,20 @@
         <section class="perfect card">
           <div class="count"><AwardStar size="icon" />
             <span><span class="t-heading-small block">{monthPerfect} perfect {monthPerfect === 1 ? 'day' : 'days'}</span>
-            <span class="t-body-small secondary">In {monthLabel(monthly.first)} so far</span></span>
+            <span class="t-body-small secondary">In {monthLabel(monthly.first)}{monthly.first === thisMonth ? ' so far' : ''}</span></span>
           </div>
         </section>
-        <MonthCalendar title={monthLabel(monthly.first)} leading={monthly.leading} days={allHabitDays(monthly, monthStars)} count={monthCount} />
+        <MonthCalendar title={monthLabel(monthly.first)} leading={monthly.leading} days={allHabitDays(monthly, monthStars)} count={monthCount}
+          onprev={() => stepMonth(-1)} onnext={() => stepMonth(1)} prevDisabled={!canPrevMonth} nextDisabled={!canNextMonth} />
         {@render byHabit(monthly.byHabit)}
       {:else if mode === 'year' && yearly}
         <section class="perfect card">
           <div class="count"><AwardStar size="icon" />
             <span><span class="t-heading-small block">{yearPerfect} perfect {yearPerfect === 1 ? 'day' : 'days'}</span>
-            <span class="t-body-small secondary">In {yearly.year} so far</span></span>
+            <span class="t-body-small secondary">In {yearly.year}{yearly.year === Number(ctx?.today.slice(0, 4)) ? ' so far' : ''}</span></span>
           </div>
         </section>
+        <PeriodNav title={String(yearly.year)} count={rateCount(yearly.rate)} unit="year" onprev={() => stepYear(-1)} onnext={() => stepYear(1)} prevDisabled={!canPrevYear} nextDisabled={!canNextYear} />
         {#if yearSky}
           <section class="weeks">
             <h2 class="t-heading-small">{yearSky.perfect} perfect {yearSky.perfect === 1 ? 'week' : 'weeks'}</h2>

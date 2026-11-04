@@ -67,6 +67,43 @@ describe('Stats (F6)', () => {
     expect(screen.getByRole('button', { name: /^December: ahead/ })).toBeTruthy();
   });
 
+  it('week: step back to earlier weeks with their perfect days and rate, stopping where tracking started, never ahead (144, 033)', async () => {
+    render(Stats, props);
+    await screen.findByText('Sample breakfast 30 min');
+    expect((screen.getByRole('button', { name: 'Next week' }) as HTMLButtonElement).disabled).toBe(true);
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous week' }));
+    expect(await screen.findByRole('heading', { name: '15–21 November' })).toBeTruthy();
+    expect(screen.getByRole('list', { name: 'Last week' })).toBeTruthy();
+    expect(screen.getByText(/tracked last week/)).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous week' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous week' }));
+    expect(screen.getByRole('heading', { name: '1–7 November' })).toBeTruthy(); // tracking began on 1 November
+    expect((screen.getByRole('button', { name: 'Previous week' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('month and year: step back through months and years that held data (144)', async () => {
+    const database = await db();
+    await database.put('events', habit('c', 'Sample walk 20 min', '2026-10-05T07:00', '2026-10-05T07:20', 'moon'));
+    for (let d = 5; d <= 20; d++) await database.put('answers', ans('c', `2026-10-${String(d).padStart(2, '0')}`, 'done'));
+    await updateSettings({ trackingStart: '2026-10-05' });
+    render(Stats, props);
+    await screen.findByText('Sample walk 20 min');
+    await fireEvent.click(screen.getByRole('radio', { name: 'Month' }));
+    expect((screen.getByRole('button', { name: 'Next month' }) as HTMLButtonElement).disabled).toBe(true);
+    for (let i = 0; i < 13; i++) await fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(await screen.findByRole('heading', { name: 'October 2026' })).toBeTruthy();
+    expect(screen.getByText('In October 2026')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Previous month' }) as HTMLButtonElement).disabled).toBe(true);
+    await fireEvent.click(screen.getByRole('radio', { name: 'Year' }));
+    expect(await screen.findByRole('heading', { name: '2027' })).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous year' }));
+    expect(await screen.findByRole('heading', { name: '2026' })).toBeTruthy();
+    expect(screen.getByText('In 2026')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Previous year' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Next year' }) as HTMLButtonElement).disabled).toBe(false);
+    await vi.waitFor(async () => expect((await database.getAll('ranks')).length).toBeGreaterThan(0)); // Stats writes the ranks it sees; let that finish
+  });
+
   it('shows the recap banner until opened, and nothing when there is no data (E19)', async () => {
     const onrecap = vi.fn();
     render(Stats, { ...props, onrecap });
@@ -114,6 +151,22 @@ describe('Badges, habit detail and recap', () => {
     expect(screen.getByRole('grid')).toBeTruthy();
     expect(screen.getAllByRole('gridcell', { name: /: (done|not done)$/ }).length).toBeGreaterThan(0);
     expect(screen.queryByText('Some done')).toBeNull(); // one habit: a day is done or not (129)
+  });
+
+  it('habit detail: the month steps back to the month the habit began, and shows what was done or skipped (144)', async () => {
+    const database = await db();
+    await database.put('events', habit('c', 'Sample walk 20 min', '2027-10-20T07:00', '2027-10-20T07:20', 'moon'));
+    for (let d = 20; d <= 28; d++) await database.put('answers', ans('c', `2027-10-${d}`, 'done'));
+    await database.put('answers', ans('c', '2027-10-29', 'skipped', 'no-time'));
+    await updateSettings({ trackingStart: '2027-10-20' });
+    render(HabitDetail, { eventId: 'c', onback: noop });
+    await screen.findByRole('grid');
+    expect((screen.getByRole('button', { name: 'Next month' }) as HTMLButtonElement).disabled).toBe(true);
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(await screen.findByRole('heading', { name: 'October 2027' })).toBeTruthy();
+    expect(screen.getByRole('gridcell', { name: /Friday 22 October: done/ })).toBeTruthy();
+    expect(screen.getByRole('gridcell', { name: /Friday 29 October: not done/ })).toBeTruthy(); // a skip counts as a miss (051)
+    expect((screen.getByRole('button', { name: 'Previous month' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('habit detail: a habit with no rank is deleted after one plain question, and Undo brings it all back (112, B)', async () => {

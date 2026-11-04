@@ -57,3 +57,17 @@ describe('occurrences', () => {
     expect(occursOn(d('2026-10-06'), rule, [], d('2026-10-09'))).toBe(false);
   });
 });
+
+describe('a weekly rule that names its weekdays (U20)', () => {
+  it('does not count a start on a weekday it does not name', () => {
+    // Tue 3 Nov 2026, a rule for Monday, Wednesday and Friday
+    expect(list('2026-11-03', 'FREQ=WEEKLY;BYDAY=MO,WE,FR', '2026-11-09')).toEqual(['2026-11-04', '2026-11-06', '2026-11-09']);
+    expect(occursOn(d('2026-11-03'), parseRRule('FREQ=WEEKLY;BYDAY=MO,WE,FR'), [], d('2026-11-03'))).toBe(false);
+  });
+  it('COUNT then counts the days the rule does name', () => {
+    expect(list('2026-11-03', 'FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=2', '2026-12-31')).toEqual(['2026-11-04', '2026-11-06']);
+  });
+  it('still counts a start on a named weekday', () => {
+    expect(list('2026-11-04', 'FREQ=WEEKLY;BYDAY=MO,WE,FR', '2026-11-06')).toEqual(['2026-11-04', '2026-11-06']);
+  });
+});
